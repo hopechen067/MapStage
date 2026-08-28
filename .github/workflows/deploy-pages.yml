@@ -41,6 +41,10 @@ jobs:
             --exclude 'verify.mjs' \
             --exclude 'map-tiles.config.local.js' \
             --exclude '.DS_Store' \
+            --exclude 'assets/water-data.js' \
+            --exclude 'assets/water-manifest.json' \
+            --exclude 'water-data.js' \
+            --exclude 'water-manifest.json' \
             china-antique-maplibre/tuner/ _site/
           # Demo clip for README / site embed (served as video/mp4, not raw attachment)
           mkdir -p _site/media
@@ -51,23 +55,32 @@ jobs:
           touch _site/.nojekyll
           # Small marker for debugging deploys
           date -u +"%Y-%m-%dT%H:%M:%SZ" > _site/DEPLOYED_AT.txt
-          # Water overlay is optional and not redistributed in this repo.
-          # If a local/user-supplied water-data.js is present in the publish tree,
-          # do a light sanity check; otherwise deploy the basemap/hillshade demo.
-          if [ -f _site/assets/water-data.js ]; then
-            water_bytes=$(wc -c < _site/assets/water-data.js)
-            echo "optional water-data.js bytes=${water_bytes}"
-            if [ "${water_bytes}" -lt 1000 ]; then
-              echo "::error::water-data.js looks empty/truncated (${water_bytes} bytes)"
-              exit 1
-            fi
-            if ! grep -q 'CHINA_WATER_DATA' _site/assets/water-data.js; then
-              echo "::error::water-data.js does not define CHINA_WATER_DATA"
-              exit 1
-            fi
-          else
-            echo "OK  no bundled water-data.js (optional overlay; see DATA-PROVENANCE.md)"
+          # Public repo + GitHub Pages must never redistribute hydrography.
+          # Exclude, delete, then fail the job if water-data.js / water-manifest.json
+          # are still in the artifact (do not validate-and-publish them).
+          rm -f _site/assets/water-data.js _site/assets/water-manifest.json
+          find _site -type f \( -name 'water-data.js' -o -name 'water-manifest.json' \) -print -delete
+          python3 -c '
+          import json
+          from pathlib import Path
+          p = Path("_site/assets/water-pack.json")
+          if not p.is_file():
+              raise SystemExit("missing _site/assets/water-pack.json")
+          data = json.loads(p.read_text(encoding="utf-8"))
+          data["enabled"] = False
+          p.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          check = json.loads(p.read_text(encoding="utf-8"))
+          if check.get("enabled") is not False:
+              raise SystemExit("water-pack.json enabled must be false")
+          print("OK  water-pack.json forced enabled=false")
+          '
+          leftover=$(find _site -type f \( -name 'water-data.js' -o -name 'water-manifest.json' \) -print)
+          if [ -n "${leftover}" ]; then
+            echo "::error::Public Pages must not publish water overlay files:"
+            echo "${leftover}"
+            exit 1
           fi
+          echo "OK  no water-data.js / water-manifest.json in publish tree"
           ls -la _site _site/assets _site/media | head -60
 
       - name: Configure Pages

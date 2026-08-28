@@ -2,7 +2,7 @@
 
 ## Water overlay (`CHINA_WATER_DATA`) — not redistributed
 
-This repository **does not ship** a China water / hydrography GeoJSON pack.
+This repository **does not ship** a China water / hydrography GeoJSON pack. This public repository and GitHub Pages must not publish `water-data.js` again.
 
 | Path | Role |
 |------|------|
