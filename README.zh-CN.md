@@ -2,7 +2,7 @@
 
 [English](README.md) | **中文**
 
-开源 **MapLibre 调参器**：地图 / 地球投影、卫星底图、海拔设色、三维地形、区域拆出，参数可导出 JSON。
+开源 **MapStage 调参器**：地图 / 地球投影、卫星底图、海拔设色、三维地形、区域拆出，参数可导出 JSON。
 
 ## 在线演示
 
@@ -47,7 +47,7 @@
 | 项目 | 说明 |
 |------|------|
 | Skill 目录 | `mapstage` |
-| 运行时 | [MapLibre GL JS](https://maplibre.org/) |
+| 运行时 | MapStage |
 | 默认底图 | **EOX Sentinel-2 cloudless**（公开演示 WMTS，请自行遵守图源条款） |
 | 地形 / 山影 | **Mapterhorn** DEM（运行时拉取；Terrarium 编码） |
 | 水系 | OpenFreeMap / OpenMapTiles 矢量水 |
@@ -169,14 +169,14 @@ EOX 公共瓦片多为非商用 + 需署名（约 10 m）。本项目不授予�
 
 - 遵守所用底图 / DEM / CDN 条款。
 - 矢量水系需保留 **OpenFreeMap / OSM** 署名。
-- **MapLibre / Three.js：** 再分发时遵循其许可证。
+- **第三方运行时：** 再分发时遵循其许可证 — [NOTICE.md](NOTICE.md)。
 - **展示图：** 默认保留权利的演示媒体（见 [LICENSE-EXCEPTIONS.md](LICENSE-EXCEPTIONS.md)）。
 
 ## 安装为 Agent Skill
 
 1. 将 `mapstage` 复制到 skills 目录。  
 2. 重载 skills，使 `SKILL.md` 生效。  
-3. 让 agent 打开调参器、套用导出的 JSON 预设，或把同一套外观接到 MapLibre 场景。
+3. 让 agent 打开调参器、套用导出的 JSON 预设，或把同一套外观接到 MapStage 场景。
 
 ## 目录结构
 

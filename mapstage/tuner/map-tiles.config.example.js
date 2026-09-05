@@ -26,7 +26,7 @@ window.MAP_TILE_CONFIG = {
     maxzoom: 14,
     attribution:
       'Sentinel-2 cloudless © <a href="https://s2maps.eu">EOX</a> · modified Copernicus Sentinel data 2020',
-    // Source id used in MapLibre style (keep stable if you migrate presets)
+    // Source id used in MapStage style (keep stable if you migrate presets)
     sourceId: 'basemapRaster',
     layerId: 'satellite',
     // Other basemaps (local only): tiles: ['https://YOUR-HOST/{z}/{x}/{y}.png'],

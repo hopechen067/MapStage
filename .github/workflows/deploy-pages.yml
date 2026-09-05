@@ -1,4 +1,4 @@
-# Deploy the MapLibre tuner as a static site on GitHub Pages.
+# Deploy the MapStage tuner as a static site on GitHub Pages.
 # Live URL: https://<owner>.github.io/<repo>/
 name: Deploy tuner (GitHub Pages)
 

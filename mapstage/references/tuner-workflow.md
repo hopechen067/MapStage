@@ -59,8 +59,8 @@ Camera defaults to China overview `[104.0, 35.5]`, zoom `~4.2`. Use the China / 
 
 ## Migrate to HyperFrames
 
-1. Create / open the HyperFrames MapLibre scene.
-2. Apply `maplibre.*` paint + terrain exaggeration + layer visibility from the export.
+1. Create / open the HyperFrames MapStage scene.
+2. Apply `mapstage.*` paint + terrain exaggeration + layer visibility from the export.
 3. Apply `css.*` as the DOM filter / tint / vignette stack around the map canvas (same semantics as tuner).
 4. Set initial camera from `camera` via `jumpTo` (no `easeTo` / `flyTo` on record path).
 5. Load settlement data (`cities.dataFile` or your production sites JSON) with `HanCity3D` tiers.

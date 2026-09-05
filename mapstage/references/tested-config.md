@@ -10,14 +10,14 @@ Production-proven stack for the antique parchment look. No project-specific path
 - **Default public config:** EOX Sentinel-2 cloudless (`s2cloudless-2020`, template `{z}/{y}/{x}`, maxzoom ~14)
 - Public EOX WMTS typically requires attribution and has use restrictions; for other basemaps use `map-tiles.config.local.js`
 - Configure via `tuner/map-tiles.config.js` or gitignored `map-tiles.config.local.js`
-- Layer id defaults to `satellite`; paint from preset `maplibre.satellite.*`
+- Layer id defaults to `satellite`; paint from preset `mapstage.satellite.*`
 
 ### Terrain DEM (AWS Terrarium)
 
 - Type: `raster-dem`
 - Tiles: AWS Terrarium terrain-rgb style endpoints (default demo URLs in config)
 - **Required:** `"encoding": "terrarium"`
-- Wire with `map.setTerrain({ source, exaggeration })` using `maplibre.terrainExaggeration`
+- Wire with `map.setTerrain({ source, exaggeration })` using `mapstage.terrainExaggeration`
 
 Wrong or missing `encoding` produces incorrect elevation and broken hillshade.
 
@@ -34,7 +34,7 @@ Wrong or missing `encoding` produces incorrect elevation and broken hillshade.
 
 ## Layer order (bottom → top)
 
-1. `background` (`maplibre.backgroundColor`)
+1. `background` (`mapstage.backgroundColor`)
 2. Hillshade (when terrain enabled)
 3. Optional satellite/raster basemap (when configured)
 4. Lakes fill → lake outline
@@ -42,7 +42,7 @@ Wrong or missing `encoding` produces incorrect elevation and broken hillshade.
 6. Highlight rivers (when `ui.showHighlight`)
 7. City fill-extrusion / custom 3D + HTML labels
 
-CSS antique filter + warm tint + vignette sit **outside** MapLibre paint (DOM overlay on the canvas wrapper).
+CSS antique filter + warm tint + vignette sit **outside** MapStage paint (DOM overlay on the canvas wrapper).
 
 ## Camera & tile readiness
 

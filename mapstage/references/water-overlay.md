@@ -1,6 +1,6 @@
 # Water overlay · CHINA_WATER_DATA
 
-Optional MapLibre water layers. Hydrography data is **not redistributed** in this repository (license / redistribution risk). The tuner keeps the loader and paint UI so you can supply your own pack locally.
+Optional MapStage water layers. Hydrography data is **not redistributed** in this repository (license / redistribution risk). The tuner keeps the loader and paint UI so you can supply your own pack locally.
 
 **License:** this project does not ship or MIT-license a water pack. See root [`DATA-PROVENANCE.md`](../../DATA-PROVENANCE.md).
 
@@ -30,9 +30,9 @@ With the default pack flag the demo boots normally: basemap + Terrarium hillshad
 
 If you build a highlight subset, document keyword groups yourself (e.g. 黑河, 石羊, 疏勒). Geographic river names in keywords are OK.
 
-## MapLibre paint keys
+## MapStage paint keys
 
-From preset `maplibre.water`:
+From preset `mapstage.water`:
 
 - Lakes: `lakeFill`, `lakeOutline`
 - Rivers: `riverLevel3` → `riverLevel2` → `riverLevel1` (+ widths)

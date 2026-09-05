@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MapStage · MapLibre tuner</title>
-  <meta name="description" content="MapStage MapLibre tuner — map/globe, EOX satellite, Mapterhorn DEM, isolate, JSON presets." />
+  <title>MapStage</title>
+  <meta name="description" content="MapStage tuner — map/globe, EOX satellite, Mapterhorn DEM, isolate, JSON presets." />
   <!--
     Directory-safe asset base for GitHub project Pages.
     `.../MapStage` (no trailing slash) + relative `assets/x`
@@ -820,7 +820,7 @@
     <aside id="panel">
       <div id="panel-header">
         <h1>古地图色调调参器</h1>
-        <p>MapLibre + Mapterhorn 山影 · EOX Sentinel-2 底图 · 仿手绘羊皮纸古卷<br />拖动滑杆实时预览，参数可导出 JSON。其他底图请改 map-tiles.config.local.js。</p>
+        <p>MapStage + Mapterhorn 山影 · EOX Sentinel-2 底图 · 仿手绘羊皮纸古卷<br />拖动滑杆实时预览，参数可导出 JSON。其他底图请改 map-tiles.config.local.js。</p>
       </div>
 
       <div id="viewmode-wrap">
@@ -1041,7 +1041,7 @@
     // 默认 = 用户手调 antique-default（保留三级河 / 高亮水系字段）
     const DEFAULT_PARAMS = {
       id: PRESET_ID,
-      label: '手绘古地图 · MapLibre + Terrarium 山影',
+      label: '手绘古地图 · MapStage + Terrarium 山影',
       version: 1,
       camera: {
         center: [104.0, 35.5],
@@ -1049,7 +1049,7 @@
         pitch: 28,
         bearing: 0,
       },
-      maplibre: {
+      mapstage: {
         backgroundColor: '#c8c2b4',
         terrainExaggeration: 1,
         satellite: {
@@ -1218,13 +1218,13 @@
       if (path === 'camera.pitch') return obj.camera.pitch;
       if (path === 'camera.bearing') return obj.camera.bearing;
 
-      if (path === 'backgroundColor') return obj.maplibre.backgroundColor;
-      if (path === 'terrainExaggeration') return obj.maplibre.terrainExaggeration;
+      if (path === 'backgroundColor') return obj.mapstage.backgroundColor;
+      if (path === 'terrainExaggeration') return obj.mapstage.terrainExaggeration;
 
       const parts = path.split('.');
-      if (parts[0] === 'satellite') return obj.maplibre.satellite[parts[1]];
-      if (parts[0] === 'hillshade') return obj.maplibre.hillshade[parts[1]];
-      if (parts[0] === 'water') return obj.maplibre.water[parts[1]];
+      if (parts[0] === 'satellite') return obj.mapstage.satellite[parts[1]];
+      if (parts[0] === 'hillshade') return obj.mapstage.hillshade[parts[1]];
+      if (parts[0] === 'water') return obj.mapstage.water[parts[1]];
       if (parts[0] === 'css') return obj.css[parts[1]];
       return undefined;
     }
@@ -1251,18 +1251,18 @@
         return;
       }
       if (path === 'backgroundColor') {
-        obj.maplibre.backgroundColor = value;
+        obj.mapstage.backgroundColor = value;
         return;
       }
       if (path === 'terrainExaggeration') {
-        obj.maplibre.terrainExaggeration = value;
+        obj.mapstage.terrainExaggeration = value;
         return;
       }
 
       const parts = path.split('.');
-      if (parts[0] === 'satellite') obj.maplibre.satellite[parts[1]] = value;
-      else if (parts[0] === 'hillshade') obj.maplibre.hillshade[parts[1]] = value;
-      else if (parts[0] === 'water') obj.maplibre.water[parts[1]] = value;
+      if (parts[0] === 'satellite') obj.mapstage.satellite[parts[1]] = value;
+      else if (parts[0] === 'hillshade') obj.mapstage.hillshade[parts[1]] = value;
+      else if (parts[0] === 'water') obj.mapstage.water[parts[1]] = value;
       else if (parts[0] === 'css') obj.css[parts[1]] = value;
     }
 
@@ -1284,7 +1284,7 @@
     let mapReady = false;
     let waterAvailable = false;
     let syncingFromMap = false; // 防止相机回写时循环
-    let hanCityLayer = null; // MapLibre custom layer 实例（含 setVisible）
+    let hanCityLayer = null; // MapStage custom layer 实例（含 setVisible）
     let riverLabelMarkers = []; // maplibregl.Marker[]
     let riverLabelCatalog = []; // { name, lng, lat, tier, minZoom }[]
     let lakeLabelMarkers = []; // maplibregl.Marker[]
@@ -1314,29 +1314,29 @@
         if (override.camera.bearing != null) out.camera.bearing = +override.camera.bearing;
       }
 
-      if (override.maplibre) {
-        const m = override.maplibre;
-        if (m.backgroundColor) out.maplibre.backgroundColor = m.backgroundColor;
-        if (m.terrainExaggeration != null) out.maplibre.terrainExaggeration = +m.terrainExaggeration;
-        if (m.satellite) Object.assign(out.maplibre.satellite, m.satellite);
+      if (override.mapstage || override.maplibre) {
+        const m = override.mapstage || override.maplibre;
+        if (m.backgroundColor) out.mapstage.backgroundColor = m.backgroundColor;
+        if (m.terrainExaggeration != null) out.mapstage.terrainExaggeration = +m.terrainExaggeration;
+        if (m.satellite) Object.assign(out.mapstage.satellite, m.satellite);
         if (m.hillshade) {
-          Object.assign(out.maplibre.hillshade, m.hillshade);
-          // MapLibre hillshade-exaggeration 上限为 1；超限会导致 style 无法加载
-          if (out.maplibre.hillshade.exaggeration != null) {
-            out.maplibre.hillshade.exaggeration = Math.min(1, Math.max(0, +out.maplibre.hillshade.exaggeration));
+          Object.assign(out.mapstage.hillshade, m.hillshade);
+          // MapStage hillshade-exaggeration 上限为 1；超限会导致 style 无法加载
+          if (out.mapstage.hillshade.exaggeration != null) {
+            out.mapstage.hillshade.exaggeration = Math.min(1, Math.max(0, +out.mapstage.hillshade.exaggeration));
           }
         }
-        if (m.water) Object.assign(out.maplibre.water, m.water);
+        if (m.water) Object.assign(out.mapstage.water, m.water);
         // Legacy key: qilianRiver → highlightRiver
-        if (out.maplibre.water.qilianRiver != null && out.maplibre.water.highlightRiver == null) {
-          out.maplibre.water.highlightRiver = out.maplibre.water.qilianRiver;
+        if (out.mapstage.water.qilianRiver != null && out.mapstage.water.highlightRiver == null) {
+          out.mapstage.water.highlightRiver = out.mapstage.water.qilianRiver;
         }
         // Legacy key: qilianWidth → highlightWidth
-        if (out.maplibre.water.qilianWidth != null && out.maplibre.water.highlightWidth == null) {
-          out.maplibre.water.highlightWidth = out.maplibre.water.qilianWidth;
+        if (out.mapstage.water.qilianWidth != null && out.mapstage.water.highlightWidth == null) {
+          out.mapstage.water.highlightWidth = out.mapstage.water.qilianWidth;
         }
-        delete out.maplibre.water.qilianRiver;
-        delete out.maplibre.water.qilianWidth;
+        delete out.mapstage.water.qilianRiver;
+        delete out.mapstage.water.qilianWidth;
       }
 
       if (override.css) Object.assign(out.css, override.css);
@@ -1407,35 +1407,35 @@
         version: 3,
         season: params.season || null,
         camera: cam,
-        maplibre: {
-          backgroundColor: params.maplibre.backgroundColor,
-          terrainExaggeration: round(params.maplibre.terrainExaggeration, 3),
+        mapstage: {
+          backgroundColor: params.mapstage.backgroundColor,
+          terrainExaggeration: round(params.mapstage.terrainExaggeration, 3),
           satellite: {
-            opacity: round(params.maplibre.satellite.opacity, 3),
-            saturation: round(params.maplibre.satellite.saturation, 3),
-            contrast: round(params.maplibre.satellite.contrast, 3),
-            brightnessMin: round(params.maplibre.satellite.brightnessMin, 3),
-            brightnessMax: round(params.maplibre.satellite.brightnessMax, 3),
-            hueRotate: round(params.maplibre.satellite.hueRotate, 1),
+            opacity: round(params.mapstage.satellite.opacity, 3),
+            saturation: round(params.mapstage.satellite.saturation, 3),
+            contrast: round(params.mapstage.satellite.contrast, 3),
+            brightnessMin: round(params.mapstage.satellite.brightnessMin, 3),
+            brightnessMax: round(params.mapstage.satellite.brightnessMax, 3),
+            hueRotate: round(params.mapstage.satellite.hueRotate, 1),
           },
           hillshade: {
-            exaggeration: round(params.maplibre.hillshade.exaggeration, 3),
-            illuminationDirection: Math.round(params.maplibre.hillshade.illuminationDirection),
-            shadowColor: params.maplibre.hillshade.shadowColor,
-            highlightColor: params.maplibre.hillshade.highlightColor,
-            accentColor: params.maplibre.hillshade.accentColor,
+            exaggeration: round(params.mapstage.hillshade.exaggeration, 3),
+            illuminationDirection: Math.round(params.mapstage.hillshade.illuminationDirection),
+            shadowColor: params.mapstage.hillshade.shadowColor,
+            highlightColor: params.mapstage.hillshade.highlightColor,
+            accentColor: params.mapstage.hillshade.accentColor,
           },
           water: {
-            lakeFill: params.maplibre.water.lakeFill,
-            lakeOutline: params.maplibre.water.lakeOutline,
-            riverLevel3: params.maplibre.water.riverLevel3,
-            riverLevel2: params.maplibre.water.riverLevel2,
-            riverLevel1: params.maplibre.water.riverLevel1,
-            highlightRiver: params.maplibre.water.highlightRiver,
-            riverL3Width: round(params.maplibre.water.riverL3Width, 2),
-            riverL2Width: round(params.maplibre.water.riverL2Width, 2),
-            riverL1Width: round(params.maplibre.water.riverL1Width, 2),
-            highlightWidth: round(params.maplibre.water.highlightWidth, 2),
+            lakeFill: params.mapstage.water.lakeFill,
+            lakeOutline: params.mapstage.water.lakeOutline,
+            riverLevel3: params.mapstage.water.riverLevel3,
+            riverLevel2: params.mapstage.water.riverLevel2,
+            riverLevel1: params.mapstage.water.riverLevel1,
+            highlightRiver: params.mapstage.water.highlightRiver,
+            riverL3Width: round(params.mapstage.water.riverL3Width, 2),
+            riverL2Width: round(params.mapstage.water.riverL2Width, 2),
+            riverL1Width: round(params.mapstage.water.riverL1Width, 2),
+            highlightWidth: round(params.mapstage.water.highlightWidth, 2),
           },
         },
         css: {
@@ -1470,8 +1470,8 @@
 
     function packForShare(full) {
       full = full || exportParams();
-      var sat = full.maplibre.satellite;
-      var hill = full.maplibre.hillshade;
+      var sat = full.mapstage.satellite;
+      var hill = full.mapstage.hillshade;
       var css = full.css;
       var ui = full.ui || {};
       var iso = full.isolate || {};
@@ -1480,7 +1480,7 @@
         format: 'cam-v3',
         c: [cam.center[0], cam.center[1], cam.zoom, cam.pitch, cam.bearing],
         n: [
-          full.maplibre.terrainExaggeration,
+          full.mapstage.terrainExaggeration,
           sat.opacity, sat.saturation, sat.contrast, sat.brightnessMin, sat.brightnessMax, sat.hueRotate,
           hill.exaggeration, hill.illuminationDirection,
           css.sepia, css.saturate, css.contrast, css.brightness, css.hueRotate, css.warmTintAlpha, css.vignetteStrength,
@@ -1495,7 +1495,7 @@
           ui.projection === 'globe' ? 1 : 0,
         ],
         s: [
-          full.maplibre.backgroundColor,
+          full.mapstage.backgroundColor,
           hill.shadowColor,
           hill.highlightColor,
           hill.accentColor,
@@ -1519,7 +1519,7 @@
           pitch: c[3],
           bearing: c[4],
         },
-        maplibre: {
+        mapstage: {
           backgroundColor: s[0],
           terrainExaggeration: n[0],
           satellite: {
@@ -1648,7 +1648,7 @@
     }
 
     // ============================================================
-    // MapLibre 图层更新
+    // MapStage 图层更新
     // ============================================================
     function safeSetPaint(layerId, prop, value) {
       if (!mapReady || !map.getLayer(layerId)) return;
@@ -1661,7 +1661,7 @@
 
     function applyMapStyles() {
       if (!mapReady) return;
-      const m = params.maplibre;
+      const m = params.mapstage;
       const s = m.satellite;
       const h = m.hillshade;
       const w = m.water;
@@ -2149,7 +2149,7 @@
     }
 
     function updatePaintSummary() {
-      const m = params.maplibre;
+      const m = params.mapstage;
       const s = m.satellite;
       const h = m.hillshade;
       const el = document.getElementById('paint-summary');
@@ -2610,7 +2610,7 @@
           id: 'background',
           type: 'background',
           paint: {
-            'background-color': params.maplibre.backgroundColor,
+            'background-color': params.mapstage.backgroundColor,
           },
         },
       ];
@@ -2647,11 +2647,11 @@
           type: 'hillshade',
           source: visualId,
           paint: {
-            'hillshade-exaggeration': Math.min(1, Math.max(0, +params.maplibre.hillshade.exaggeration || 0)),
-            'hillshade-illumination-direction': params.maplibre.hillshade.illuminationDirection,
-            'hillshade-shadow-color': params.maplibre.hillshade.shadowColor,
-            'hillshade-highlight-color': params.maplibre.hillshade.highlightColor,
-            'hillshade-accent-color': params.maplibre.hillshade.accentColor,
+            'hillshade-exaggeration': Math.min(1, Math.max(0, +params.mapstage.hillshade.exaggeration || 0)),
+            'hillshade-illumination-direction': params.mapstage.hillshade.illuminationDirection,
+            'hillshade-shadow-color': params.mapstage.hillshade.shadowColor,
+            'hillshade-highlight-color': params.mapstage.hillshade.highlightColor,
+            'hillshade-accent-color': params.mapstage.hillshade.accentColor,
             'hillshade-illumination-anchor': 'viewport',
           },
         });
@@ -2671,12 +2671,12 @@
           type: 'raster',
           source: tileCfg.satellite.sourceId,
           paint: {
-            'raster-opacity': params.maplibre.satellite.opacity,
-            'raster-saturation': params.maplibre.satellite.saturation,
-            'raster-contrast': params.maplibre.satellite.contrast,
-            'raster-brightness-min': params.maplibre.satellite.brightnessMin,
-            'raster-brightness-max': params.maplibre.satellite.brightnessMax,
-            'raster-hue-rotate': params.maplibre.satellite.hueRotate,
+            'raster-opacity': params.mapstage.satellite.opacity,
+            'raster-saturation': params.mapstage.satellite.saturation,
+            'raster-contrast': params.mapstage.satellite.contrast,
+            'raster-brightness-min': params.mapstage.satellite.brightnessMin,
+            'raster-brightness-max': params.mapstage.satellite.brightnessMax,
+            'raster-hue-rotate': params.mapstage.satellite.hueRotate,
           },
         });
       }
@@ -3013,8 +3013,8 @@
 
       const cam = params.camera;
 
-      if (window.AntiqueMapFx && typeof AntiqueMapFx.configureMapLibre === 'function') {
-        AntiqueMapFx.configureMapLibre(maplibregl);
+      if (window.AntiqueMapFx && typeof AntiqueMapFx.configureMapStage === 'function') {
+        AntiqueMapFx.configureMapStage(maplibregl);
       }
       const mapOpts = {
         container: 'map',
@@ -3049,7 +3049,7 @@
           if (tcfg && tcfg.terrain && tcfg.terrain.enabled) {
             map.setTerrain({
               source: tcfg.terrain.sourceId || 'terrain',
-              exaggeration: params.maplibre.terrainExaggeration,
+              exaggeration: params.mapstage.terrainExaggeration,
             });
           }
         } catch (e) {
@@ -3099,7 +3099,7 @@
       });
 
       map.on('error', function (e) {
-        console.warn('MapLibre error', e && e.error);
+        console.warn('MapStage error', e && e.error);
       });
     }
 
@@ -3143,7 +3143,7 @@
 
     function addWaterLayers() {
       const data = window.CHINA_WATER_DATA;
-      const w = params.maplibre.water;
+      const w = params.mapstage.water;
       const vis = params.ui.showWater ? 'visible' : 'none';
       const qVis = params.ui.showWater && params.ui.showHighlight ? 'visible' : 'none';
 

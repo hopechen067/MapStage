@@ -37,11 +37,11 @@
   var TERRAIN_MESH_MINZOOM = 6;
   /** Same as tuner/preset-antique-default.json maplibre.terrainExaggeration (dramatic) */
   var TERRAIN_EXAGGERATION = 1.6;
-  /** Terrarium metres 1:1 — MapLibre exaggeration 1.0 */
+  /** Terrarium metres 1:1 — MapStage exaggeration 1.0 */
   var TERRAIN_REAL_EXAGGERATION = 1;
   /** Qilian front: zoom/pitch where the terrain mesh is actually visible. */
   var VIEW_RELIEF = { center: [100.42, 38.48], zoom: 10.6, pitch: 70, bearing: 180 };
-  /** MapLibre three.js-on-terrain example camera (Innsbruck). */
+  /** MapStage three.js-on-terrain example camera (Innsbruck). */
   var VIEW_ALPS = { center: [11.5257, 47.668], zoom: 16.27, pitch: 60, bearing: -28.5 };
   /** Same as tuner/preset-antique-default.json maplibre.hillshade */
   var HILLSHADE_PAINT = {
@@ -54,7 +54,7 @@
   var CONTOUR_SOURCE_ID = 'contours';
   var CONTOUR_LAYER = 'contours';
   var GLYPHS_URL = 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf';
-  /** zoom: [minor m, major m] — MapLibre contour protocol (meters, not feet). */
+  /** zoom: [minor m, major m] — MapStage contour protocol (meters, not feet). */
   var CONTOUR_THRESHOLDS = {
     3: [1000, 2000],
     5: [500, 1000],
@@ -1059,7 +1059,7 @@
 
   function applyVectorPaint(map, paint, keys) {
     if (!map || typeof map.setPaintProperty !== 'function') {
-      throw new Error('applyVectorPaint needs a MapLibre map');
+      throw new Error('applyVectorPaint needs a MapStage map');
     }
     var colors = normalizePaint(paint);
     var allowed = null;

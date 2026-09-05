@@ -2,7 +2,7 @@
 
 **English** | [中文](README.zh-CN.md)
 
-Open-source **MapLibre tuner**: map and globe projection, satellite, hypsometric relief, 3D terrain, region isolate, and JSON presets.
+Open-source **MapStage tuner**: map and globe projection, satellite, hypsometric relief, 3D terrain, region isolate, and JSON presets.
 
 ## Live demo
 
@@ -47,7 +47,7 @@ Current tuner: national map, 3D terrain, globe, isolate.
 | Item | Value |
 |------|--------|
 | Skill folder | `mapstage` |
-| Runtime | [MapLibre GL JS](https://maplibre.org/) |
+| Runtime | MapStage |
 | Default basemap | **EOX Sentinel-2 cloudless** (public demo WMTS; check provider terms) |
 | Terrain / hillshade | **Mapterhorn** DEM (runtime fetch; Terrarium encoding) |
 | Water | OpenFreeMap / OpenMapTiles vector water |
@@ -169,14 +169,14 @@ Satellite and DEM tiles are fetched at runtime from configured URLs only.
 
 - Follow each basemap / DEM / CDN provider’s terms for your use case.
 - **OpenFreeMap / OSM** attribution for vector water.
-- **MapLibre / Three.js:** keep their licenses when redistributing builds.
+- **Third-party runtimes:** keep their licenses when redistributing builds — [NOTICE.md](NOTICE.md).
 - **Showcase images:** All Rights Reserved demo media unless noted otherwise ([LICENSE-EXCEPTIONS.md](LICENSE-EXCEPTIONS.md)).
 
 ## Install as an agent skill
 
 1. Copy `mapstage` into your skills directory.
 2. Reload agent skills so `SKILL.md` is discovered.
-3. Ask the agent to open the tuner, apply an exported JSON preset, or wire the same look into a MapLibre scene.
+3. Ask the agent to open the tuner, apply an exported JSON preset, or wire the same look into a MapStage scene.
 
 ## Layout
 

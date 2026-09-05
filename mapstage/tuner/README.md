@@ -38,4 +38,4 @@ Checks for `index.html`, tile config, city assets, and default presets.
 - Water: OpenFreeMap / OpenMapTiles vector layers
 - Public demo: GitHub Pages publishes this `tuner/` folder to the site root (`assets/…` paths stay relative)
 
-Export JSON, then migrate into your MapLibre host. Do not host final renders on this page.
+Export JSON, then migrate into your MapStage host. Do not host final renders on this page.

@@ -268,14 +268,14 @@
   }
 
   /**
-   * MapLibre drapes fill layers onto 3D terrain. A large polygon with holes
+   * MapStage drapes fill layers onto 3D terrain. A large polygon with holes
    * triangulates into giant slivers; a centroid grid makes a mosaic edge.
    * Far cells stay 8° solids. Near the silhouette, 1° cells that miss the
    * region stay solid; cells that hit it are scanline-filled (cell minus
    * clipped rings) into hole-free trapezoids that follow the real outline.
    * Hairline Y-slabs (islands, dense coasts) become kilometer-long needles on
    * 3D terrain; coarsen slabs and split wide traps so each piece stays compact.
-   * Do not stitch those trapezoids into one large concave ring: MapLibre's
+   * Do not stitch those trapezoids into one large concave ring: MapStage's
    * terrain earcut turns that into interior slivers again.
    *
    * Tessellation follows the region bbox: a 2° city (Beijing) uses ~0.008°

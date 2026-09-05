@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://skills.local/mapstage/schemas/map-preset.schema.json",
-  "title": "China antique MapLibre preset",
+  "title": "MapStage preset",
   "type": "object",
-  "required": ["id", "version", "camera", "maplibre", "css", "ui"],
+  "required": ["id", "version", "camera", "mapstage", "css", "ui"],
   "additionalProperties": true,
   "properties": {
     "id": { "type": "string" },
@@ -26,7 +26,7 @@
       },
       "additionalProperties": false
     },
-    "maplibre": {
+    "mapstage": {
       "type": "object",
       "required": ["backgroundColor", "terrainExaggeration", "satellite", "hillshade", "water"],
       "properties": {

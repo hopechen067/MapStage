@@ -1,10 +1,10 @@
 display_name: "MapStage"
 default_prompt: |
-  Use the mapstage skill: MapLibre tuner with map/globe projection, optional
+  Use the mapstage skill: MapStage tuner with map/globe projection, optional
   satellite raster, Mapterhorn hillshade (encoding terrarium), OpenFreeMap
   vector water, CSS color grade, region isolate, and city extrusions. Prefer
   tuner preset-antique-default.json, export JSON, migrate into the production
-  MapLibre host. Configure tiles only via map-tiles.config.js /
+  MapStage host. Configure tiles only via map-tiles.config.js /
   map-tiles.config.local.js with endpoints the user is allowed to use. Use
   jumpTo + idle (no easeTo/flyTo). Do not host final render on the tuner.
   Follow references/*.md for parameters and layer order.

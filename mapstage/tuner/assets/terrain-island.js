@@ -1,5 +1,5 @@
 /**
- * Independent terrain island: clip MapLibre terrain to a polygon and
+ * Independent terrain island: clip MapStage terrain to a polygon and
  * extrude a side wall along the silhouette. Requires the patched
  * maplibre-gl build (__ANTIQUE_TERRAIN_CLIP_PATCH).
  */
@@ -1612,7 +1612,7 @@
   // Custom-layer mercator Z can be opposite the terrain mesh (ele - drop).
   // +1 → bottom = alt + drop (when alt-drop projects toward +ndcY / sky).
   // -1 → bottom = alt - drop (same meter direction as the mesh).
-  // Live MapLibre mainMatrix matches the mesh, so the default is -1. A/B on
+  // Live MapStage mainMatrix matches the mesh, so the default is -1. A/B on
   // 拆出·北京: forcing +1 put bedrock in the sky and removed the near skirt.
   function overlayDropSignFromMatrix(mat, maplibregl, lng, lat, alt, drop) {
     if (!mat || !maplibregl || !maplibregl.MercatorCoordinate || !(drop > 0)) return -1;
@@ -1928,7 +1928,7 @@
   function extractMatrix(args) {
     if (!args) return null;
     // Same path as han-city-3d: custom layers supply mercator [0..1]
-    // verts and MapLibre v5 scales mainMatrix by EXTENT to match.
+    // verts and MapStage v5 scales mainMatrix by EXTENT to match.
     if (args.defaultProjectionData) {
       var scaled =
         asFlat16(args.defaultProjectionData.mainMatrix) ||

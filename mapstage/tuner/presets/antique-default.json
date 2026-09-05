@@ -9,7 +9,7 @@
     "pitch": 28,
     "bearing": 0
   },
-  "maplibre": {
+  "mapstage": {
     "backgroundColor": "#c8c2b4",
     "terrainExaggeration": 1,
     "satellite": {

@@ -1,6 +1,6 @@
 /**
  * han-city-3d.js
- * 汉代墨线方城 · MapLibre custom layer + Three.js 程序化模型
+ * 汉代墨线方城 · MapStage custom layer + Three.js 程序化模型
  *
  * 导出：
  *   window.HanCity3D = {
@@ -290,7 +290,7 @@
 
   function extractMatrix(args) {
     if (!args) return null;
-    // MapLibre v5：render(gl, args) 中 args.defaultProjectionData.mainMatrix
+    // MapStage v5：render(gl, args) 中 args.defaultProjectionData.mainMatrix
     if (args.defaultProjectionData) {
       var a =
         asFlat16(args.defaultProjectionData.mainMatrix) ||
@@ -324,7 +324,7 @@
 
   /**
    * 将米制 Y-up 模型放到 Mercator 坐标
-   * MapLibre：X 东、Y 南、Z 上；Three 默认 Y 上 → 绕 X 转 90°，并 scale(s,-s,s)
+   * MapStage：X 东、Y 南、Z 上；Three 默认 Y 上 → 绕 X 转 90°，并 scale(s,-s,s)
    */
   function placeCityInstance(THREE, maplibregl, map, model, city) {
     var lng = city.lng;
@@ -352,7 +352,7 @@
   }
 
   /**
-   * 创建 MapLibre custom layer
+   * 创建 MapStage custom layer
    * options:
    *   id, cities, visible, palette, altitudeBoost, visualScale
    * visualScale: 叙事放大倍数，默认 28（~30km 足迹，广域视图可读）
@@ -383,7 +383,7 @@
       var mc = maplibregl.MercatorCoordinate.fromLngLat([lng, lat], alt);
       var s = mc.meterInMercatorCoordinateUnits() * state.visualScale;
       g.position.set(mc.x, mc.y, mc.z);
-      // MapLibre mercator: scale Y 取负以配合 rotationX
+      // MapStage mercator: scale Y 取负以配合 rotationX
       g.scale.set(s, -s, s);
       g.rotation.set(Math.PI / 2, 0, 0);
     }
@@ -521,7 +521,7 @@
           }
         }
 
-        // 与 MapLibre 共享 context：清深度并关掉深度测，避免城池被地形深度遮住
+        // 与 MapStage 共享 context：清深度并关掉深度测，避免城池被地形深度遮住
         state.renderer.resetState();
         try {
           gl.disable(gl.DEPTH_TEST);

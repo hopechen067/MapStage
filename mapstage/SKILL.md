@@ -1,16 +1,16 @@
 ---
 name: mapstage
-description: MapLibre live tuner for map/globe projection, satellite, hypsometric relief, 3D terrain, region isolate, CSS color grade, and JSON presets.
+description: MapStage live tuner for map/globe projection, satellite, hypsometric relief, 3D terrain, region isolate, CSS color grade, and JSON presets.
 ---
 
 # MapStage
 
-Use this skill when building or tuning a MapLibre scene with the MapStage tuner: map/globe projection, satellite, hypsometric relief, Mapterhorn terrain, region isolate, CSS color grade, and JSON export.
+Use this skill when building or tuning a MapStage scene: map/globe projection, satellite, hypsometric relief, Mapterhorn terrain, region isolate, CSS color grade, and JSON export.
 
 ## When to use
 
-- Need a live MapLibre tuner (map vs globe, satellite vs relief, isolate).
-- Need to lock paint / CSS / camera, then export JSON into another MapLibre host.
+- Need a live MapStage tuner (map vs globe, satellite vs relief, isolate).
+- Need to lock paint / CSS / camera, then export JSON into another host.
 - Need tiered settlements (`capital` / `large` / `medium` / `small` / `pass` / `station` / `ordos`).
 
 Do **not** use the tuner page as the final render host.
@@ -19,7 +19,7 @@ Do **not** use the tuner page as the final render host.
 
 | Mode | Purpose |
 |------|---------|
-| **Production stack** | Embed MapLibre in your app: optional satellite/raster + Mapterhorn DEM (`encoding: 'terrarium'`) + hillshade + OpenFreeMap vector water + CSS filter + city extrusions. Drive look from exported JSON. |
+| **Production stack** | Embed MapStage in your app: optional satellite/raster + Mapterhorn DEM (`encoding: 'terrarium'`) + hillshade + OpenFreeMap vector water + CSS filter + city extrusions. Drive look from exported JSON. |
 | **Tuner** | Local HTTP page under `tuner/` for sliders, projection, isolate, preset load/export. |
 
 ## Workflow
@@ -29,14 +29,14 @@ Do **not** use the tuner page as the final render host.
 3. Apply default preset [`tuner/preset-antique-default.json`](tuner/preset-antique-default.json) (same as [`tuner/presets/antique-default.json`](tuner/presets/antique-default.json)).
 4. Adjust projection / satellite / relief / isolate / CSS / cities until the look locks.
 5. **Export JSON** from the tuner (copy or download).
-6. **Migrate** paint + camera + CSS fields into the production MapLibre scene (see references).
+6. **Migrate** paint + camera + CSS fields into the production MapStage scene (see references).
 7. In production: `jumpTo` camera; wait for `idle`; optionally pre-cache tiles. **Avoid `easeTo` / `flyTo`** for recorded frames.
 8. Always set DEM with **`encoding: 'terrarium'`**. Wrong encoding breaks hillshade/terrain.
 9. Final frames render from the production host — **not** from the tuner UI.
 
 ## Hard rules
 
-- **Tiles not bundled** — MapLibre fetches DEM and basemap at runtime from **configured** URLs only.
+- **Tiles not bundled** — MapStage fetches DEM and basemap at runtime from **configured** URLs only.
 - **Only use basemap endpoints you are allowed to use** — defaults are public demo tiles (EOX); swap via config when needed.
 - **`encoding: 'terrarium'`** on the terrain source — mandatory.
 - **No `easeTo` / `flyTo`** in recorded production paths; prefer `jumpTo` + `idle`.

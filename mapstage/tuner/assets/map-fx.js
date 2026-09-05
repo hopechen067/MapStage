@@ -1,5 +1,5 @@
 /**
- * Antique MapLibre runtime FX — terrain rise, tile idle/precache, camera.
+ * Antique MapStage runtime FX — terrain rise, tile idle/precache, camera.
  * Tuner and HyperFrames production pages share this file.
  *
  * Browser: window.AntiqueMapFx
@@ -69,7 +69,7 @@
   var PARALLEL_IMAGE_REQUESTS = 32;
   var LOD_LABELS_CLASS = 'antique-lod-labels';
 
-  function configureMapLibre(maplibregl, opts) {
+  function configureMapStage(maplibregl, opts) {
     if (!maplibregl) return;
     opts = opts || {};
     var requestedImages = Number(opts.maxParallelImageRequests);
@@ -180,7 +180,7 @@
       maxPitch: opts.maxPitch != null ? opts.maxPitch : 85,
       attributionControl: opts.attributionControl !== false,
     };
-    configureMapLibre(maplibregl, opts.runtimeOptions);
+    configureMapStage(maplibregl, opts.runtimeOptions);
     var map = new maplibregl.Map(
       Object.assign(base, mapOptions(mode), opts.mapOptions || {})
     );
@@ -205,7 +205,7 @@
   }
 
   /**
-   * Write exact exaggeration (already quantized). Skip MapLibre setTerrain if unchanged.
+   * Write exact exaggeration (already quantized). Skip MapStage setTerrain if unchanged.
    */
   function applyTerrainExact(map, sourceId, exactEx) {
     var ex = quantizeTerrain(exactEx);
@@ -400,7 +400,7 @@
   }
 
   /**
-   * Pace terrainRise on a clock. Do not wait for MapLibre `render`:
+   * Pace terrainRise on a clock. Do not wait for MapStage `render`:
    * a slow DEM tile paint would freeze exaggeration at ~0.1 while the user stares at a plane.
    */
   function waitPaint(map, ms) {
@@ -584,7 +584,7 @@
     quantizeTerrain: quantizeTerrain,
     budgetTerrainEx: budgetTerrainEx,
     mapOptions: mapOptions,
-    configureMapLibre: configureMapLibre,
+    configureMapStage: configureMapStage,
     applyRasterFadeDuration: applyRasterFadeDuration,
     createMap: createMap,
     createAntiqueMap: createMap,
