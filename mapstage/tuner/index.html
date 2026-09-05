@@ -3,14 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>古地图色调调参器 · MapLibre + Terrarium</title>
-  <meta name="description" content="China antique parchment MapLibre tuner — EOX Sentinel-2, Terrarium hillshade, optional user-supplied water overlay. Live demo." />
+  <title>MapStage · MapLibre tuner</title>
+  <meta name="description" content="MapStage MapLibre tuner — map/globe, EOX satellite, Mapterhorn DEM, isolate, JSON presets." />
   <!--
     Directory-safe asset base for GitHub project Pages.
-    `.../china-antique-maplibre` (no trailing slash) + relative `assets/x`
+    `.../MapStage` (no trailing slash) + relative `assets/x`
     otherwise resolves to `https://<user>.github.io/assets/x` (404).
     Pages usually 301-redirects to the slash URL; we still normalize.
-    Water pack is optional and not preloaded (not shipped in this repo).
   -->
   <script>
     (function () {
@@ -853,7 +852,7 @@
         <details class="group" open>
           <summary>预设 / 对比</summary>
           <div class="group-body">
-            <p class="hint">默认加载 <code>antique-default</code>（<code>preset-antique-default.json</code>）。修改后自动写入 localStorage（key: china-antique-maplibre-tuner-v1）。</p>
+            <p class="hint">默认加载 <code>antique-default</code>（<code>preset-antique-default.json</code>）。修改后自动写入 localStorage（key: mapstage-tuner-v1）。</p>
             <div class="btn-row">
               <button class="btn" id="btn-ref-mode" data-mode="pip">对比模式：画中画</button>
               <button class="btn" id="btn-clear-storage">清除本地缓存</button>
@@ -1037,7 +1036,7 @@
     // 默认预设 antique-default
     // ============================================================
     const PRESET_ID = 'antique-default';
-    const STORAGE_KEY = 'china-antique-maplibre-tuner-v1';
+    const STORAGE_KEY = 'mapstage-tuner-v1';
 
     // 默认 = 用户手调 antique-default（保留三级河 / 高亮水系字段）
     const DEFAULT_PARAMS = {
@@ -2834,17 +2833,7 @@
     }
 
     function waterOptionalMessage(result) {
-      if (!result || result.ok) return '';
-      if (result.reason === 'not-shipped' || result.reason === 'optional-absent') {
-        return '水系层可选 · 本仓库未附带水系数据。启用：本地 water-data.js + water-pack.json enabled=true。';
-      }
-      if (result.reason === 'empty' || result.reason === 'parse') {
-        return '水系文件无法解析（需定义 window.CHINA_WATER_DATA）。底图 / 山影调参不受影响。';
-      }
-      if (result.reason === 'http') {
-        return '水系层可选 · 未能读取水系文件（不影响底图 / 山影调参）。';
-      }
-      return '水系层可选 · 当前未启用（不影响底图 / 山影调参）。';
+      return '';
     }
 
     var viewMode = 'map';
@@ -3119,9 +3108,7 @@
       if (!el) return;
       const d = window.CHINA_WATER_DATA;
       if (!d) {
-        el.textContent =
-          '水系层可选 · 本仓库未附带水系数据。\n' +
-          '启用：放入 assets/water-data.js（window.CHINA_WATER_DATA），并将 water-pack.json 的 enabled 设为 true 后刷新。';
+        el.textContent = '';
         return;
       }
       function n(fc) { return fc && fc.features ? fc.features.length : 0; }

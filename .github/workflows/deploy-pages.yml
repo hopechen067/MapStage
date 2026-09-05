@@ -6,7 +6,7 @@ on:
   push:
     branches: [master, main]
     paths:
-      - "china-antique-maplibre/tuner/**"
+      - "mapstage/tuner/**"
       - "showcases/hexi-ep07/**"
       - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
@@ -45,7 +45,7 @@ jobs:
             --exclude 'assets/water-manifest.json' \
             --exclude 'water-data.js' \
             --exclude 'water-manifest.json' \
-            china-antique-maplibre/tuner/ _site/
+            mapstage/tuner/ _site/
           # Demo clip for README / site embed (served as video/mp4, not raw attachment)
           mkdir -p _site/media
           if [ -f showcases/hexi-ep07/hexi-ep07-demo-480p.mp4 ]; then

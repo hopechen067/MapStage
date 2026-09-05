@@ -1,11 +1,11 @@
-# Tuner · antique MapLibre
+# Tuner · MapStage
 
 Live CSS / paint tuner for **MapStage**.
 
 ## Start
 
 ```bash
-cd china-antique-maplibre/tuner
+cd mapstage/tuner
 python -m http.server 8765
 ```
 
@@ -30,13 +30,12 @@ node verify.mjs
 ```
 
 Checks for `index.html`, tile config, city assets, and default presets.
-Optional local `assets/water-data.js` is validated only if present.
 
 ## Defaults
 
 - Preset: `preset-antique-default.json` (copy: `presets/antique-default.json`)
 - Sites: `assets/sample-sites.json`
-- Water: **not shipped**. Flag file `assets/water-pack.json` (`enabled: false`). Optional local `assets/water-data.js` (gitignored) — see root `DATA-PROVENANCE.md` / `references/water-overlay.md`
+- Water: OpenFreeMap / OpenMapTiles vector layers
 - Public demo: GitHub Pages publishes this `tuner/` folder to the site root (`assets/…` paths stay relative)
 
-Export JSON, then migrate into HyperFrames. Do not host final renders on this page.
+Export JSON, then migrate into your MapLibre host. Do not host final renders on this page.

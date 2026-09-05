@@ -1,21 +1,21 @@
 # Tuner workflow
 
-Live parameter page for the antique MapLibre stack.
+Live parameter page for MapStage.
 
 ## Start (HTTP only)
 
 ```bash
-cd china-antique-maplibre/tuner
+cd mapstage/tuner
 python -m http.server 8765
 ```
 
 Open `http://localhost:8765/`.
 
-Do **not** open `index.html` via `file://` — preset fetch and site JSON will fail. Optional local water packs also need HTTP.
+Do **not** open `index.html` via `file://` — preset fetch and site JSON will fail.
 
 ### Tiles
 
-- Default: satellite **off**, Terrarium DEM **on** (`map-tiles.config.js`).
+- Default: satellite **on**, Mapterhorn DEM **on** (`map-tiles.config.js`).
 - Personal basemap/keys: `map-tiles.config.local.js` (gitignored). See `map-tiles.config.example.js`.
 - Do not commit provider secrets. This project grants no tile license.
 
@@ -25,7 +25,7 @@ Optional smoke check:
 node verify.mjs
 ```
 
-Exit `0` if required assets exist; `1` otherwise. Missing `assets/water-data.js` is OK (optional / not shipped).
+Exit `0` if required assets exist; `1` otherwise.
 
 ## Load default preset
 

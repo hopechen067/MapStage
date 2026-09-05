@@ -13,7 +13,7 @@
 
 - **地图 / 地球** 投影切换；卫星与海拔设色互相独立；可选区域拆出（独立地形块）。
 - 山影与三维地形改为 **Mapterhorn** DEM（原先为 AWS Terrarium）。
-- 水系用 OpenFreeMap 矢量水；中国水系包不再随仓库分发。
+- 水系为内置 OpenFreeMap / OpenMapTiles 矢量水。
 - 色调滤镜可开关；复制 JSON 含当前相机与资源开关。
 - 开源仓库更名为 **MapStage**。
 
@@ -46,14 +46,14 @@
 
 | 项目 | 说明 |
 |------|------|
-| Skill 目录 | `china-antique-maplibre` |
+| Skill 目录 | `mapstage` |
 | 运行时 | [MapLibre GL JS](https://maplibre.org/) |
 | 默认底图 | **EOX Sentinel-2 cloudless**（公开演示 WMTS，请自行遵守图源条款） |
 | 地形 / 山影 | **Mapterhorn** DEM（运行时拉取；Terrarium 编码） |
-| 水系 | OpenFreeMap 矢量水；可选中国水系包**不随仓库分发** — 见 [DATA-PROVENANCE.md](DATA-PROVENANCE.md) |
+| 水系 | OpenFreeMap / OpenMapTiles 矢量水 |
 | 风格 | 色调滤镜、地图/地球、拆出地形块、`HanCity3D` 城池 |
 | 许可证 | 代码/文档 [MIT](LICENSE)；展示媒体与第三方条款见 [LICENSE-EXCEPTIONS.md](LICENSE-EXCEPTIONS.md) / [NOTICE.md](NOTICE.md) |
-| 在线演示 | [在线演示](https://hopechen067.github.io/MapStage/) — Pages 将 `china-antique-maplibre/tuner` 发布到站点根路径 |
+| 在线演示 | [在线演示](https://hopechen067.github.io/MapStage/) — Pages 将 `mapstage/tuner` 发布到站点根路径 |
 
 ## 快速拉取（安装）
 
@@ -73,22 +73,22 @@ git pull
 
 ### 2）安装为 Agent Skill（复制目录）
 
-Skill 本体在 `china-antique-maplibre/` 文件夹。把它复制到你的 agent skills 目录，然后重载 skills。
+Skill 本体在 `mapstage/` 文件夹。把它复制到你的 agent skills 目录，然后重载 skills。
 
 **Windows（PowerShell）** — 按你用的宿主选路径：
 
 ```powershell
 # Grok 等常用用户 skills 目录
-$src = ".\china-antique-maplibre"
-$dst = Join-Path $env:USERPROFILE ".grok\skills\china-antique-maplibre"
+$src = ".\mapstage"
+$dst = Join-Path $env:USERPROFILE ".grok\skills\mapstage"
 New-Item -ItemType Directory -Force -Path (Split-Path $dst) | Out-Null
 Copy-Item -Recurse -Force $src $dst
 ```
 
 ```powershell
 # Codex 用户 skills（若你用 Codex）
-$src = ".\china-antique-maplibre"
-$dst = Join-Path $env:USERPROFILE ".codex\skills\china-antique-maplibre"
+$src = ".\mapstage"
+$dst = Join-Path $env:USERPROFILE ".codex\skills\mapstage"
 New-Item -ItemType Directory -Force -Path (Split-Path $dst) | Out-Null
 Copy-Item -Recurse -Force $src $dst
 ```
@@ -97,21 +97,21 @@ Copy-Item -Recurse -Force $src $dst
 
 ```bash
 git clone https://github.com/hopechen067/MapStage.git
-cp -R MapStage/china-antique-maplibre ~/.grok/skills/china-antique-maplibre
-# 或：~/.codex/skills/china-antique-maplibre
+cp -R MapStage/mapstage ~/.grok/skills/mapstage
+# 或：~/.codex/skills/mapstage
 ```
 
 一条命令（Unix：克隆 + 装 skill）：
 
 ```bash
 git clone --depth 1 https://github.com/hopechen067/MapStage.git \
-  && cp -R MapStage/china-antique-maplibre ~/.grok/skills/china-antique-maplibre
+  && cp -R MapStage/mapstage ~/.grok/skills/mapstage
 ```
 
 ### 3）复制给 Agent 的话术
 
 ```text
-请使用 china-antique-maplibre skill。
+请使用 MapStage skill。
 在线调参：https://hopechen067.github.io/MapStage/
 仓库：https://github.com/hopechen067/MapStage
 我会在 demo 里调好风格后导出 JSON，请按 SKILL.md / references 应用到地图场景（jumpTo + idle，encoding terrarium）。
@@ -124,7 +124,7 @@ git clone --depth 1 https://github.com/hopechen067/MapStage.git \
 仅在你要**本机离线**跑调参器时需要；用公网 demo 可跳过。
 
 ```bash
-cd china-antique-maplibre/tuner
+cd mapstage/tuner
 
 # 方式 A — Python 3
 python -m http.server 8765
@@ -141,7 +141,7 @@ npx --yes serve -l 8765
 可选检查：
 
 ```bash
-cd china-antique-maplibre/tuner
+cd mapstage/tuner
 node verify.mjs
 ```
 
@@ -149,7 +149,7 @@ node verify.mjs
 
 - **可配置栅格底图** — 默认 [EOX Sentinel-2 cloudless](https://s2maps.eu)；其他源用 gitignore 的 `map-tiles.config.local.js`。
 - **Mapterhorn 山影 + 三维地形** — Terrarium 编码；地图/地球投影；可选区域拆出。
-- **矢量水系** — OpenFreeMap / OpenMapTiles。可选中国水系包**不**随仓库再分发（自备数据；见 DATA-PROVENANCE.md）。
+- **矢量水系** — OpenFreeMap / OpenMapTiles（内置）。
 - **色调滤镜** — sepia / 暖调 / 暗角 / 画笔；滤镜可关；导出 JSON 预设。
 - **城池分级** — 都城 / 大城 / 中城 / 小城 / 关隘 / 驿站 / 都护等。
 
@@ -168,13 +168,13 @@ EOX 公共瓦片多为非商用 + 需署名（约 10 m）。本项目不授予�
 ## 署名与合规
 
 - 遵守所用底图 / DEM / CDN 条款。
-- **水系数据：** 本仓库不附带；你本地放入的数据包仍适用你自己的许可 — [DATA-PROVENANCE.md](DATA-PROVENANCE.md)、[LICENSE-EXCEPTIONS.md](LICENSE-EXCEPTIONS.md)。
+- 矢量水系需保留 **OpenFreeMap / OSM** 署名。
 - **MapLibre / Three.js：** 再分发时遵循其许可证。
 - **展示图：** 默认保留权利的演示媒体（见 [LICENSE-EXCEPTIONS.md](LICENSE-EXCEPTIONS.md)）。
 
 ## 安装为 Agent Skill
 
-1. 将 `china-antique-maplibre` 复制到 skills 目录。  
+1. 将 `mapstage` 复制到 skills 目录。  
 2. 重载 skills，使 `SKILL.md` 生效。  
 3. 让 agent 打开调参器、套用导出的 JSON 预设，或把同一套外观接到 MapLibre 场景。
 
@@ -189,7 +189,7 @@ EOX 公共瓦片多为非商用 + 需署名（约 10 m）。本项目不授予�
 ├── SECURITY.md
 ├── README.md / README.zh-CN.md
 ├── showcases/                 # 文档用截图与示例帧
-└── china-antique-maplibre/
+└── mapstage/
     ├── SKILL.md
     ├── agents/openai.yaml
     ├── references/
@@ -205,7 +205,7 @@ EOX 公共瓦片多为非商用 + 需署名（约 10 m）。本项目不授予�
 
 ## 延伸阅读
 
-- [`china-antique-maplibre/SKILL.md`](china-antique-maplibre/SKILL.md)  
-- [`china-antique-maplibre/references/参数列表说明.md`](china-antique-maplibre/references/参数列表说明.md)  
-- [`china-antique-maplibre/references/tuner-workflow.md`](china-antique-maplibre/references/tuner-workflow.md)  
-- [`china-antique-maplibre/references/tested-config.md`](china-antique-maplibre/references/tested-config.md)  
+- [`mapstage/SKILL.md`](mapstage/SKILL.md)  
+- [`mapstage/references/参数列表说明.md`](mapstage/references/参数列表说明.md)  
+- [`mapstage/references/tuner-workflow.md`](mapstage/references/tuner-workflow.md)  
+- [`mapstage/references/tested-config.md`](mapstage/references/tested-config.md)  

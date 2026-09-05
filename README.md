@@ -13,7 +13,7 @@ Interactive tuner (EOX satellite + Mapterhorn DEM need internet. No install.)
 
 - **Map / Globe** projection, independent satellite and hypsometric relief, optional region isolate (terrain island).
 - Hillshade and 3D terrain use **Mapterhorn** DEM (was AWS Terrarium).
-- Built-in OpenFreeMap vector water; the China hydrography pack is not shipped.
+- Water is built-in OpenFreeMap / OpenMapTiles vector layers.
 - CSS color grade can be toggled; copy JSON includes the live camera and resource switches.
 - Public repo renamed to **MapStage**.
 
@@ -46,14 +46,14 @@ Current tuner: national map, 3D terrain, globe, isolate.
 
 | Item | Value |
 |------|--------|
-| Skill folder | `china-antique-maplibre` |
+| Skill folder | `mapstage` |
 | Runtime | [MapLibre GL JS](https://maplibre.org/) |
 | Default basemap | **EOX Sentinel-2 cloudless** (public demo WMTS; check provider terms) |
 | Terrain / hillshade | **Mapterhorn** DEM (runtime fetch; Terrarium encoding) |
-| Water | OpenFreeMap vector water; optional China pack **not shipped** — see [DATA-PROVENANCE.md](DATA-PROVENANCE.md) |
+| Water | OpenFreeMap / OpenMapTiles vector water |
 | Look | CSS color grade, map/globe, isolate island, `HanCity3D` settlements |
 | License | [MIT](LICENSE) for code/docs; showcase media & third-party terms in [LICENSE-EXCEPTIONS.md](LICENSE-EXCEPTIONS.md) / [NOTICE.md](NOTICE.md) |
-| Hosted demo | [Live demo](https://hopechen067.github.io/MapStage/) — Pages publishes `china-antique-maplibre/tuner` to the site root |
+| Hosted demo | [Live demo](https://hopechen067.github.io/MapStage/) — Pages publishes `mapstage/tuner` to the site root |
 
 ## Quick pull (install)
 
@@ -73,22 +73,22 @@ git pull
 
 ### 2) Install as an agent skill (copy folder)
 
-The skill lives in `china-antique-maplibre/`. Copy that folder into your agent skills directory, then reload skills.
+The skill lives in `mapstage/`. Copy that folder into your agent skills directory, then reload skills.
 
 **Windows (PowerShell)** — pick the path your host uses:
 
 ```powershell
 # Grok / common user skills dir
-$src = ".\china-antique-maplibre"
-$dst = Join-Path $env:USERPROFILE ".grok\skills\china-antique-maplibre"
+$src = ".\mapstage"
+$dst = Join-Path $env:USERPROFILE ".grok\skills\mapstage"
 New-Item -ItemType Directory -Force -Path (Split-Path $dst) | Out-Null
 Copy-Item -Recurse -Force $src $dst
 ```
 
 ```powershell
 # Codex user skills (if you use Codex)
-$src = ".\china-antique-maplibre"
-$dst = Join-Path $env:USERPROFILE ".codex\skills\china-antique-maplibre"
+$src = ".\mapstage"
+$dst = Join-Path $env:USERPROFILE ".codex\skills\mapstage"
 New-Item -ItemType Directory -Force -Path (Split-Path $dst) | Out-Null
 Copy-Item -Recurse -Force $src $dst
 ```
@@ -97,21 +97,21 @@ Copy-Item -Recurse -Force $src $dst
 
 ```bash
 git clone https://github.com/hopechen067/MapStage.git
-cp -R MapStage/china-antique-maplibre ~/.grok/skills/china-antique-maplibre
-# or: ~/.codex/skills/china-antique-maplibre
+cp -R MapStage/mapstage ~/.grok/skills/mapstage
+# or: ~/.codex/skills/mapstage
 ```
 
 One-shot clone + install (Unix):
 
 ```bash
 git clone --depth 1 https://github.com/hopechen067/MapStage.git \
-  && cp -R MapStage/china-antique-maplibre ~/.grok/skills/china-antique-maplibre
+  && cp -R MapStage/mapstage ~/.grok/skills/mapstage
 ```
 
 ### 3) Paste this to your agent
 
 ```text
-请使用 china-antique-maplibre skill。
+请使用 MapStage skill。
 在线调参：https://hopechen067.github.io/MapStage/
 仓库：https://github.com/hopechen067/MapStage
 我会在 demo 里调好风格后导出 JSON，请按 SKILL.md / references 应用到地图场景（jumpTo + idle，encoding terrarium）。
@@ -124,7 +124,7 @@ Style workflow: open the [live demo](https://hopechen067.github.io/MapStage/) �
 Only needed if you want to run the tuner offline on your machine (not required for the public demo).
 
 ```bash
-cd china-antique-maplibre/tuner
+cd mapstage/tuner
 
 # Option A — Python 3
 python -m http.server 8765
@@ -141,7 +141,7 @@ Do **not** open `index.html` as `file://` — presets and optional local assets 
 Optional check (Node on `PATH`):
 
 ```bash
-cd china-antique-maplibre/tuner
+cd mapstage/tuner
 node verify.mjs
 ```
 
@@ -149,7 +149,7 @@ node verify.mjs
 
 - **Configurable raster basemap** — default [EOX Sentinel-2 cloudless](https://s2maps.eu). Override with `map-tiles.config.local.js` (gitignored) for any tile URL you are allowed to use.
 - **Mapterhorn hillshade + 3D terrain** — Terrarium encoding; map/globe projection; optional region isolate.
-- **Vector water** — OpenFreeMap / OpenMapTiles. Optional China overlay is **not** redistributed (bring your own; see DATA-PROVENANCE.md).
+- **Vector water** — OpenFreeMap / OpenMapTiles (built-in).
 - **CSS color grade** — sepia / warm tint / vignette / paint; filter can be toggled; export JSON presets.
 - **City tiers** — capital / large / medium / small / pass / station / ordos via `HanCity3D`.
 
@@ -168,13 +168,13 @@ Satellite and DEM tiles are fetched at runtime from configured URLs only.
 ## Attribution & compliance
 
 - Follow each basemap / DEM / CDN provider’s terms for your use case.
-- **Water data:** not shipped in this repo; any local pack you add stays under your license — [DATA-PROVENANCE.md](DATA-PROVENANCE.md), [LICENSE-EXCEPTIONS.md](LICENSE-EXCEPTIONS.md).
+- **OpenFreeMap / OSM** attribution for vector water.
 - **MapLibre / Three.js:** keep their licenses when redistributing builds.
 - **Showcase images:** All Rights Reserved demo media unless noted otherwise ([LICENSE-EXCEPTIONS.md](LICENSE-EXCEPTIONS.md)).
 
 ## Install as an agent skill
 
-1. Copy `china-antique-maplibre` into your skills directory.
+1. Copy `mapstage` into your skills directory.
 2. Reload agent skills so `SKILL.md` is discovered.
 3. Ask the agent to open the tuner, apply an exported JSON preset, or wire the same look into a MapLibre scene.
 
@@ -189,7 +189,7 @@ Satellite and DEM tiles are fetched at runtime from configured URLs only.
 ├── SECURITY.md
 ├── README.md / README.zh-CN.md
 ├── showcases/                 # README images & sample frames
-└── china-antique-maplibre/
+└── mapstage/
     ├── SKILL.md
     ├── agents/openai.yaml
     ├── references/
@@ -205,7 +205,7 @@ Satellite and DEM tiles are fetched at runtime from configured URLs only.
 
 ## Next reads
 
-- [`china-antique-maplibre/SKILL.md`](china-antique-maplibre/SKILL.md)
-- [`china-antique-maplibre/references/参数列表说明.md`](china-antique-maplibre/references/参数列表说明.md)
-- [`china-antique-maplibre/references/tuner-workflow.md`](china-antique-maplibre/references/tuner-workflow.md)
-- [`china-antique-maplibre/references/tested-config.md`](china-antique-maplibre/references/tested-config.md)
+- [`mapstage/SKILL.md`](mapstage/SKILL.md)
+- [`mapstage/references/参数列表说明.md`](mapstage/references/参数列表说明.md)
+- [`mapstage/references/tuner-workflow.md`](mapstage/references/tuner-workflow.md)
+- [`mapstage/references/tested-config.md`](mapstage/references/tested-config.md)

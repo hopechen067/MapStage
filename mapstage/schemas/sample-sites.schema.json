@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://skills.local/china-antique-maplibre/schemas/sample-sites.schema.json",
+  "$id": "https://skills.local/mapstage/schemas/sample-sites.schema.json",
   "title": "HanCity3D sample sites",
   "oneOf": [
     {

@@ -5,7 +5,7 @@
 (function (root) {
   'use strict';
 
-  var GH = 'https://github.com/hopechen067/china-antique-maplibre';
+  var GH = 'https://github.com/hopechen067/MapStage';
 
   var LINKS = [
     { page: 'home', label: '概览', href: 'home.html' },

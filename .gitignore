@@ -9,7 +9,7 @@ Desktop.ini
 *.code-workspace
 
 # Local secrets / personal tile endpoints
-china-antique-maplibre/tuner/map-tiles.config.local.js
+mapstage/tuner/map-tiles.config.local.js
 **/*.local.js
 .env
 .env.*
@@ -26,14 +26,14 @@ __pycache__/
 # Optional large local water rebuilds / user-supplied packs (not redistributed)
 *.geojson.bak
 water-data.full.js
-china-antique-maplibre/tuner/assets/water-data.js
-china-antique-maplibre/tuner/assets/water-manifest.json
+mapstage/tuner/assets/water-data.js
+mapstage/tuner/assets/water-manifest.json
 
 # Local preview helpers
 .preview-tools/
-china-antique-maplibre/tuner/_serve.cjs
-china-antique-maplibre/tuner/_serve.mjs
-china-antique-maplibre/tuner/_preview_eox.cjs
+mapstage/tuner/_serve.cjs
+mapstage/tuner/_serve.mjs
+mapstage/tuner/_preview_eox.cjs
 
 # Git / tooling noise
 *.stackdump

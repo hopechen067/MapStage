@@ -21,13 +21,11 @@ and terms of service for your use case.
 | [Mapterhorn](https://mapterhorn.com/attribution) DEM tiles | Globe / vector editor terrain | Default DEM for `vector-layers.html` (CC-BY / equivalent; must keep attribution). Public CDN has no SLA. |
 | [OpenFreeMap](https://openfreemap.org) planet tiles | Vector editor overlay | OpenMapTiles schema via `https://tiles.openfreemap.org/planet`. OSM / OpenMapTiles attribution required. |
 | Satellite / basemap tiles | Optional raster base | Configure only tile URLs you are allowed to use (official provider key, self-hosted cache, etc.). This repo does **not** grant a map-tile license. |
-| Optional local `water-data.js` | Water overlay | **Not shipped** in this repository. If you supply your own file under `tuner/assets/`, it stays under your data terms — see DATA-PROVENANCE.md and [LICENSE-EXCEPTIONS.md](LICENSE-EXCEPTIONS.md). |
 
 ## Agent skill packaging
 
-`china-antique-maplibre/` is structured as an agent skill (`SKILL.md` + references).
-Cursor / Codex / other hosts are not dependencies of the map stack; HyperFrames
-integration is documented as an optional production host.
+`mapstage/` is structured as an agent skill (`SKILL.md` + references).
+Cursor / Codex / other hosts are not dependencies of the map stack.
 
 ## License scope
 

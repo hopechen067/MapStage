@@ -55,7 +55,7 @@ if (existsSync(waterPackPath)) {
       console.error('FAIL assets/water-pack.json enabled=true but public tree must default to false');
       ok = false;
     } else {
-      console.log('OK  assets/water-pack.json enabled=false (water not shipped)');
+      console.log('OK  assets/water-pack.json enabled=false');
     }
   } catch (e) {
     console.error('FAIL parsing assets/water-pack.json', e);
@@ -90,7 +90,7 @@ if (existsSync(waterPath)) {
     }
   }
 } else {
-  console.log('—   assets/water-data.js (optional, not shipped)');
+  console.log('—   assets/water-data.js (not used)');
 }
 
 const indexHtml = join(root, 'index.html');
@@ -137,20 +137,20 @@ if (existsSync(indexHtml)) {
 // Directory-safe base: no-trailing-slash project Pages must not resolve to /assets/
 {
   const noSlash = new URL(
-    'assets/water-data.js',
-    'https://hopechen067.github.io/china-antique-maplibre'
+    'assets/sample-sites.json',
+    'https://hopechen067.github.io/MapStage'
   ).href;
   const withSlash = new URL(
-    'assets/water-data.js',
-    'https://hopechen067.github.io/china-antique-maplibre/'
+    'assets/sample-sites.json',
+    'https://hopechen067.github.io/MapStage/'
   ).href;
-  if (noSlash === 'https://hopechen067.github.io/assets/water-data.js') {
+  if (noSlash === 'https://hopechen067.github.io/assets/sample-sites.json') {
     console.log('OK  documented hazard: no-trailing-slash relative URL escapes repo');
   } else {
     console.error('FAIL expected no-slash relative resolution hazard missing');
     ok = false;
   }
-  if (withSlash !== 'https://hopechen067.github.io/china-antique-maplibre/assets/water-data.js') {
+  if (withSlash !== 'https://hopechen067.github.io/MapStage/assets/sample-sites.json') {
     console.error('FAIL unexpected with-slash resolution', withSlash);
     ok = false;
   } else {
