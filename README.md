@@ -1,4 +1,4 @@
-# china-antique-maplibre
+# MapStage
 
 **English** | [中文](README.zh-CN.md)
 
@@ -6,21 +6,21 @@ Open-source **antique parchment** MapLibre stack for China historical maps and s
 
 ## Live demo
 
-**→ https://hopechen067.github.io/china-antique-maplibre/**  
+**→ https://hopechen067.github.io/MapStage/**  
 Interactive tuner (EOX satellite + Terrarium DEM need internet. No install.)
 
 ### Demo video
 
 Example output of this stack in a real map-story episode (**河西走廊 · 河西四郡**). Low-res clip streamed from GitHub Pages:
 
-https://hopechen067.github.io/china-antique-maplibre/media/hexi-ep07-demo-480p.mp4
+https://hopechen067.github.io/MapStage/media/hexi-ep07-demo-480p.mp4
 
 <video
   controls
   playsinline
   preload="metadata"
   width="720"
-  src="https://hopechen067.github.io/china-antique-maplibre/media/hexi-ep07-demo-480p.mp4">
+  src="https://hopechen067.github.io/MapStage/media/hexi-ep07-demo-480p.mp4">
 </video>
 
 Longer clip (~36s): [showcases/hexi-ep07/hexi-ep07-map-clip.mp4](showcases/hexi-ep07/hexi-ep07-map-clip.mp4)
@@ -73,21 +73,21 @@ More files: [showcases/hexi-ep07/](showcases/hexi-ep07/)
 | Water | **Optional / not shipped** — local `water-data.js` + `water-pack.json` `enabled:true`; see [DATA-PROVENANCE.md](DATA-PROVENANCE.md) |
 | Look | Antique CSS tuner + tiered settlement extrusions (`HanCity3D`) |
 | License | [MIT](LICENSE) for code/docs; showcase media & third-party terms in [LICENSE-EXCEPTIONS.md](LICENSE-EXCEPTIONS.md) / [NOTICE.md](NOTICE.md) |
-| Hosted demo | [Live demo](https://hopechen067.github.io/china-antique-maplibre/) — Pages publishes `china-antique-maplibre/tuner` to the site root |
+| Hosted demo | [Live demo](https://hopechen067.github.io/MapStage/) — Pages publishes `china-antique-maplibre/tuner` to the site root |
 
 ## Quick pull (install)
 
 ### 1) Clone the repo
 
 ```bash
-git clone https://github.com/hopechen067/china-antique-maplibre.git
-cd china-antique-maplibre
+git clone https://github.com/hopechen067/MapStage.git
+cd MapStage
 ```
 
 Update later:
 
 ```bash
-cd china-antique-maplibre
+cd MapStage
 git pull
 ```
 
@@ -116,28 +116,28 @@ Copy-Item -Recurse -Force $src $dst
 **macOS / Linux:**
 
 ```bash
-git clone https://github.com/hopechen067/china-antique-maplibre.git
-cp -R china-antique-maplibre/china-antique-maplibre ~/.grok/skills/china-antique-maplibre
+git clone https://github.com/hopechen067/MapStage.git
+cp -R MapStage/china-antique-maplibre ~/.grok/skills/china-antique-maplibre
 # or: ~/.codex/skills/china-antique-maplibre
 ```
 
 One-shot clone + install (Unix):
 
 ```bash
-git clone --depth 1 https://github.com/hopechen067/china-antique-maplibre.git \
-  && cp -R china-antique-maplibre/china-antique-maplibre ~/.grok/skills/china-antique-maplibre
+git clone --depth 1 https://github.com/hopechen067/MapStage.git \
+  && cp -R MapStage/china-antique-maplibre ~/.grok/skills/china-antique-maplibre
 ```
 
 ### 3) Paste this to your agent
 
 ```text
 请使用 china-antique-maplibre skill。
-在线调参：https://hopechen067.github.io/china-antique-maplibre/
-仓库：https://github.com/hopechen067/china-antique-maplibre
+在线调参：https://hopechen067.github.io/MapStage/
+仓库：https://github.com/hopechen067/MapStage
 我会在 demo 里调好风格后导出 JSON，请按 SKILL.md / references 应用到地图场景（jumpTo + idle，encoding terrarium）。
 ```
 
-Style workflow: open the [live demo](https://hopechen067.github.io/china-antique-maplibre/) → tune → **Copy JSON** → paste to your agent.
+Style workflow: open the [live demo](https://hopechen067.github.io/MapStage/) → tune → **Copy JSON** → paste to your agent.
 
 ## Quick start (local tuner)
 

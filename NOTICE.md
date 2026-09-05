@@ -7,15 +7,19 @@ and terms of service for your use case.
 
 | Component | Role | Notes |
 |-----------|------|--------|
-| [MapLibre GL JS](https://maplibre.org/) | Map runtime | Open-source (BSD-style). Loaded from unpkg in the tuner demo. |
-| [Three.js](https://threejs.org/) | Optional 3D settlement models | MIT. Loaded from unpkg in the tuner demo. |
+| [MapLibre GL JS](https://maplibre.org/) | Map runtime | Open-source (BSD-style). CSS tuner (`index.html`) loads from unpkg. Globe / vector editor (`vector-layers.html`) uses patched `tuner/vendor/maplibre-gl.js` (5.6.0 + terrain-clip). |
+| [maplibre-contour](https://github.com/onthegomap/maplibre-contour) | Optional contour protocol | Used by `vector-layers.html` (`tuner/vendor/maplibre-contour.min.js`). Follow upstream license. |
+| [Three.js](https://threejs.org/) | Optional 3D settlement models | MIT. Loaded from unpkg in the CSS tuner demo. |
 | `han-city-3d.js` | Settlement extrusion / custom layer | Project code; MIT under root LICENSE. |
+| `region-isolate.js` / `region-isolate-data.js` | Region isolate mask | Helper is MIT. `china` silhouette is public-domain Natural Earth. Provincial / city silhouettes are simplified OSM administrative polygons (ODbL). Narrative use; not official borders. |
 
 ## Not bundled — fetched or configured by you
 
 | Resource | Role | Notes |
 |----------|------|--------|
-| AWS Terrarium DEM tiles | Hillshade / terrain | Default demo endpoints are public Terrarium-encoded terrain-rgb style tiles. Usage is subject to AWS / tile host policies. Attribution in-map: terrain source. |
+| [Mapterhorn](https://mapterhorn.com/attribution) DEM tiles | Hillshade / color-relief / 3D terrain | Default tuner DEM (Terrarium-encoded WebP, CC-BY / equivalent; keep attribution). Public CDN has no SLA. |
+| [Mapterhorn](https://mapterhorn.com/attribution) DEM tiles | Globe / vector editor terrain | Default DEM for `vector-layers.html` (CC-BY / equivalent; must keep attribution). Public CDN has no SLA. |
+| [OpenFreeMap](https://openfreemap.org) planet tiles | Vector editor overlay | OpenMapTiles schema via `https://tiles.openfreemap.org/planet`. OSM / OpenMapTiles attribution required. |
 | Satellite / basemap tiles | Optional raster base | Configure only tile URLs you are allowed to use (official provider key, self-hosted cache, etc.). This repo does **not** grant a map-tile license. |
 | Optional local `water-data.js` | Water overlay | **Not shipped** in this repository. If you supply your own file under `tuner/assets/`, it stays under your data terms — see DATA-PROVENANCE.md and [LICENSE-EXCEPTIONS.md](LICENSE-EXCEPTIONS.md). |
 

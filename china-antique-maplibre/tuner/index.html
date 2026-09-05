@@ -23,30 +23,35 @@
       window.__TUNER_BASE__ = location.origin + path;
     })();
   </script>
+  <link rel="preconnect" href="https://tiles.maps.eox.at" crossorigin />
+  <link rel="preconnect" href="https://tiles.mapterhorn.com" crossorigin />
+  <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin />
+  <link rel="preconnect" href="https://unpkg.com" crossorigin />
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" />
-  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
-  <!-- Three.js r160 · 3D 城池 custom layer 依赖 -->
-  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+  <script src="vendor/maplibre-gl.js?v=20260905-min"></script>
   <script src="assets/han-city-3d.js"></script>
+  <script src="assets/vector-paint.js?v=20260905-relief-atlas"></script>
   <!-- Tile endpoints: public default has satellite OFF; optional local override is gitignored -->
-  <script src="map-tiles.config.js"></script>
+  <script src="map-tiles.config.js?v=20260905-mh"></script>
   <script src="map-tiles.config.local.js" onerror="/* optional local overrides */"></script>
   <style>
     :root {
-      --bg: #1a1410;
-      --panel: #241c16;
-      --panel-2: #2e241c;
-      --border: #4a3a28;
-      --text: #e8dcc4;
-      --muted: #a89070;
+      --bg: #060b14;
+      --panel: rgba(4, 7, 13, 0.88);
+      --panel-2: rgba(6, 11, 20, 0.55);
+      --border: rgba(201, 160, 106, 0.35);
+      --text: #ece4d4;
+      --muted: #9a8468;
       --accent: #c9a06a;
       --accent-dim: #8a6a40;
-      --input-bg: #1a1410;
+      --input-bg: #060b14;
       --danger: #b85c40;
       --ok: #6a8a5a;
       --radius: 8px;
-      --panel-w: 380px;
-      --font: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --panel-w: 280px;
+      --cy: #57c8c8;
+      --cy-dim: rgba(87, 200, 200, 0.55);
+      --font: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -60,17 +65,18 @@
     }
 
     #app {
-      display: flex;
+      display: block;
       height: 100%;
       width: 100%;
+      position: relative;
     }
 
     /* ========== 地图区 ========== */
     #map-wrap {
-      flex: 1;
-      position: relative;
+      position: absolute;
+      inset: 0;
       min-width: 0;
-      background: #2a2218;
+      background: #04070d;
     }
 
     #map {
@@ -170,8 +176,9 @@
       letter-spacing: 0.04em;
     }
 
-    /* 顶部状态条 */
+    /* 顶部状态条 — 地球页风格：不占顶栏 */
     #status-bar {
+      display: none;
       position: absolute;
       left: 12px;
       top: 12px;
@@ -203,6 +210,7 @@
     }
 
     #demo-banner {
+      display: none;
       position: absolute;
       top: 10px;
       left: 50%;
@@ -312,17 +320,86 @@
       filter: invert(0.85) sepia(0.4);
     }
 
-    /* ========== 控制面板 ========== */
+    #viewmode-wrap {
+      flex-shrink: 0;
+      padding: 10px 10px 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    #viewmode-wrap .group-label {
+      border-top: 0;
+      padding: 0 2px 8px;
+    }
+    #viewmode-seg {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin: 0;
+      border: 0;
+      background: transparent;
+      overflow: visible;
+    }
+    #viewmode-seg button {
+      font-family: var(--font);
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      line-height: 1.2;
+      padding: 10px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: rgba(6, 11, 20, 0.65);
+      color: var(--muted);
+      cursor: pointer;
+    }
+    #viewmode-seg button:hover { color: var(--accent); border-color: var(--accent-dim); }
+    #viewmode-seg button.active {
+      background: rgba(201, 160, 106, 0.22);
+      color: var(--accent);
+      border-color: var(--accent);
+      box-shadow: none;
+    }
+    .toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 12px; font-size: 12px;
+    }
+    .sw {
+      width: 36px; height: 20px; border-radius: 999px; border: 1px solid var(--border);
+      background: var(--panel-2); position: relative; cursor: pointer; padding: 0;
+    }
+    .sw::after {
+      content: ""; position: absolute; width: 14px; height: 14px; border-radius: 50%;
+      background: var(--muted); top: 2px; left: 2px;
+    }
+    .sw.on { background: rgba(87, 200, 200, 0.18); border-color: var(--cy-dim); }
+    .sw.on::after { left: 18px; background: var(--cy); }
+    #vl-isolate-region {
+      width: calc(100% - 24px); margin: 4px 12px 8px;
+      background: var(--panel-2); color: var(--text);
+      border: 1px solid var(--border); padding: 6px 8px; font-size: 12px;
+    }
+    .group-label {
+      font-size: 10px; letter-spacing: 0.14em; color: var(--cy-dim);
+      padding: 10px 12px 4px; border-top: 1px solid rgba(201, 160, 106, 0.16);
+    }
+
+    /* ========== 控制面板（叠在地图上，地球页风格） ========== */
     #panel {
+      position: absolute;
+      top: 16px;
+      right: 16px;
       width: var(--panel-w);
+      max-height: calc(100% - 32px);
       flex-shrink: 0;
       background: var(--panel);
-      border-left: 1px solid var(--border);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
       display: flex;
       flex-direction: column;
-      height: 100%;
-      z-index: 20;
-      transition: width 0.2s ease, margin 0.2s ease;
+      height: auto;
+      z-index: 40;
+      overflow: hidden;
+      pointer-events: auto;
+      transition: width 0.2s ease, opacity 0.2s ease;
     }
 
     #panel.collapsed {
@@ -331,12 +408,7 @@
       overflow: hidden;
     }
 
-    #panel-header {
-      padding: 14px 16px 10px;
-      border-bottom: 1px solid var(--border);
-      background: var(--panel-2);
-      flex-shrink: 0;
-    }
+    #panel-header { display: none; }
 
     #panel-header h1 {
       font-size: 15px;
@@ -352,6 +424,13 @@
       line-height: 1.4;
     }
 
+    #panel-actions,
+    .toggle-row,
+    .group-label,
+    #vl-isolate-region {
+      flex-shrink: 0;
+    }
+
     #panel-actions {
       display: flex;
       flex-wrap: wrap;
@@ -364,6 +443,7 @@
 
     #panel-body {
       flex: 1;
+      min-height: 0;
       overflow-y: auto;
       overflow-x: hidden;
       padding: 8px 0 24px;
@@ -478,6 +558,28 @@
       background: var(--accent);
       border: 2px solid #1a1410;
       cursor: pointer;
+    }
+
+    .ctrl.terrain-ex .val {
+      color: var(--accent);
+      min-width: 40px;
+    }
+    .ctrl.terrain-ex input[type="range"] {
+      height: 6px;
+      background: #3a4450;
+      accent-color: var(--cy);
+    }
+    .ctrl.terrain-ex input[type="range"]::-webkit-slider-thumb {
+      background: var(--cy);
+      border: 2px solid #0c1218;
+      width: 16px;
+      height: 16px;
+    }
+    .ctrl.terrain-ex input[type="range"]::-moz-range-thumb {
+      background: var(--cy);
+      border: 2px solid #0c1218;
+      width: 16px;
+      height: 16px;
     }
 
     input[type="color"] {
@@ -610,7 +712,7 @@
        that offset incorrectly floats the button mid-map. */
     #panel-toggle {
       position: absolute;
-      right: 0;
+      right: calc(var(--panel-w) + 16px);
       top: 50%;
       transform: translateY(-50%);
       z-index: 25;
@@ -697,7 +799,7 @@
 
       <div id="demo-banner" role="note">
         在线预览 · Online demo（底图/山影需联网）·
-        <a href="https://github.com/hopechen067/china-antique-maplibre" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/hopechen067/MapStage" target="_blank" rel="noopener">GitHub</a>
         <button type="button" id="demo-banner-close" title="关闭提示">✕</button>
       </div>
 
@@ -712,15 +814,29 @@
         <div id="water-warn"></div>
       </div>
 
-      <div id="attribution-note">底图：按 map-tiles.config 配置 · 地形 DEM：Terrarium</div>
+      <div id="attribution-note">底图：按 map-tiles.config 配置 · 地形 DEM：Mapterhorn</div>
       <button id="panel-toggle" type="button" title="收起/展开面板" aria-label="收起或展开右侧参数面板">›</button>
     </div>
 
     <aside id="panel">
       <div id="panel-header">
         <h1>古地图色调调参器</h1>
-        <p>MapLibre + Terrarium 山影 · EOX Sentinel-2 底图 · 仿手绘羊皮纸古卷<br />拖动滑杆实时预览，参数可导出 JSON。水系层可选（本仓库不附带水系数据）。其他底图请改 map-tiles.config.local.js。</p>
+        <p>MapLibre + Mapterhorn 山影 · EOX Sentinel-2 底图 · 仿手绘羊皮纸古卷<br />拖动滑杆实时预览，参数可导出 JSON。其他底图请改 map-tiles.config.local.js。</p>
       </div>
+
+      <div id="viewmode-wrap">
+        <div class="group-label">投影</div>
+        <div class="seg" id="viewmode-seg" role="group" aria-label="投影">
+          <button type="button" data-mode="map" class="active">地图</button>
+          <button type="button" data-mode="globe">地球</button>
+        </div>
+      </div>
+      <div class="group-label">资源</div>
+      <div class="toggle-row">卫星图 <button type="button" class="sw on" id="sw-satellite" aria-pressed="true"></button></div>
+      <div class="toggle-row">海拔设色 <button type="button" class="sw" id="sw-relief" aria-pressed="false"></button></div>
+      <div class="group-label">拆出</div>
+      <div class="toggle-row">拆出 <button type="button" class="sw" id="sw-isolate" aria-pressed="false"></button></div>
+      <select id="vl-isolate-region" aria-label="拆出区域"></select>
 
       <div id="panel-actions">
         <button class="btn primary" id="btn-reset" title="重置为 antique-default">重置预设</button>
@@ -728,9 +844,6 @@
         <button class="btn" id="btn-download">下载 JSON</button>
         <button class="btn" id="btn-paste">粘贴 JSON</button>
         <button class="btn" id="btn-ref">参考图</button>
-        <button class="btn" id="btn-water">水系</button>
-        <button class="btn" id="btn-highlight">高亮水系</button>
-        <button class="btn" id="btn-river-labels">河湖名</button>
         <button class="btn" id="btn-cities">城池点位</button>
         <button class="btn" id="btn-china">全国视角</button>
       </div>
@@ -827,108 +940,10 @@
                 <input type="text" class="hex" maxlength="7" />
               </div>
             </div>
-            <div class="ctrl" data-key="terrainExaggeration">
-              <div class="ctrl-row"><label>地形夸张 terrain</label><span class="val">0.22</span></div>
-              <input type="range" min="0" max="2" step="0.01" />
+            <div class="ctrl terrain-ex" data-key="terrainExaggeration">
+              <div class="ctrl-row"><label>山高 · 真实海拔=1.0</label><span class="val">1.00</span></div>
+              <input type="range" min="0" max="3" step="0.05" />
             </div>
-          </div>
-        </details>
-
-        <!-- 5. 水系 -->
-        <details class="group" open>
-          <summary>水系（可选 · 一/二/三级 + 湖 + 高亮）</summary>
-          <div class="group-body">
-            <p class="hint">水系数据不随仓库分发。若需叠加：① 放入自有 <code>assets/water-data.js</code>（定义 <code>window.CHINA_WATER_DATA</code>）；② 将 <code>assets/water-pack.json</code> 的 <code>enabled</code> 设为 <code>true</code>；③ 刷新。接口见 <code>references/water-overlay.md</code>。</p>
-            <div class="ctrl" data-key="water.lakeFill" data-type="rgba">
-              <label>湖泊填充 lake-fill</label>
-              <div class="rgba-row">
-                <input type="color" />
-                <input type="text" class="hex" maxlength="7" />
-                <div class="alpha-wrap">
-                  <label>α</label>
-                  <input type="range" min="0" max="1" step="0.01" class="alpha" />
-                  <span class="val alpha-val">0.26</span>
-                </div>
-              </div>
-            </div>
-            <div class="ctrl" data-key="water.lakeOutline" data-type="rgba">
-              <label>湖泊描边 lake-outline</label>
-              <div class="rgba-row">
-                <input type="color" />
-                <input type="text" class="hex" maxlength="7" />
-                <div class="alpha-wrap">
-                  <label>α</label>
-                  <input type="range" min="0" max="1" step="0.01" class="alpha" />
-                  <span class="val alpha-val">0.5</span>
-                </div>
-              </div>
-            </div>
-            <div class="ctrl" data-key="water.riverLevel3" data-type="rgba">
-              <label>三级河 river-l3（资料四级）</label>
-              <div class="rgba-row">
-                <input type="color" />
-                <input type="text" class="hex" maxlength="7" />
-                <div class="alpha-wrap">
-                  <label>α</label>
-                  <input type="range" min="0" max="1" step="0.01" class="alpha" />
-                  <span class="val alpha-val">0.28</span>
-                </div>
-              </div>
-            </div>
-            <div class="ctrl" data-key="water.riverL3Width">
-              <div class="ctrl-row"><label>三级河线宽 base</label><span class="val">0.7</span></div>
-              <input type="range" min="0.1" max="3" step="0.05" />
-            </div>
-            <div class="ctrl" data-key="water.riverLevel2" data-type="rgba">
-              <label>二级河 river-l2</label>
-              <div class="rgba-row">
-                <input type="color" />
-                <input type="text" class="hex" maxlength="7" />
-                <div class="alpha-wrap">
-                  <label>α</label>
-                  <input type="range" min="0" max="1" step="0.01" class="alpha" />
-                  <span class="val alpha-val">0.34</span>
-                </div>
-              </div>
-            </div>
-            <div class="ctrl" data-key="water.riverL2Width">
-              <div class="ctrl-row"><label>二级河线宽 base</label><span class="val">1.0</span></div>
-              <input type="range" min="0.2" max="4" step="0.05" />
-            </div>
-            <div class="ctrl" data-key="water.riverLevel1" data-type="rgba">
-              <label>一级河 river-l1</label>
-              <div class="rgba-row">
-                <input type="color" />
-                <input type="text" class="hex" maxlength="7" />
-                <div class="alpha-wrap">
-                  <label>α</label>
-                  <input type="range" min="0" max="1" step="0.01" class="alpha" />
-                  <span class="val alpha-val">0.52</span>
-                </div>
-              </div>
-            </div>
-            <div class="ctrl" data-key="water.riverL1Width">
-              <div class="ctrl-row"><label>一级河线宽 base</label><span class="val">1.6</span></div>
-              <input type="range" min="0.2" max="6" step="0.05" />
-            </div>
-            <div class="ctrl" data-key="water.highlightRiver" data-type="rgba">
-              <label>高亮水系 highlight</label>
-              <div class="rgba-row">
-                <input type="color" />
-                <input type="text" class="hex" maxlength="7" />
-                <div class="alpha-wrap">
-                  <label>α</label>
-                  <input type="range" min="0" max="1" step="0.01" class="alpha" />
-                  <span class="val alpha-val">0.78</span>
-                </div>
-              </div>
-            </div>
-            <div class="ctrl" data-key="water.highlightWidth">
-              <div class="ctrl-row"><label>高亮水系线宽 base</label><span class="val">2.2</span></div>
-              <input type="range" min="0.4" max="6" step="0.05" />
-            </div>
-            <p class="hint">河名：主名（黄河/石羊/黑河/疏勒等）默认显示；支流名需放大到约 20 km（zoom≈9.5）。湖名：仅主湖（青海湖/哈拉湖/居延海/扎陵湖/鄂陵湖）。河湖名无黑底、字号小于城池，避免抢视线。点「河湖名」可开关。</p>
-            <div id="water-stats" class="summary-box">水系层可选 · 检查本地数据…</div>
           </div>
         </details>
 
@@ -936,6 +951,7 @@
         <details class="group" open>
           <summary>CSS 古卷滤镜</summary>
           <div class="group-body">
+            <div class="toggle-row">启用滤镜 <button type="button" class="sw on" id="sw-css-filter-panel" aria-pressed="true"></button></div>
             <div class="ctrl" data-key="css.sepia">
               <div class="ctrl-row"><label>sepia</label><span class="val">0.42</span></div>
               <input type="range" min="0" max="1" step="0.01" />
@@ -1009,7 +1025,10 @@
 
   <div id="toast"></div>
 
-  <!-- 可选水系：boot()→ensureWaterData() 探测后 initMap；缺失时安静跳过 -->
+  <script src="assets/map-fx.js?v=20260826-globe-perf"></script>
+  <script src="assets/region-isolate.js?v=20260824-scanedge8"></script>
+  <script src="assets/terrain-island.js?v=20260905-flat-wall"></script>
+  <script src="assets/isolate-workbench.js?v=20260905-lazy-iso"></script>
   <script>
   (function () {
     'use strict';
@@ -1033,7 +1052,7 @@
       },
       maplibre: {
         backgroundColor: '#c8c2b4',
-        terrainExaggeration: 1.6,
+        terrainExaggeration: 1,
         satellite: {
           opacity: 0.7,
           saturation: -0.08,
@@ -1073,12 +1092,20 @@
         vignetteStrength: 0.1,
       },
       ui: {
-        showWater: true,
-        showHighlight: true,
-        showRiverLabels: true,
+        showWater: false,
+        showHighlight: false,
+        showRiverLabels: false,
         showCities: true,
+        showSatellite: true,
+        showRelief: false,
+        showCssFilter: true,
         showRef: false,
+        projection: 'map',
         refMode: 'pip', // pip | split
+      },
+      isolate: {
+        enabled: false,
+        regionId: 'china',
       },
       cities: {
         dataFile: 'assets/sample-sites.json',
@@ -1315,6 +1342,12 @@
 
       if (override.css) Object.assign(out.css, override.css);
       if (override.ui) Object.assign(out.ui, override.ui);
+      if (override.isolate) {
+        out.isolate = Object.assign({}, out.isolate || {}, override.isolate);
+      }
+      if (override.ui && override.ui.projection) {
+        out.ui.projection = override.ui.projection === 'globe' ? 'globe' : 'map';
+      }
       // Legacy key: showQilian → showHighlight
       if (out.ui.showQilian != null && out.ui.showHighlight == null) {
         out.ui.showHighlight = out.ui.showQilian;
@@ -1333,19 +1366,48 @@
       return out;
     }
 
+    function readLiveCamera() {
+      if (mapReady && map && typeof map.getCenter === 'function') {
+        const c = map.getCenter();
+        return {
+          center: [round(c.lng, 4), round(c.lat, 4)],
+          zoom: round(map.getZoom(), 2),
+          pitch: round(map.getPitch(), 1),
+          bearing: round(map.getBearing(), 1),
+        };
+      }
+      return {
+        center: [round(params.camera.center[0], 4), round(params.camera.center[1], 4)],
+        zoom: round(params.camera.zoom, 2),
+        pitch: round(params.camera.pitch, 1),
+        bearing: round(params.camera.bearing, 1),
+      };
+    }
+
+    function snapshotIsolate() {
+      if (isolateCtl && typeof isolateCtl.getState === 'function') {
+        const st = isolateCtl.getState();
+        return {
+          enabled: !!st.enabled,
+          regionId: st.regionId || 'china',
+        };
+      }
+      return {
+        enabled: !!(params.isolate && params.isolate.enabled),
+        regionId: (params.isolate && params.isolate.regionId) || 'china',
+      };
+    }
+
     function exportParams() {
-      // 导出结构与 preset-antique-default.json 对齐
+      const cam = readLiveCamera();
+      const iso = snapshotIsolate();
+      const proj = viewMode === 'globe' ? 'globe' : 'map';
       const out = {
         id: params.id || PRESET_ID,
         label: params.label || DEFAULT_PARAMS.label,
-        version: params.version || 1,
+        version: 3,
         season: params.season || null,
-        camera: {
-          center: [round(params.camera.center[0], 4), round(params.camera.center[1], 4)],
-          zoom: round(params.camera.zoom, 2),
-          pitch: round(params.camera.pitch, 1),
-          bearing: round(params.camera.bearing, 1),
-        },
+        camera: cam,
         maplibre: {
           backgroundColor: params.maplibre.backgroundColor,
           terrainExaggeration: round(params.maplibre.terrainExaggeration, 3),
@@ -1388,11 +1450,16 @@
           vignetteStrength: round(params.css.vignetteStrength, 3),
         },
         ui: {
-          showWater: !!(params.ui && params.ui.showWater),
-          showHighlight: !!(params.ui && params.ui.showHighlight),
+          projection: proj,
+          showSatellite: params.ui && params.ui.showSatellite !== false,
+          showRelief: !!(params.ui && params.ui.showRelief),
+          showCssFilter: params.ui && params.ui.showCssFilter !== false,
           showCities: params.ui && params.ui.showCities !== false,
           showRef: !!(params.ui && params.ui.showRef),
+          showWater: false,
+          showHighlight: false,
         },
+        isolate: iso,
         cities: {
           dataFile: (params.cities && params.cities.dataFile) || 'assets/sample-sites.json',
           halfKm: round((params.cities && params.cities.halfKm) != null ? params.cities.halfKm : 18, 2),
@@ -1402,15 +1469,133 @@
       return out;
     }
 
-    function persist() {
+    function packForShare(full) {
+      full = full || exportParams();
+      var sat = full.maplibre.satellite;
+      var hill = full.maplibre.hillshade;
+      var css = full.css;
+      var ui = full.ui || {};
+      var iso = full.isolate || {};
+      var cam = full.camera || { center: [0, 0], zoom: 0, pitch: 0, bearing: 0 };
+      return {
+        format: 'cam-v3',
+        c: [cam.center[0], cam.center[1], cam.zoom, cam.pitch, cam.bearing],
+        n: [
+          full.maplibre.terrainExaggeration,
+          sat.opacity, sat.saturation, sat.contrast, sat.brightnessMin, sat.brightnessMax, sat.hueRotate,
+          hill.exaggeration, hill.illuminationDirection,
+          css.sepia, css.saturate, css.contrast, css.brightness, css.hueRotate, css.warmTintAlpha, css.vignetteStrength,
+        ],
+        b: [
+          ui.showSatellite ? 1 : 0,
+          ui.showRelief ? 1 : 0,
+          ui.showCssFilter ? 1 : 0,
+          ui.showCities ? 1 : 0,
+          ui.showRef ? 1 : 0,
+          iso.enabled ? 1 : 0,
+          ui.projection === 'globe' ? 1 : 0,
+        ],
+        s: [
+          full.maplibre.backgroundColor,
+          hill.shadowColor,
+          hill.highlightColor,
+          hill.accentColor,
+          css.warmTintColor,
+          iso.regionId || 'china',
+        ],
+      };
+    }
+
+    function unpackShare(obj) {
+      if (!obj || obj.format !== 'cam-v3' || !Array.isArray(obj.n)) return obj;
+      var n = obj.n;
+      var b = obj.b || [];
+      var s = obj.s || [];
+      var c = obj.c || [];
+      return {
+        version: 3,
+        camera: {
+          center: [c[0], c[1]],
+          zoom: c[2],
+          pitch: c[3],
+          bearing: c[4],
+        },
+        maplibre: {
+          backgroundColor: s[0],
+          terrainExaggeration: n[0],
+          satellite: {
+            opacity: n[1],
+            saturation: n[2],
+            contrast: n[3],
+            brightnessMin: n[4],
+            brightnessMax: n[5],
+            hueRotate: n[6],
+          },
+          hillshade: {
+            exaggeration: n[7],
+            illuminationDirection: n[8],
+            shadowColor: s[1],
+            highlightColor: s[2],
+            accentColor: s[3],
+          },
+        },
+        css: {
+          sepia: n[9],
+          saturate: n[10],
+          contrast: n[11],
+          brightness: n[12],
+          hueRotate: n[13],
+          warmTintAlpha: n[14],
+          vignetteStrength: n[15],
+          warmTintColor: s[4],
+        },
+        ui: {
+          showSatellite: !!b[0],
+          showRelief: !!b[1],
+          showCssFilter: b[2] !== 0,
+          showCities: b[3] !== 0,
+          showRef: !!b[4],
+          projection: b[6] ? 'globe' : 'map',
+        },
+        isolate: {
+          enabled: !!b[5],
+          regionId: s[5] || 'china',
+        },
+      };
+    }
+
+    var persistTimer = null;
+    var PERSIST_MS = 280;
+
+    function persistNow() {
       try {
         const data = exportParams();
-        data.ui = params.ui;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       } catch (e) {
         console.warn('localStorage 写入失败', e);
       }
     }
+
+    function persist(immediate) {
+      if (immediate) {
+        if (persistTimer) {
+          clearTimeout(persistTimer);
+          persistTimer = null;
+        }
+        persistNow();
+        return;
+      }
+      if (persistTimer) clearTimeout(persistTimer);
+      persistTimer = setTimeout(function () {
+        persistTimer = null;
+        persistNow();
+      }, PERSIST_MS);
+    }
+
+    window.addEventListener('pagehide', function () { persist(true); });
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') persist(true);
+    });
 
     // ============================================================
     // CSS 滤镜 & 叠层
@@ -1430,23 +1615,37 @@
       const filterEl = document.getElementById('map-canvas-filter');
       const warmEl = document.getElementById('warm-tint');
       const vigEl = document.getElementById('vignette');
-      const filterStr = buildCssFilter();
+      const on = !params.ui || params.ui.showCssFilter !== false;
+      const filterStr = on ? buildCssFilter() : 'none';
+      const vig = params.css.vignetteStrength;
+      const warmBg = on
+        ? (function () {
+            const rgb = hexToRgb(params.css.warmTintColor);
+            return 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + params.css.warmTintAlpha + ')';
+          })()
+        : 'rgba(0,0,0,0)';
 
-      filterEl.style.filter = filterStr;
+      if (filterEl) filterEl.style.filter = filterStr;
+      if (warmEl) warmEl.style.background = warmBg;
+      if (vigEl) {
+        vigEl.style.background = on
+          ? 'radial-gradient(ellipse at center, transparent 42%, rgba(46,28,16,' + vig + ') 100%)'
+          : 'none';
+      }
 
-      const rgb = hexToRgb(params.css.warmTintColor);
-      warmEl.style.background =
-        'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + params.css.warmTintAlpha + ')';
+      if (typeof setToggle === 'function') {
+        setToggle(document.getElementById('sw-css-filter-panel'), on);
+      }
 
-      const v = params.css.vignetteStrength;
-      vigEl.style.background =
-        'radial-gradient(ellipse at center, transparent 42%, rgba(46,28,16,' + v + ') 100%)';
-
-      document.getElementById('st-css').textContent = filterStr;
-      document.getElementById('css-summary').textContent =
-        'filter: ' + filterStr + ';\n' +
-        'warm-tint: ' + warmEl.style.background + ' / soft-light;\n' +
-        'vignette: strength ' + v;
+      var stCss = document.getElementById('st-css');
+      if (stCss) stCss.textContent = filterStr;
+      var cssSummary = document.getElementById('css-summary');
+      if (cssSummary) {
+        cssSummary.textContent =
+          'filter: ' + filterStr + ';\n' +
+          'warm-tint: ' + warmBg + ' / soft-light;\n' +
+          'vignette: strength ' + vig;
+      }
     }
 
     // ============================================================
@@ -1551,7 +1750,8 @@
       // 高亮水系可独立开关；关闭总水系时一并隐藏
       const qVis = params.ui.showWater && params.ui.showHighlight ? 'visible' : 'none';
       if (map.getLayer('river-highlight')) map.setLayoutProperty('river-highlight', 'visibility', qVis);
-      document.getElementById('btn-water').classList.toggle('active', params.ui.showWater);
+      var btnWaterVis = document.getElementById('btn-water');
+      if (btnWaterVis) btnWaterVis.classList.toggle('active', params.ui.showWater);
       const qBtn = document.getElementById('btn-highlight');
       if (qBtn) qBtn.classList.toggle('active', !!params.ui.showHighlight);
       const rlBtn = document.getElementById('btn-river-labels');
@@ -1953,7 +2153,9 @@
       const m = params.maplibre;
       const s = m.satellite;
       const h = m.hillshade;
-      const text =
+      const el = document.getElementById('paint-summary');
+      if (!el) return;
+      el.textContent =
         'bg ' + m.backgroundColor +
         ' · terrain ' + m.terrainExaggeration +
         '\nsat op ' + s.opacity +
@@ -1974,7 +2176,6 @@
         ' w' + m.water.riverL1Width +
         '\nhighlight ' + m.water.highlightRiver +
         ' w' + m.water.highlightWidth;
-      document.getElementById('paint-summary').textContent = text;
     }
 
     // ============================================================
@@ -2012,9 +2213,12 @@
         }
       });
 
-      document.getElementById('st-preset').textContent = params.id || PRESET_ID;
-      document.getElementById('btn-ref').classList.toggle('active', !!params.ui.showRef);
-      document.getElementById('btn-water').classList.toggle('active', !!params.ui.showWater);
+      var stPreset = document.getElementById('st-preset');
+      if (stPreset) stPreset.textContent = params.id || PRESET_ID;
+      var btnRef = document.getElementById('btn-ref');
+      if (btnRef) btnRef.classList.toggle('active', !!params.ui.showRef);
+      var btnWater = document.getElementById('btn-water');
+      if (btnWater) btnWater.classList.toggle('active', !!params.ui.showWater);
       const qBtn = document.getElementById('btn-highlight');
       if (qBtn) qBtn.classList.toggle('active', !!params.ui.showHighlight);
       const rlBtn = document.getElementById('btn-river-labels');
@@ -2025,12 +2229,14 @@
       updateRefImage();
       updateRefCompare();
       applyCssOverlays();
+      syncBasemapLayers();
     }
 
     function formatNum(v, range) {
       if (range) {
         const step = parseFloat(range.step) || 1;
         if (step >= 1) return String(Math.round(v));
+        if (Math.abs(step - 0.05) < 1e-9) return Number(v).toFixed(2);
         if (step >= 0.1) return String(round(v, 1));
         return String(round(v, 2));
       }
@@ -2150,9 +2356,10 @@
       applyCssOverlays();
       applyMapStyles();
       applyCamera(true);
+      applyImportedState();
       updatePresetStatus();
       updateRefCompare();
-      persist();
+      persist(true);
       toast('已回到 antique-default 基线');
     }
 
@@ -2172,12 +2379,22 @@
     // 按钮
     // ============================================================
     function bindButtons() {
+      var cssFilterBtn = document.getElementById('sw-css-filter-panel');
+      if (cssFilterBtn && !cssFilterBtn._cssFilterBound) {
+        cssFilterBtn._cssFilterBound = true;
+        cssFilterBtn.addEventListener('click', function () {
+          params.ui.showCssFilter = !this.classList.contains('on');
+          applyCssOverlays();
+          persist();
+        });
+      }
+
       document.getElementById('btn-reset').addEventListener('click', function () {
         applyBaseline();
       });
 
       document.getElementById('btn-copy').addEventListener('click', async function () {
-        const json = JSON.stringify(exportParams(), null, 2);
+        const json = JSON.stringify(packForShare(exportParams()), null, 2);
         try {
           await navigator.clipboard.writeText(json);
           toast('已复制 JSON 到剪贴板');
@@ -2194,7 +2411,7 @@
       });
 
       document.getElementById('btn-download').addEventListener('click', function () {
-        const json = JSON.stringify(exportParams(), null, 2);
+        const json = JSON.stringify(packForShare(exportParams()), null, 2);
         const blob = new Blob([json], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -2208,9 +2425,11 @@
       document.getElementById('btn-paste').addEventListener('click', async function () {
         try {
           const text = await navigator.clipboard.readText();
-          const obj = JSON.parse(text);
+          const raw = JSON.parse(text);
+          const obj = unpackShare(raw);
           params = mergeParams(DEFAULT_PARAMS, obj);
           if (obj.ui) Object.assign(params.ui, obj.ui);
+          if (obj.isolate) params.isolate = Object.assign({}, params.isolate || {}, obj.isolate);
           if (Object.prototype.hasOwnProperty.call(obj, 'season')) {
             params.season = obj.season;
           }
@@ -2219,9 +2438,10 @@
           applyCssOverlays();
           applyMapStyles();
           applyCamera(true);
+          applyImportedState();
           updatePresetStatus();
           updateRefCompare();
-          persist();
+          persist(true);
           toast('已从剪贴板应用参数');
         } catch (e) {
           toast('粘贴失败：剪贴板非有效 JSON');
@@ -2242,13 +2462,15 @@
         persist();
       });
 
-      document.getElementById('btn-water').addEventListener('click', function () {
+      var btnWaterBind = document.getElementById('btn-water');
+      if (btnWaterBind) btnWaterBind.addEventListener('click', function () {
         params.ui.showWater = !params.ui.showWater;
         updateWaterVisibility();
         persist();
       });
 
-      document.getElementById('btn-highlight').addEventListener('click', function () {
+      var btnHighlight = document.getElementById('btn-highlight');
+      if (btnHighlight) btnHighlight.addEventListener('click', function () {
         params.ui.showHighlight = !params.ui.showHighlight;
         if (params.ui.showHighlight && !params.ui.showWater) params.ui.showWater = true;
         updateWaterVisibility();
@@ -2256,7 +2478,8 @@
         toast(params.ui.showHighlight ? '高亮水系开' : '高亮水系关');
       });
 
-      document.getElementById('btn-river-labels').addEventListener('click', function () {
+      var btnRiverLabels = document.getElementById('btn-river-labels');
+      if (btnRiverLabels) btnRiverLabels.addEventListener('click', function () {
         params.ui.showRiverLabels = !(params.ui.showRiverLabels !== false);
         if (params.ui.showRiverLabels && !params.ui.showWater) {
           params.ui.showWater = true;
@@ -2345,12 +2568,11 @@
         : [];
       const terTiles = Array.isArray(terIn.tiles)
         ? terIn.tiles.filter(function (u) { return typeof u === 'string' && u.length > 0; })
-        : [
-            'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
-            'https://elevation-tiles-prod.s3.amazonaws.com/terrarium/{z}/{x}/{y}.png',
-          ];
+        : ['https://tiles.mapterhorn.com/{z}/{x}/{y}.webp'];
       const satEnabled = satIn.enabled !== false && satTiles.length > 0;
       const terEnabled = terIn.enabled !== false && terTiles.length > 0;
+      const terMax = terIn.maxzoom != null ? terIn.maxzoom : 17;
+      const visualMax = terIn.visualMaxzoom != null ? terIn.visualMaxzoom : Math.min(terMax, 16);
       return {
         satellite: {
           enabled: satEnabled,
@@ -2364,17 +2586,21 @@
         terrain: {
           enabled: terEnabled,
           tiles: terTiles,
-          tileSize: terIn.tileSize || 256,
-          maxzoom: terIn.maxzoom != null ? terIn.maxzoom : 15,
+          tileSize: terIn.tileSize || 512,
+          maxzoom: terMax,
+          visualMaxzoom: visualMax,
+          visualSourceId: terIn.visualSourceId || 'terrainVisual',
           encoding: terIn.encoding || 'terrarium',
-          attribution: terIn.attribution || '© AWS Terrain Tiles (Terrarium)',
+          attribution:
+            terIn.attribution ||
+            '<a href="https://mapterhorn.com/attribution" target="_blank" rel="noopener">© Mapterhorn</a>',
           sourceId: terIn.sourceId || 'terrain',
         },
         uiAttribution:
           cfg.uiAttribution ||
           (satEnabled
-            ? '底图：已配置栅格 · 地形 DEM：Terrarium'
-            : '底图：未配置卫星 · 地形 DEM：Terrarium'),
+            ? '底图：已配置栅格 · 地形 DEM：Mapterhorn'
+            : '底图：未配置卫星 · 地形 DEM：Mapterhorn'),
       };
     }
 
@@ -2391,18 +2617,36 @@
       ];
 
       if (tileCfg.terrain.enabled) {
-        sources[tileCfg.terrain.sourceId] = {
+        const dem = {
           type: 'raster-dem',
           tiles: tileCfg.terrain.tiles,
           tileSize: tileCfg.terrain.tileSize,
-          maxzoom: tileCfg.terrain.maxzoom,
           encoding: tileCfg.terrain.encoding || 'terrarium',
           attribution: tileCfg.terrain.attribution,
         };
+        sources[tileCfg.terrain.sourceId] = Object.assign({}, dem, {
+          maxzoom: tileCfg.terrain.maxzoom,
+        });
+        const visualId = tileCfg.terrain.visualSourceId || 'terrainVisual';
+        sources[visualId] = Object.assign({}, dem, {
+          maxzoom: tileCfg.terrain.visualMaxzoom != null ? tileCfg.terrain.visualMaxzoom : tileCfg.terrain.maxzoom,
+        });
+        layers.push({
+          id: 'vl-relief',
+          type: 'color-relief',
+          source: visualId,
+          layout: { visibility: params.ui.showRelief ? 'visible' : 'none' },
+          paint: {
+            'color-relief-opacity': 1,
+            'color-relief-color': window.AntiqueVectorPaint
+              ? AntiqueVectorPaint.elevationColorExpr()
+              : ['interpolate', ['linear'], ['elevation'], -2000, '#14324a', 0, '#4f7a45', 5500, '#e8ece8'],
+          },
+        });
         layers.push({
           id: 'hillshade',
           type: 'hillshade',
-          source: tileCfg.terrain.sourceId,
+          source: visualId,
           paint: {
             'hillshade-exaggeration': Math.min(1, Math.max(0, +params.maplibre.hillshade.exaggeration || 0)),
             'hillshade-illumination-direction': params.maplibre.hillshade.illuminationDirection,
@@ -2437,6 +2681,41 @@
           },
         });
       }
+
+      sources.openmaptiles = {
+        type: 'vector',
+        url: (window.AntiqueVectorPaint && AntiqueVectorPaint.TILEJSON_URL) || 'https://tiles.openfreemap.org/planet',
+        attribution:
+          '<a href="https://openfreemap.org">OpenFreeMap</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      };
+      layers.push({
+        id: 'omt-ocean',
+        type: 'fill',
+        source: 'openmaptiles',
+        'source-layer': 'water',
+        filter: ['==', ['get', 'class'], 'ocean'],
+        paint: { 'fill-color': '#2a6d7a', 'fill-opacity': 1 },
+      });
+      layers.push({
+        id: 'omt-water',
+        type: 'fill',
+        source: 'openmaptiles',
+        'source-layer': 'water',
+        filter: ['!=', ['get', 'class'], 'ocean'],
+        paint: { 'fill-color': '#2f7d8c', 'fill-opacity': 0.92 },
+      });
+      layers.push({
+        id: 'omt-waterway',
+        type: 'line',
+        source: 'openmaptiles',
+        'source-layer': 'waterway',
+        paint: {
+          'line-color': '#2a7aa0',
+          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.7, 6, 1.5, 10, 2.6],
+          'line-opacity': 0.92,
+        },
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+      });
 
       return { version: 8, sources: sources, layers: layers };
     }
@@ -2495,15 +2774,6 @@
         }
       } catch (e) {
         // Keep defaults; treat as not shipped.
-      }
-
-      if (!pack.enabled) {
-        return {
-          ok: false,
-          reason: 'not-shipped',
-          detail: 'water-pack.json enabled=false',
-          url: packUrl,
-        };
       }
 
       const url = tunerAssetUrl(pack.src || 'assets/water-data.js');
@@ -2577,8 +2847,159 @@
       return '水系层可选 · 当前未启用（不影响底图 / 山影调参）。';
     }
 
+    var viewMode = 'map';
+    var isolateCtl = null;
+
+    function satLayerId() {
+      return (window.__tunerTileConfig && window.__tunerTileConfig.satellite && window.__tunerTileConfig.satellite.layerId) || 'satellite';
+    }
+
+    function setToggle(el, on) {
+      if (!el) return;
+      el.classList.toggle('on', !!on);
+      el.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+
+    function syncBasemapLayers() {
+      if (!map) return;
+      var satOn = params.ui.showSatellite !== false;
+      var reliefOn = !!params.ui.showRelief;
+      var satId = satLayerId();
+      if (map.getLayer(satId)) {
+        map.setLayoutProperty(satId, 'visibility', satOn ? 'visible' : 'none');
+      }
+      if (map.getLayer('vl-relief')) {
+        map.setLayoutProperty('vl-relief', 'visibility', reliefOn ? 'visible' : 'none');
+      }
+      if (map.getLayer('omt-ocean')) {
+        map.setLayoutProperty('omt-ocean', 'visibility', satOn ? 'none' : 'visible');
+      }
+      setToggle(document.getElementById('sw-satellite'), satOn);
+      setToggle(document.getElementById('sw-relief'), reliefOn);
+    }
+
+    function setupGlobeAndIsolate() {
+      if (!map) return;
+      var VP = window.AntiqueVectorPaint;
+      var tileCfg = window.__tunerTileConfig || {};
+      if (VP && tileCfg.terrain && tileCfg.terrain.enabled && !map.getLayer('vl-relief')) {
+        try {
+          var before = map.getLayer(satLayerId()) ? satLayerId() : undefined;
+          map.addLayer({
+            id: 'vl-relief',
+            type: 'color-relief',
+            source: tileCfg.terrain.visualSourceId || 'terrainVisual',
+            layout: { visibility: params.ui.showRelief ? 'visible' : 'none' },
+            paint: {
+              'color-relief-opacity': 1,
+              'color-relief-color': VP.elevationColorExpr(),
+            },
+          }, before);
+        } catch (e) {
+          console.warn('color-relief layer', e);
+        }
+      }
+      if (window.AntiqueIsolateWorkbench) {
+        if (params.isolate && params.isolate.enabled && typeof AntiqueIsolateWorkbench.ensureIsolateData === 'function') {
+          AntiqueIsolateWorkbench.ensureIsolateData();
+        }
+        isolateCtl = AntiqueIsolateWorkbench.mount({
+          map: map,
+          maplibregl: maplibregl,
+          FX: window.AntiqueMapFx,
+          getViewMode: function () { return viewMode; },
+          toast: toast,
+          wrapEl: document.getElementById('map'),
+          enabled: !!(params.isolate && params.isolate.enabled),
+          regionId: (params.isolate && params.isolate.regionId) || 'china',
+          sideColor: '#6d4a36',
+          onNeedMap: function () { applyViewMode('map'); },
+          onChange: function (st) {
+            params.isolate = {
+              enabled: !!(st && st.enabled),
+              regionId: (st && st.regionId) || 'china',
+            };
+            persist();
+          },
+        });
+        isolateCtl.start();
+      }
+      document.querySelectorAll('#viewmode-seg button').forEach(function (b) {
+        b.addEventListener('click', function () {
+          applyViewMode(b.getAttribute('data-mode'));
+        });
+      });
+      var satBtn = document.getElementById('sw-satellite');
+      if (satBtn) {
+        satBtn.addEventListener('click', function () {
+          params.ui.showSatellite = !this.classList.contains('on');
+          syncBasemapLayers();
+          persist();
+        });
+      }
+      var reliefBtn = document.getElementById('sw-relief');
+      if (reliefBtn) {
+        reliefBtn.addEventListener('click', function () {
+          params.ui.showRelief = !this.classList.contains('on');
+          syncBasemapLayers();
+          persist();
+        });
+      }
+      function bindCssFilterToggle(el) {
+        if (!el || el._cssFilterBound) return;
+        el._cssFilterBound = true;
+        el.addEventListener('click', function () {
+          params.ui.showCssFilter = !this.classList.contains('on');
+          applyCssOverlays();
+          persist();
+        });
+      }
+      bindCssFilterToggle(document.getElementById('sw-css-filter-panel'));
+      applyCssOverlays();
+      syncBasemapLayers();
+    }
+
+    function applyViewMode(mode) {
+      if (!map) return;
+      var next = mode === 'globe' ? 'globe' : 'map';
+      var changed = viewMode !== next;
+      viewMode = next;
+      document.querySelectorAll('#viewmode-seg button').forEach(function (b) {
+        b.classList.toggle('active', b.getAttribute('data-mode') === viewMode);
+      });
+      try {
+        map.setProjection({ type: viewMode === 'globe' ? 'globe' : 'mercator' });
+      } catch (e) {
+        console.warn('setProjection', e);
+      }
+      if (changed) {
+        try { map.setMinZoom(viewMode === 'globe' ? 0.8 : 2); } catch (e1) {}
+      }
+      syncBasemapLayers();
+      if (isolateCtl && typeof isolateCtl.sync === 'function') isolateCtl.sync();
+      if (params.ui) params.ui.projection = viewMode;
+      persist();
+    }
+
+    function applyImportedState(opts) {
+      opts = opts || {};
+      var proj = (params.ui && params.ui.projection) || 'map';
+      applyViewMode(proj);
+      syncBasemapLayers();
+      applyCssOverlays();
+      if (isolateCtl) {
+        var iso = params.isolate || {};
+        if (iso.regionId && typeof isolateCtl.setRegion === 'function') {
+          isolateCtl.setRegion(iso.regionId, { frame: false });
+        }
+        if (typeof isolateCtl.setEnabled === 'function') {
+          isolateCtl.setEnabled(!!iso.enabled, opts.frameIsolate !== false && !!iso.enabled);
+        }
+      }
+    }
+
     function initMap() {
-      waterAvailable = isWaterDataReady();
+      waterAvailable = false;
 
       if (!waterAvailable) {
         setWaterWarn(waterOptionalMessage(window.__WATER_DATA_LOAD_RESULT));
@@ -2603,16 +3024,25 @@
 
       const cam = params.camera;
 
-      map = new maplibregl.Map({
+      if (window.AntiqueMapFx && typeof AntiqueMapFx.configureMapLibre === 'function') {
+        AntiqueMapFx.configureMapLibre(maplibregl);
+      }
+      const mapOpts = {
         container: 'map',
         style: buildMapStyle(tileCfg),
         center: cam.center,
         zoom: cam.zoom,
         pitch: cam.pitch,
         bearing: cam.bearing,
-        maxPitch: 70,
+        maxPitch: 85,
         attributionControl: true,
-      });
+      };
+      if (window.AntiqueMapFx && typeof AntiqueMapFx.mapOptions === 'function') {
+        const fxOpts = AntiqueMapFx.mapOptions('tuner');
+        delete fxOpts.renderWorldCopies;
+        Object.assign(mapOpts, fxOpts);
+      }
+      map = new maplibregl.Map(mapOpts);
 
       window.__tunerMap = map;
 
@@ -2637,18 +3067,18 @@
           console.warn('setTerrain 失败（其余图层仍可用）', e);
         }
         try {
-          if (waterAvailable) addWaterLayers();
-          else updateWaterStats();
-        } catch (e) {
-          console.warn('水系图层添加失败', e);
-        }
-        try {
           addHanCityLayer();
         } catch (e) {
           console.warn('城池层添加失败', e);
         }
+        try {
+          setupGlobeAndIsolate();
+        } catch (e) {
+          console.warn('地球/拆出初始化失败', e);
+        }
         applyCssOverlays();
         applyMapStyles();
+        applyImportedState({ frameIsolate: false });
         updatePaintSummary();
         updateCitiesVisibility();
         updatePresetStatus();
@@ -2880,6 +3310,27 @@
       updateWaterStats();
     }
 
+    var threeJsPromise = null;
+    function loadThreeJs() {
+      if (window.THREE) return Promise.resolve(window.THREE);
+      if (threeJsPromise) return threeJsPromise;
+      threeJsPromise = new Promise(function (resolve, reject) {
+        var s = document.createElement('script');
+        s.src = 'https://unpkg.com/three@0.160.0/build/three.min.js';
+        s.async = true;
+        s.onload = function () {
+          if (window.THREE) resolve(window.THREE);
+          else reject(new Error('THREE missing after load'));
+        };
+        s.onerror = function () {
+          threeJsPromise = null;
+          reject(new Error('three.min.js failed'));
+        };
+        document.head.appendChild(s);
+      });
+      return threeJsPromise;
+    }
+
     /**
      * 多级城池点位（大/中/小城 + 关卡 + 驿站 + 牙帐）
      * 仅加载 params.cities.dataFile（默认 assets/sample-sites.json）；失败回退内置
@@ -2942,13 +3393,18 @@
           return normalizeSite(Object.assign({ tier: 'medium', modelType: 'commandery' }, c));
         });
 
-        if (typeof window.HanCity3D.addExtrusionCities === 'function') {
-          hanCityLayer = window.HanCity3D.addExtrusionCities(map, maplibregl, {
-            cities: cityList,
-            halfKm: halfKmGlobal,
-            visible: params.ui.showCities !== false,
-          });
-        } else if (typeof window.THREE !== 'undefined') {
+        async function tryThreeFallback(reason) {
+          if (reason) console.warn('[han-city-3d] extrusion 不可用，尝试 Three.js', reason);
+          try {
+            await loadThreeJs();
+          } catch (e3) {
+            console.warn('[han-city-3d] Three.js 加载失败', e3);
+            return false;
+          }
+          if (typeof window.THREE === 'undefined' || typeof window.HanCity3D.createCustomLayer !== 'function') {
+            console.warn('[han-city-3d] 无 extrusion 也无 THREE，跳过');
+            return false;
+          }
           hanCityLayer = window.HanCity3D.createCustomLayer(maplibregl, window.THREE, {
             id: 'han-city-3d',
             cities: cityList,
@@ -2958,10 +3414,25 @@
             altitudeBoost: 400,
           });
           map.addLayer(hanCityLayer);
-        } else {
-          console.warn('[han-city-3d] 无 extrusion 也无 THREE，跳过');
-          return;
+          return true;
         }
+
+        var placed = false;
+        if (typeof window.HanCity3D.addExtrusionCities === 'function') {
+          try {
+            hanCityLayer = window.HanCity3D.addExtrusionCities(map, maplibregl, {
+              cities: cityList,
+              halfKm: halfKmGlobal,
+              visible: params.ui.showCities !== false,
+            });
+            placed = true;
+          } catch (eEx) {
+            placed = await tryThreeFallback(eEx);
+          }
+        } else {
+          placed = await tryThreeFallback(null);
+        }
+        if (!placed) return;
         updateCitiesVisibility();
         map.once('idle', function () {
           if (hanCityLayer && typeof hanCityLayer.repositionToTerrain === 'function') {
@@ -2995,34 +3466,24 @@
         }
       }
 
-      // Optional water pack (not shipped). Resolve before initMap snapshots waterAvailable.
-      const waterResult = await ensureWaterData();
-      window.__WATER_DATA_LOAD_RESULT = waterResult;
-      if (!waterResult.ok) {
-        if (
-          waterResult.reason === 'not-shipped' ||
-          waterResult.reason === 'optional-absent'
-        ) {
-          console.info(
-            '[tuner] water overlay not shipped / not present (optional)',
-            waterResult.reason
-          );
-        } else {
-          console.info('[tuner] water overlay skipped', waterResult);
-        }
-      } else {
-        console.info(
-          '[tuner] CHINA_WATER_DATA ready via',
-          waterResult.via,
-          waterResult.url || ''
-        );
-      }
+      if (params.ui.showSatellite == null) params.ui.showSatellite = true;
+      if (params.ui.showRelief == null) params.ui.showRelief = false;
+      if (params.ui.showCssFilter == null) params.ui.showCssFilter = true;
+      if (!params.ui.projection) params.ui.projection = 'map';
+      if (!params.isolate) params.isolate = { enabled: false, regionId: 'china' };
+      params.ui.showWater = false;
+      params.ui.showHighlight = false;
+      params.ui.showRiverLabels = false;
 
       bindControls();
       bindButtons();
-      refreshAllControls();
-      updatePresetStatus();
-      updateRefImage();
+      try {
+        refreshAllControls();
+        updatePresetStatus();
+        updateRefImage();
+      } catch (e) {
+        console.warn('refreshAllControls', e);
+      }
       initMap();
     }
 

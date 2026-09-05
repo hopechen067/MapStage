@@ -11,7 +11,7 @@
   },
   "maplibre": {
     "backgroundColor": "#c8c2b4",
-    "terrainExaggeration": 1.6,
+    "terrainExaggeration": 1,
     "satellite": {
       "opacity": 0.7,
       "saturation": -0.08,

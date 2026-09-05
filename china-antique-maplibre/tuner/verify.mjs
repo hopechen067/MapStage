@@ -7,11 +7,22 @@ const root = dirname(fileURLToPath(import.meta.url));
 
 const required = [
   'index.html',
+  'vector-layers.html',
   'map-tiles.config.js',
   'map-tiles.config.example.js',
   'assets/han-city-3d.js',
   'assets/sample-sites.json',
   'assets/water-pack.json',
+  'assets/site-nav.js',
+  'assets/vector-paint.js',
+  'assets/map-fx.js',
+  'assets/region-isolate.js',
+  'assets/region-isolate-data.js',
+  'assets/terrain-island.js',
+  'assets/isolate-workbench.js',
+  'assets/polar-ice.geojson',
+  'vendor/maplibre-gl.js',
+  'vendor/maplibre-contour.min.js',
   'preset-antique-default.json',
   'presets/antique-default.json',
 ];
@@ -85,29 +96,41 @@ if (existsSync(waterPath)) {
 const indexHtml = join(root, 'index.html');
 if (existsSync(indexHtml)) {
   const html = readFileSync(indexHtml, 'utf8');
-  if (!html.includes('water-pack.json') || !html.includes('assets/water-data.js')) {
-    console.error('FAIL index.html lost water-pack.json / assets/water-data.js loader path');
+  if (html.includes('id="btn-water"') || html.includes('水系（可选')) {
+    console.error('FAIL index.html still has homepage water UI');
     ok = false;
   } else {
-    console.log('OK  index.html keeps water-pack.json + optional water-data.js loader');
+    console.log('OK  index.html has no water overlay UI');
   }
-  if (!html.includes('ensureWaterData') || !html.includes('__TUNER_BASE__')) {
-    console.error('FAIL index.html missing ensureWaterData / __TUNER_BASE__ loader');
+  if (!html.includes('data-key="satellite.opacity"') || !html.includes('data-key="css.sepia"') || !html.includes('data-key="hillshade.exaggeration"')) {
+    console.error('FAIL index.html lost original tuner parameters');
     ok = false;
   } else {
-    console.log('OK  index.html has ensureWaterData + __TUNER_BASE__');
+    console.log('OK  index.html keeps original tuner sliders');
   }
-  if (!html.includes('not-shipped') && !html.includes('optional')) {
-    console.error('FAIL index.html should treat missing water as optional / not-shipped');
+  if (!html.includes('id="viewmode-seg"') || !html.includes('id="sw-isolate"') || !html.includes('id="sw-relief"')) {
+    console.error('FAIL index.html missing 地图/地球 · 拆出 · 海拔设色');
     ok = false;
   } else {
-    console.log('OK  index.html treats water as optional');
+    console.log('OK  index.html has 地图/地球 + 拆出 + 海拔设色');
   }
-  if (!html.includes('three@0.160.0')) {
-    console.error('FAIL index.html missing Three.js script');
+  if (!html.includes('han-city-3d.js')) {
+    console.error('FAIL index.html missing han-city-3d');
+    ok = false;
+  } else if (/<script[^>]+three@/.test(html)) {
+    console.error('FAIL index.html still eagerly loads Three.js');
+    ok = false;
+  } else if (!html.includes('three@0.160.0')) {
+    console.error('FAIL index.html missing Three.js lazy fallback');
     ok = false;
   } else {
-    console.log('OK  index.html loads Three.js');
+    console.log('OK  index.html han-city-3d + lazy Three.js fallback');
+  }
+  if (/<script[^>]+region-isolate-data\.js/.test(html)) {
+    console.error('FAIL index.html still eagerly loads region-isolate-data.js');
+    ok = false;
+  } else {
+    console.log('OK  index.html lazy-loads isolate region data');
   }
 }
 

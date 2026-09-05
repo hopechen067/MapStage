@@ -19,15 +19,15 @@ window.MAP_TILE_CONFIG = {
   },
   terrain: {
     enabled: true,
-    tiles: [
-      'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
-      'https://elevation-tiles-prod.s3.amazonaws.com/terrarium/{z}/{x}/{y}.png',
-    ],
-    tileSize: 256,
-    maxzoom: 15,
+    tiles: ['https://tiles.mapterhorn.com/{z}/{x}/{y}.webp'],
+    tileSize: 512,
+    maxzoom: 17,
+    visualMaxzoom: 16,
+    visualSourceId: 'terrainVisual',
     encoding: 'terrarium',
-    attribution: '© AWS Terrain Tiles (Terrarium)',
+    attribution:
+      '<a href="https://mapterhorn.com/attribution" target="_blank" rel="noopener">© Mapterhorn</a>',
     sourceId: 'terrain',
   },
-  uiAttribution: '底图：EOX Sentinel-2 cloudless · 地形 DEM：AWS Terrarium',
+  uiAttribution: '底图：EOX Sentinel-2 cloudless · 地形 DEM：Mapterhorn',
 };

@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>古卷地图</title>
+  <link rel="preconnect" href="https://unpkg.com" crossorigin />
+  <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin />
+  <link rel="preconnect" href="https://s3.amazonaws.com" crossorigin />
+  <link rel="preconnect" href="https://elevation-tiles-prod.s3.amazonaws.com" crossorigin />
+  <link rel="preconnect" href="https://tiles.mapterhorn.com" crossorigin />
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;600&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="map-tiles.config.js?v=20260826-globe-perf"></script>
+  <script src="map-tiles.config.local.js?v=20260826-globe-perf" onerror="/* optional */"></script>
+  <script src="assets/site-nav.js?v=20260829-w1"></script>
+  <script src="assets/vector-paint.js?v=20260905-simple-relief"></script>
+  <script src="vendor/maplibre-gl.js?v=20260905-min"></script>
+  <script src="vendor/maplibre-contour.min.js?v=20260904-contour"></script>
+  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+  <script src="assets/han-city-3d.js"></script>
+  <script>
+    (function () {
+      try {
+        var q = window.AntiqueSiteNav ? AntiqueSiteNav.parseQuery() : {};
+        var fam = String(q.family || '').trim();
+        if (fam && AntiqueSiteNav.editorPage(fam) === 'index.html') {
+          location.replace('index.html' + location.search + location.hash);
+        }
+      } catch (e0) {}
+    })();
+  </script>
+  <style>
+    :root {
+      --bg: #060b14;
+      --map-bg: #04070d;
+      --ink: #ece4d4;
+      --muted: #9a8468;
+      --gold: #c9a06a;
+      --line: rgba(201, 160, 106, 0.35);
+      --ver: #c1432e;
+      --cy: #57c8c8;
+      --cy-dim: rgba(87, 200, 200, 0.55);
+      --mono: "Roboto Mono", ui-monospace, Consolas, monospace;
+      --sans: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      --serif: "Noto Serif SC", "Songti SC", "SimSun", serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font-family: var(--sans); }
+    html.is-island, html.is-island #map { background: #14110e; }
+    #map {
+      position: absolute; inset: 0; background: var(--map-bg);
+      /* 古卷 CSS  grade：与 preset-antique-default.json css 块一致 */
+      filter: none;
+    }
+    #warm-tint, #vignette { position: absolute; inset: 0; pointer-events: none; }
+    #warm-tint { z-index: 2; mix-blend-mode: soft-light; background: rgba(154, 136, 104, 0.04); }
+    #vignette {
+      z-index: 3; mix-blend-mode: multiply;
+      background: radial-gradient(ellipse at center, transparent 42%, rgba(46, 28, 16, 0.1) 100%);
+    }
+    .seg {
+      display: flex; border: 1px solid var(--line); overflow: hidden;
+      background: rgba(6, 11, 20, 0.45);
+    }
+    .seg button {
+      flex: 1; font-family: var(--sans); font-size: 13px; letter-spacing: 0.06em;
+      padding: 8px 13px; border: 0; background: transparent; color: var(--ink); cursor: pointer;
+    }
+    .seg button:hover { color: var(--gold); }
+    .seg button.active {
+      background: rgba(236, 228, 212, 0.05); color: var(--gold);
+      box-shadow: inset 0 -2px 0 var(--gold);
+    }
+    #look-rail {
+      position: absolute; z-index: 18; top: 20px; right: 20px;
+      width: 268px; max-height: calc(100% - 40px); overflow: auto;
+      background: rgba(4, 7, 13, 0.82); backdrop-filter: blur(10px);
+      border: 1px solid var(--line); padding: 10px 8px 12px;
+    }
+    #viewmode-seg { margin: 2px 8px 8px; }
+    .rail-kicker {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
+      color: var(--cy-dim); padding: 4px 8px 8px;
+    }
+    .scene-item {
+      position: relative; display: block; width: 100%; text-align: left;
+      border: 0; background: transparent; color: var(--ink); font-family: var(--sans);
+      padding: 8px 10px; cursor: pointer;
+    }
+    .scene-item:hover { background: rgba(236, 228, 212, 0.06); }
+    .scene-item.active { background: rgba(236, 228, 212, 0.05); }
+    .scene-item.active::before {
+      content: ""; position: absolute; top: 10px; left: 0; width: 2px; height: 16px; background: var(--ver);
+    }
+    .scene-item strong { display: block; font-family: var(--serif); font-size: 13px; letter-spacing: 0.08em; }
+    .scene-item span { display: block; font-size: 10px; color: var(--muted); margin-top: 2px; }
+    .group-label {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
+      color: var(--cy-dim); padding: 10px 8px 6px; border-top: 1px solid rgba(201, 160, 106, 0.16);
+    }
+    .group-label:first-child { border-top: 0; padding-top: 4px; }
+    .color-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 5px 8px; font-size: 12px; color: var(--ink);
+    }
+    .color-row input[type="color"] {
+      width: 36px; height: 22px; border: 1px solid var(--line); background: transparent; cursor: pointer; padding: 0;
+    }
+    .toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 8px; font-size: 12px;
+    }
+    .sw {
+      width: 36px; height: 20px; border-radius: 999px; border: 1px solid var(--line);
+      background: rgba(6, 11, 20, 0.45); position: relative; cursor: pointer; padding: 0;
+    }
+    .sw::after {
+      content: ""; position: absolute; width: 14px; height: 14px; border-radius: 50%;
+      background: var(--muted); top: 2px; left: 2px;
+    }
+    .sw.on { background: rgba(87, 200, 200, 0.18); border-color: var(--cy-dim); }
+    .sw.on::after { left: 18px; background: var(--cy); }
+    .actions { display: flex; gap: 8px; padding: 10px 8px 4px; }
+    button.btn {
+      font-family: var(--sans); font-size: 11px; letter-spacing: 0.06em;
+      padding: 7px 10px; border: 1px solid var(--line);
+      background: rgba(6, 11, 20, 0.45); color: var(--ink); cursor: pointer;
+    }
+    button.btn:hover { color: var(--gold); border-color: var(--gold); }
+    .range-row { padding: 6px 8px 10px; font-size: 12px; }
+    .range-row .ctrl-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px;
+    }
+    .range-row .val { font-family: var(--mono); font-size: 11px; color: var(--gold); }
+    .range-row input[type="range"] { width: 100%; accent-color: var(--cy); }
+    .range-row .hint { font-size: 10px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
+    #terrain-presets { margin-top: 8px; width: 100%; }
+    #terrain-presets button { flex: 1; font-size: 12px; padding: 7px 8px; }
+    #dem-presets { display: none; }
+    #vl-isolate-region {
+      width: calc(100% - 16px); margin: 4px 8px 8px;
+      background: rgba(6, 11, 20, 0.45); color: var(--ink);
+      border: 1px solid var(--line); padding: 6px 8px; font-size: 12px;
+    }
+    #vl-isolate-cities { padding: 0 8px 8px; display: none; }
+    #vl-isolate-cities .btn { margin: 2px 4px 2px 0; font-size: 11px; padding: 4px 8px; }
+    #vl-isolate-cities .btn.active { color: var(--gold); border-color: var(--gold); }
+    .isolate-group-label { font-size: 10px; color: var(--muted); letter-spacing: 0.08em; display: block; padding: 4px 0; }
+    #toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: rgba(4, 7, 13, 0.94); border: 1px solid var(--line); color: var(--gold);
+      padding: 8px 18px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+      opacity: 0; pointer-events: none; z-index: 40; transition: opacity 0.2s;
+    }
+    #toast.show { opacity: 1; }
+    .maplibregl-ctrl-attrib { font-size: 10px !important; background: rgba(4, 7, 13, 0.6) !important; }
+    @media (max-width: 800px) {
+      #look-rail { width: min(220px, calc(50% - 16px)); top: auto; bottom: 16px; max-height: 42vh; }
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="warm-tint"></div>
+  <div id="vignette"></div>
+  <aside id="look-rail">
+    <div class="seg" id="viewmode-seg" role="group" aria-label="投影">
+      <button type="button" data-mode="map">地图</button>
+      <button type="button" data-mode="globe" class="active">地球</button>
+    </div>
+    <div class="group-label">VIEW</div>
+    <div class="range-row" id="terrain-ctrl">
+      <div class="ctrl-row"><label>山高 · 真实海拔=1.0</label><span class="val" id="terrain-ex-val">1.00</span></div>
+      <input type="range" id="terrain-ex" min="0" max="3" step="0.05" value="1" />
+    </div>
+    <div class="toggle-row">海拔设色 <button type="button" class="sw on" id="sw-relief" aria-pressed="true"></button></div>
+    <div class="group-label">拆出</div>
+    <div class="toggle-row">拆出 <button type="button" class="sw" id="sw-isolate" aria-pressed="false"></button></div>
+    <select id="vl-isolate-region" aria-label="拆出区域"></select>
+  </aside>
+  <div id="toast"></div>
+  <script src="assets/map-fx.js?v=20260826-globe-perf"></script>
+  <script src="assets/region-isolate.js?v=20260824-scanedge8"></script>
+  <script src="assets/region-isolate-data.js?v=20260823-cities"></script>
+  <script src="assets/terrain-island.js?v=20260905-flat-wall"></script>
+  <script src="assets/isolate-workbench.js?v=20260905-lazy-iso"></script>
+  <script>
+  (function () {
+    var maplibregl = window.maplibregl;
+    var VP = window.AntiqueVectorPaint;
+    var FX = window.AntiqueMapFx;
+    var Nav = window.AntiqueSiteNav;
+    if (!maplibregl) throw new Error('maplibre-gl missing');
+    if (!VP) throw new Error('vector-paint.js missing');
+    if (!FX) throw new Error('map-fx.js missing');
+    if (Nav) AntiqueSiteNav.mount(document.getElementById('site-nav'), { page: 'edit' });
+    var q = Nav ? AntiqueSiteNav.parseQuery() : {};
+    var deepFamily = String(q.family || '').trim();
+    var deepVariant = String(q.variant || '').trim();
+    if (deepFamily && Nav && Nav.editorPage(deepFamily) === 'index.html') {
+      location.replace('index.html' + location.search + location.hash);
+      return;
+    }
+    var skinDeepLink = deepFamily === 'skin';
+    var cameraDeepLink = deepFamily === 'camera';
+    var isolateDeepLink = cameraDeepLink && (deepVariant === 'isolate-china' || deepVariant === 'hexi-rise');
+    var elevStops = VP.DEFAULT_ELEVATION_STOPS.map(function (s) {
+      return { h: s.h, color: s.color, label: s.label };
+    });
+    var paint = VP.normalizePaint(VP.DEFAULT_PAINT);
+    var map;
+    var GLOBE_MIN_ZOOM = 0.8;
+    var GLOBE_MAX_ZOOM = 22;
+    var MAP_MIN_ZOOM = 3;
+    var MAP_MAX_ZOOM = 22;
+    var worldScene = VP.SCENES.filter(function (s) { return s.id === 'world'; })[0];
+    var chinaScene = VP.SCENES.filter(function (s) { return s.id === 'china'; })[0];
+    var GLOBE_CAM = worldScene ? {
+      center: worldScene.camera.center.slice(),
+      zoom: worldScene.camera.zoom,
+      pitch: worldScene.camera.pitch,
+      bearing: worldScene.camera.bearing,
+    } : { center: [104.0, 35.5], zoom: 1.9, pitch: 16, bearing: 18 };
+    var MAP_FALLBACK_CAM = chinaScene ? {
+      center: chinaScene.camera.center.slice(),
+      zoom: chinaScene.camera.zoom,
+      pitch: chinaScene.camera.pitch,
+      bearing: chinaScene.camera.bearing,
+    } : { center: [104.0, 35.5], zoom: 4.6, pitch: 28, bearing: 0 };
+    var lastMapCam = null;
+    var lastMapScene = null;
+    var activeScene = 'world';
+    var viewMode = 'globe';
+    var terrainEx = VP.TERRAIN_REAL_EXAGGERATION;
+    var activeSkin = 'parchment';
+    var lastSkin = 'parchment';
+    var cssGrade = VP.normalizeCss({
+      sepia: 0,
+      saturate: 1,
+      contrast: 1,
+      brightness: 1,
+      hueRotate: 0,
+      warmTintAlpha: 0,
+      vignetteStrength: 0.08,
+    });
+    if (skinDeepLink) {
+      var bootSkin = VP.SKINS.filter(function (s) { return s.id === deepVariant; })[0];
+      if (!bootSkin) {
+        bootSkin = VP.SKINS[0];
+        toast('未知皮肤 ' + deepVariant + ' · 用宣纸古卷');
+      }
+      activeSkin = bootSkin.id;
+      lastSkin = bootSkin.id;
+      paint = VP.normalizePaint(bootSkin.paint);
+      cssGrade = VP.normalizeCss(bootSkin.css);
+      viewMode = 'map';
+      activeScene = 'china';
+    }
+    if (cameraDeepLink) {
+      if (deepVariant === 'globe') {
+        viewMode = 'globe';
+        activeScene = 'world';
+      } else if (deepVariant === 'hexi-rise') {
+        viewMode = 'map';
+        activeScene = 'hexi';
+      } else {
+        viewMode = 'map';
+        activeScene = 'china';
+      }
+    }
+    var isolateQuery = q.isolate === '1' || q.isolate === 'true';
+    if (isolateQuery) isolateDeepLink = true;
+    if (isolateDeepLink && viewMode === 'globe') {
+      viewMode = 'map';
+      activeScene = deepVariant === 'hexi-rise' ? 'hexi' : 'china';
+    }
+    var isolateRegionBoot = q.region || (deepVariant === 'hexi-rise' ? 'gansu' : 'china');
+    var isolateCtl = null;
+    var pendingPaintKeys = {};
+    var pendingElevation = false;
+    var pendingTerrain = false;
+    var uiFrame = 0;
+    var contourDem = null;
+    var activeDem = VP.DEM_PRESETS[String(q.dem || '').trim()]
+      ? String(q.dem).trim()
+      : (VP.DEFAULT_DEM_PRESET || 'mapterhorn');
+    var baseTileConfig = window.MAP_TILE_CONFIG || {};
+    var uiApplyStats = {
+      frames: 0,
+      paintFlushes: 0,
+      paintKeys: 0,
+      elevationFlushes: 0,
+      terrainFlushes: 0,
+    };
+
+    function hexToRgb(hex) {
+      var m = String(hex || '').replace('#', '');
+      if (m.length === 3) m = m[0] + m[0] + m[1] + m[1] + m[2] + m[2];
+      var n = parseInt(m, 16);
+      if (!isFinite(n)) return { r: 154, g: 136, b: 104 };
+      return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+    }
+
+    function applyCssGrade(c) {
+      cssGrade = VP.normalizeCss(c);
+      document.getElementById('map').style.filter =
+        'sepia(' + cssGrade.sepia + ') saturate(' + cssGrade.saturate + ') contrast(' + cssGrade.contrast +
+        ') brightness(' + cssGrade.brightness + ') hue-rotate(' + cssGrade.hueRotate + 'deg)';
+      var rgb = hexToRgb(cssGrade.warmTintColor);
+      document.getElementById('warm-tint').style.background =
+        'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + cssGrade.warmTintAlpha + ')';
+      document.getElementById('vignette').style.background =
+        'radial-gradient(ellipse at center, transparent 42%, rgba(46,28,16,' + cssGrade.vignetteStrength + ') 100%)';
+    }
+
+    function globeSky() {
+      return {
+        'sky-color': '#0a0806',
+        'horizon-color': '#1c140c',
+        'fog-color': '#000000',
+        'sky-horizon-blend': 0.7,
+        'horizon-fog-blend': 0.8,
+        'fog-ground-blend': 0.35,
+        'atmosphere-blend': [
+          'interpolate', ['linear'], ['zoom'],
+          0, 0.88, 3, 0.5, 6, 0.06, 7, 0,
+        ],
+      };
+    }
+
+    function readCam() {
+      var c = map.getCenter();
+      return {
+        center: [c.lng, c.lat],
+        zoom: map.getZoom(),
+        pitch: map.getPitch(),
+        bearing: map.getBearing(),
+      };
+    }
+
+    function jumpCam(cam) {
+      if (!map || !cam) return;
+      if (FX && typeof FX.jumpTo === 'function') FX.jumpTo(map, cam);
+      else map.jumpTo(cam);
+    }
+
+    function sceneFitsGlobe(scene) {
+      return !!(scene && scene.id === 'world');
+    }
+
+    function applyProjection(mode, opts) {
+      opts = opts || {};
+      var nextMode = mode === 'globe' ? 'globe' : 'map';
+      var changed = viewMode !== nextMode;
+      viewMode = nextMode;
+      document.querySelectorAll('#viewmode-seg button').forEach(function (b) {
+        b.classList.toggle('active', b.getAttribute('data-mode') === viewMode);
+      });
+      var proj = document.getElementById('chrome-proj');
+      if (proj) proj.textContent = viewMode === 'globe' ? 'GLOBE' : 'MAP';
+      if (!map || typeof map.setProjection !== 'function') return;
+      if (!changed && !opts.force) return;
+
+      var reliefBtn = document.getElementById('sw-relief');
+      var reliefOn = !!(reliefBtn && reliefBtn.classList.contains('on'));
+      if (viewMode === 'globe') {
+        if (changed) {
+          lastMapCam = readCam();
+          lastMapScene = activeScene;
+        }
+        // Far land is color-relief. GeoJSON far packs × globe tessellation 缺角 / freeze.
+        VP.setFarLandcover(map, 'none');
+        if (typeof VP.setRelief === 'function') VP.setRelief(map, reliefOn);
+        if (typeof VP.setContours === 'function') VP.setContours(map, false);
+        syncLandcoverVis();
+        if (FX) FX.flattenTerrain(map);
+        try { map.setMinZoom(GLOBE_MIN_ZOOM); } catch (e3) { console.warn('setMinZoom', e3); }
+        if (changed || opts.forceFrame) {
+          jumpCam(GLOBE_CAM);
+          activeScene = 'world';
+          renderScenes();
+        }
+        try { map.setMaxZoom(GLOBE_MAX_ZOOM); } catch (e4) { console.warn('setMaxZoom', e4); }
+        try {
+          map.setProjection({ type: viewMode === 'globe' ? 'globe' : 'mercator' });
+        } catch (e) { console.warn('setProjection', e); }
+        if (typeof map.setSky === 'function') {
+          try { map.setSky(globeSky()); } catch (e2) { /* ignore */ }
+        }
+      } else {
+        try {
+          map.setProjection({ type: viewMode === 'globe' ? 'globe' : 'mercator' });
+        } catch (e) { console.warn('setProjection', e); }
+        try { map.setMinZoom(MAP_MIN_ZOOM); } catch (e5) { console.warn('setMinZoom', e5); }
+        try { map.setMaxZoom(MAP_MAX_ZOOM); } catch (e6) { console.warn('setMaxZoom', e6); }
+        if (!opts.skipRestore) {
+          var back = lastMapCam && lastMapCam.zoom >= MAP_MIN_ZOOM ? lastMapCam : MAP_FALLBACK_CAM;
+          jumpCam(back);
+          activeScene = lastMapCam && lastMapCam.zoom >= MAP_MIN_ZOOM && lastMapScene
+            ? lastMapScene
+            : 'china';
+          renderScenes();
+        }
+        VP.setFarLandcover(map, 'none');
+        syncLandcoverVis();
+        if (typeof map.setSky === 'function') {
+          try { if (FX) map.setSky(FX.antiqueSky()); } catch (e2) { /* ignore */ }
+        }
+        if (!opts.skipTerrain) syncTerrain();
+        if (typeof VP.setContours === 'function') VP.setContours(map, false);
+      }
+      syncMergedLook();
+      if (isolateCtl && typeof isolateCtl.sync === 'function') isolateCtl.sync();
+    }
+    var terrainOn = true;
+
+    function isolateWantsMesh() {
+      if (!isolateCtl || typeof isolateCtl.getState !== 'function') return false;
+      var st = isolateCtl.getState();
+      return !!(st && st.enabled && st.island);
+    }
+
+    function syncTerrain() {
+      if (!map || !FX) return;
+      var isolateMesh = isolateWantsMesh();
+      if (!terrainOn || (map.getZoom() < VP.TERRAIN_MESH_MINZOOM && !isolateMesh)) {
+        FX.flattenTerrain(map);
+        return;
+      }
+      FX.setTerrainEx(map, VP.TERRAIN_SOURCE_ID, terrainEx, { budget: false });
+      if (isolateMesh && isolateCtl && typeof isolateCtl.sync === 'function') isolateCtl.sync();
+    }
+
+    function tileConfigFor(presetId) {
+      var cfg = VP.withDemPreset(baseTileConfig, presetId);
+      var useProxy = !!(baseTileConfig.terrain && Array.isArray(baseTileConfig.terrain.tiles) &&
+        baseTileConfig.terrain.tiles.some(function (u) {
+          return String(u).indexOf('/t/') === 0;
+        }));
+      if (!useProxy || presetId !== 'mapterhorn') return cfg;
+      var next = JSON.parse(JSON.stringify(cfg));
+      next.terrain.tiles = next.terrain.tiles.map(function (u) {
+        if (String(u).indexOf('/t/') === 0) return u;
+        var m = String(u).match(/^https?:\/\/([^/]+)\/(.+)$/);
+        return m ? '/t/' + m[1] + '/' + m[2] : u;
+      });
+      return next;
+    }
+
+    function syncDemUi() {
+      document.querySelectorAll('#dem-presets button').forEach(function (b) {
+        b.classList.toggle('active', b.getAttribute('data-dem') === activeDem);
+      });
+    }
+
+    function rebuildContours(tileCfg) {
+      if (!map || !window.mlcontour || typeof maplibregl.addProtocol !== 'function') return;
+      if (typeof map.getLayer === 'function') {
+        ['vl-contour-label', 'vl-contour'].forEach(function (id) {
+          if (map.getLayer(id)) map.removeLayer(id);
+        });
+      }
+      if (typeof map.getSource === 'function' && map.getSource(VP.CONTOUR_SOURCE_ID)) {
+        map.removeSource(VP.CONTOUR_SOURCE_ID);
+      }
+      contourDem = new mlcontour.DemSource({
+        url: VP.demTileUrl(tileCfg),
+        encoding: 'terrarium',
+        maxzoom: VP.visualDemMaxzoom(tileCfg),
+        worker: true,
+      });
+      contourDem.setupMaplibre(maplibregl);
+      map.addSource(VP.CONTOUR_SOURCE_ID, {
+        type: 'vector',
+        tiles: [contourDem.contourProtocolUrl(VP.CONTOUR_OPTIONS)],
+        maxzoom: 15,
+      });
+      var before = map.getLayer('vl-water-ocean') ? 'vl-water-ocean' : undefined;
+      VP.contourLayerDefs().forEach(function (layer) {
+        map.addLayer(layer, before);
+      });
+      var contourBtn = document.getElementById('sw-contour');
+      var contourOn = !!(contourBtn && contourBtn.classList.contains('on')) && viewMode !== 'globe';
+      if (typeof VP.setContours === 'function') VP.setContours(map, contourOn);
+    }
+
+    function applyDem(id) {
+      if (!VP.DEM_PRESETS[id] || !map) return;
+      if (id === activeDem) return;
+      activeDem = id;
+      syncDemUi();
+      var cfg = tileConfigFor(activeDem);
+      var reliefBtn = document.getElementById('sw-relief');
+      var shadeBtn = document.getElementById('sw-hillshade');
+      if (viewMode === 'globe') {
+        applyProjection('map', { skipRestore: true, skipTerrain: true });
+      }
+      var reliefOn = !!(reliefBtn && reliefBtn.classList.contains('on')) && viewMode !== 'globe';
+      var hillshadeOn = !!(shadeBtn && shadeBtn.classList.contains('on'));
+      if (FX) FX.flattenTerrain(map);
+      VP.replaceTerrainSources(map, cfg, {
+        paint: paint,
+        elevStops: elevStops,
+        reliefOn: reliefOn,
+        hillshadeOn: hillshadeOn,
+      });
+      rebuildContours(cfg);
+      if (viewMode === 'map') syncTerrain();
+      poleDemHidden = !poleOnScreen();
+      syncPoleDem();
+      toast(id === 'mapterhorn' ? 'DEM · Mapterhorn（阿尔卑斯高分）' : 'DEM · Terrarium 30m');
+    }
+
+    function landcoverWanted() {
+      return false;
+    }
+    function syncLandcoverVis() {
+      if (!map || !VP || typeof VP.setLandcover !== 'function') return;
+      VP.setLandcover(map, landcoverWanted());
+    }
+
+    var SAT_LAYER_ID = 'satellite';
+    var SAT_SOURCE_ID = 'basemapRaster';
+    var hanCityLayer = null;
+    var ANTIQUE_CSS = VP.normalizeCss({
+      sepia: 0.08, saturate: 0.98, contrast: 1.03, brightness: 1,
+      hueRotate: -1, warmTintColor: '#9a8868', warmTintAlpha: 0.04, vignetteStrength: 0.1,
+    });
+    var NEUTRAL_CSS = VP.normalizeCss({
+      sepia: 0, saturate: 1, contrast: 1, brightness: 1, hueRotate: 0,
+      warmTintAlpha: 0, vignetteStrength: 0.08,
+    });
+    var VECTOR_HIDE_ON_MAP = [
+      'vl-water-ocean', 'vl-water', 'vl-water-river', 'vl-water-pond',
+      'vl-waterway', 'vl-waterway-stream', 'vl-waterway-canal', 'vl-waterway-drain',
+      'vl-boundary', 'vl-boundary-province', 'vl-polar-ice',
+      'vl-building', 'vl-building-3d',
+    ];
+
+    function satConfig() {
+      var sat = (window.MAP_TILE_CONFIG && window.MAP_TILE_CONFIG.satellite) || {};
+      return {
+        enabled: sat.enabled !== false && Array.isArray(sat.tiles) && sat.tiles.length > 0,
+        tiles: sat.tiles || [],
+        tileSize: sat.tileSize || 256,
+        maxzoom: sat.maxzoom != null ? sat.maxzoom : 14,
+        attribution: sat.attribution || '',
+        sourceId: sat.sourceId || SAT_SOURCE_ID,
+        layerId: sat.layerId || SAT_LAYER_ID,
+      };
+    }
+
+    function setLayerVis(id, on) {
+      if (!map || typeof map.getLayer !== 'function' || !map.getLayer(id)) return;
+      map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
+    }
+
+    function ensureSatellite() {
+      if (!map) return;
+      var sat = satConfig();
+      if (!sat.enabled) return;
+      if (!map.getSource(sat.sourceId)) {
+        map.addSource(sat.sourceId, {
+          type: 'raster',
+          tiles: sat.tiles,
+          tileSize: sat.tileSize,
+          maxzoom: sat.maxzoom,
+          attribution: sat.attribution,
+        });
+      }
+      if (!map.getLayer(sat.layerId)) {
+        var before = map.getLayer('vl-water-ocean') ? 'vl-water-ocean' : undefined;
+        map.addLayer({
+          id: sat.layerId,
+          type: 'raster',
+          source: sat.sourceId,
+          layout: { visibility: 'none' },
+          paint: {
+            'raster-opacity': 0.7,
+            'raster-saturation': -0.08,
+            'raster-contrast': 0.02,
+            'raster-brightness-min': 0.08,
+            'raster-brightness-max': 0.96,
+            'raster-hue-rotate': 12,
+          },
+        }, before);
+      }
+    }
+
+    function ensureCities() {
+      if (hanCityLayer || !map || !window.HanCity3D) return;
+      function mount(cities) {
+        try {
+          hanCityLayer = HanCity3D.addExtrusionCities(map, maplibregl, {
+            cities: cities,
+            halfKm: 18,
+            visible: viewMode === 'map',
+          });
+        } catch (e) {
+          console.warn('城池层添加失败', e);
+        }
+      }
+      fetch('assets/sample-sites.json')
+        .then(function (r) { return r.ok ? r.json() : []; })
+        .then(function (data) {
+          mount(Array.isArray(data) ? data : []);
+        })
+        .catch(function () {
+          mount(HanCity3D.FALLBACK_CITIES || []);
+        });
+    }
+
+    function syncMergedLook() {
+      if (!map) return;
+      var isMap = viewMode === 'map';
+      var reliefBtn = document.getElementById('sw-relief');
+      var reliefOn = !!(reliefBtn && reliefBtn.classList.contains('on'));
+      ensureSatellite();
+      var sat = satConfig();
+      setLayerVis(sat.layerId, isMap);
+      VECTOR_HIDE_ON_MAP.forEach(function (id) { setLayerVis(id, !isMap); });
+      if (hanCityLayer && typeof hanCityLayer.setVisible === 'function') {
+        hanCityLayer.setVisible(isMap);
+      }
+      if (typeof VP.setRelief === 'function') VP.setRelief(map, isMap ? false : reliefOn);
+      applyCssGrade(isMap ? ANTIQUE_CSS : NEUTRAL_CSS);
+    }
+
+    function flushUiChanges() {
+      uiFrame = 0;
+      uiApplyStats.frames += 1;
+      var keys = Object.keys(pendingPaintKeys);
+      pendingPaintKeys = {};
+      if (keys.length && map) {
+        VP.applyVectorPaint(map, paint, keys);
+        uiApplyStats.paintFlushes += 1;
+        uiApplyStats.paintKeys += keys.length;
+      }
+      if (pendingElevation) {
+        pendingElevation = false;
+        if (map) VP.applyElevationRamp(map, elevStops);
+        uiApplyStats.elevationFlushes += 1;
+      }
+      if (pendingTerrain) {
+        pendingTerrain = false;
+        syncTerrain();
+        uiApplyStats.terrainFlushes += 1;
+      }
+    }
+
+    function scheduleUiFlush() {
+      if (!uiFrame) uiFrame = requestAnimationFrame(flushUiChanges);
+    }
+
+    function queuePaintKey(key) {
+      pendingPaintKeys[key] = true;
+      scheduleUiFlush();
+    }
+
+    function queueElevation() {
+      pendingElevation = true;
+      scheduleUiFlush();
+    }
+
+    function queueTerrain() {
+      pendingTerrain = true;
+      scheduleUiFlush();
+    }
+
+    function setTerrainExUi(ex, opts) {
+      opts = opts || {};
+      var next = Number(ex);
+      if (!isFinite(next)) next = VP.TERRAIN_REAL_EXAGGERATION;
+      terrainEx = Math.max(0, Math.min(3, next));
+      var slider = document.getElementById('terrain-ex');
+      var val = document.getElementById('terrain-ex-val');
+      if (slider) slider.value = String(terrainEx);
+      if (val) val.textContent = terrainEx.toFixed(2);
+      queueTerrain();
+      if (opts.look) applyScene('qilian');
+    }
+
+    function toast(msg) {
+      var el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(toast._t);
+      toast._t = setTimeout(function () { el.classList.remove('show'); }, 1800);
+    }
+
+    function renderScenes() {
+      var list = document.getElementById('scene-list');
+      if (!list) return;
+      list.innerHTML = '';
+      VP.SCENES.forEach(function (s) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'scene-item' + (s.id === activeScene ? ' active' : '');
+        b.setAttribute('data-scene', s.id);
+        b.innerHTML = '<strong>' + s.title + '</strong><span>' + s.blurb + '</span>';
+        b.addEventListener('click', function () { applyScene(s.id); });
+        list.appendChild(b);
+      });
+    }
+
+    function renderSkins() {
+      var list = document.getElementById('skin-list');
+      if (!list) return;
+      list.innerHTML = '';
+      VP.SKINS.forEach(function (s) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'scene-item' + (s.id === activeSkin ? ' active' : '');
+        b.setAttribute('data-skin', s.id);
+        b.innerHTML = '<strong>' + s.label + '</strong><span>' + s.blurb + '</span>';
+        b.addEventListener('click', function () { applySkin(s.id); });
+        list.appendChild(b);
+      });
+    }
+
+    function applySkin(id) {
+      var skin = VP.SKINS.filter(function (s) { return s.id === id; })[0];
+      if (!skin) return;
+      activeSkin = id;
+      lastSkin = id;
+      paint = VP.normalizePaint(skin.paint);
+      renderSkins();
+      renderColors();
+      if (map) VP.applyVectorPaint(map, paint);
+      applyCssGrade(skin.css);
+      if (isolateCtl && typeof isolateCtl.sync === 'function') isolateCtl.sync();
+      toast('皮肤 · ' + skin.label);
+    }
+
+    function renderColors() {
+      var host = document.getElementById('color-list');
+      if (!host) return;
+      host.innerHTML = '';
+      var group = '';
+      VP.COLOR_FIELDS.forEach(function (f) {
+        if (f.group !== group) {
+          group = f.group;
+          var lab = document.createElement('div');
+          lab.className = 'group-label';
+          lab.textContent = group;
+          host.appendChild(lab);
+        }
+        var row = document.createElement('div');
+        row.className = 'color-row';
+        var name = document.createElement('span');
+        name.textContent = f.label;
+        var inp = document.createElement('input');
+        inp.type = 'color';
+        inp.setAttribute('data-key', f.key);
+        inp.value = paint[f.key];
+        inp.addEventListener('input', function () {
+          paint[f.key] = inp.value;
+          if (activeSkin) {
+            activeSkin = '';
+            renderSkins();
+          }
+          queuePaintKey(f.key);
+        });
+        row.appendChild(name);
+        row.appendChild(inp);
+        host.appendChild(row);
+      });
+    }
+
+    function renderElevation() {
+      var host = document.getElementById('elev-list');
+      if (!host) return;
+      host.innerHTML = '';
+      elevStops.forEach(function (s, i) {
+        var row = document.createElement('div');
+        row.className = 'color-row';
+        var name = document.createElement('span');
+        name.textContent = s.label;
+        var inp = document.createElement('input');
+        inp.type = 'color';
+        inp.setAttribute('data-elev', String(s.h));
+        inp.value = s.color;
+        inp.addEventListener('input', function () {
+          elevStops[i].color = inp.value;
+          queueElevation();
+        });
+        row.appendChild(name);
+        row.appendChild(inp);
+        host.appendChild(row);
+      });
+    }
+
+    function applyScene(id) {
+      var scene = VP.SCENES.filter(function (s) { return s.id === id; })[0];
+      if (!scene || !map) return;
+      if (sceneFitsGlobe(scene)) {
+        applyProjection('globe');
+        activeScene = 'world';
+        renderScenes();
+        jumpCam(GLOBE_CAM);
+        return;
+      }
+      activeScene = id;
+      renderScenes();
+      if (viewMode === 'globe') {
+        applyProjection('map', { skipRestore: true, skipTerrain: true });
+      }
+      jumpCam({
+        center: scene.camera.center,
+        zoom: scene.camera.zoom,
+        pitch: scene.camera.pitch,
+        bearing: scene.camera.bearing,
+      });
+      if (viewMode === 'map') syncTerrain();
+    }
+
+    function exportText() {
+      var out = VP.exportPreset(paint, { skin: lastSkin, css: cssGrade });
+      out.family = skinDeepLink ? 'skin' : (cameraDeepLink ? 'camera' : 'skin');
+      out.variant = skinDeepLink ? (lastSkin || '') : (deepVariant || lastSkin || '');
+      if (isolateCtl && typeof isolateCtl.getState === 'function') {
+        var iso = isolateCtl.getState();
+        out.isolate = {
+          enabled: iso.enabled,
+          regionId: iso.regionId,
+          island: iso.island,
+          sideColor: iso.sideColor,
+        };
+      }
+      return JSON.stringify(out, null, 2);
+    }
+
+    var poleDemHidden = false;
+    function poleOnScreen() {
+      if (!map || typeof map.project !== 'function') return false;
+      if (Math.abs(map.getCenter().lat) > 62) return true;
+      // Close-up south looks (Qilian pitch 70) project [0,-85] into the frustum
+      // and would hide the whole hillshade layer. Only scan poles when far.
+      if (map.getZoom() >= 6) return false;
+      var box = map.getContainer();
+      var w = box.clientWidth;
+      var h = box.clientHeight;
+      function vis(ll) {
+        try {
+          var p = map.project(ll);
+          return p.x > -120 && p.y > -120 && p.x < w + 120 && p.y < h + 120;
+        } catch (e) { return false; }
+      }
+      return vis([0, 85]) || vis([0, -85]);
+    }
+    function syncPoleDem() {
+      if (!map) return;
+      var hide = poleOnScreen();
+      if (hide === poleDemHidden) return;
+      poleDemHidden = hide;
+      if (typeof map.getLayer === 'function' && map.getLayer('vl-hillshade')) {
+        map.setLayoutProperty('vl-hillshade', 'visibility', hide ? 'none' : 'visible');
+      }
+    }
+
+    document.getElementById('sw-relief').addEventListener('click', function () {
+      var on = !this.classList.contains('on');
+      this.classList.toggle('on', on);
+      this.setAttribute('aria-pressed', on ? 'true' : 'false');
+      syncMergedLook();
+    });
+
+    document.querySelectorAll('#viewmode-seg button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        applyProjection(b.getAttribute('data-mode'));
+      });
+    });
+    document.getElementById('terrain-ex').addEventListener('input', function () {
+      setTerrainExUi(this.value);
+    });
+
+    renderSkins();
+    renderScenes();
+    renderColors();
+    renderElevation();
+    syncDemUi();
+    applyCssGrade(cssGrade);
+    if (skinDeepLink || (cameraDeepLink && viewMode === 'map')) applyProjection('map');
+
+    function tuningParam(name, allowed) {
+      var value = Number(new URLSearchParams(location.search).get(name));
+      return allowed.indexOf(value) >= 0 ? value : null;
+    }
+
+    // 6 is the current auto-tuned default and is accepted as the A/B control.
+    var perfWorkers = tuningParam('perfWorkers', [1, 2, 4, 6]);
+    var perfImages = tuningParam('perfImages', [16, 32]);
+    var perfCacheZoom = tuningParam('perfCacheZoom', [5, 8, 12]);
+    var runtimeOptions = {};
+    if (perfWorkers != null) runtimeOptions.workerCount = perfWorkers;
+    if (perfImages != null) runtimeOptions.maxParallelImageRequests = perfImages;
+    var tunedMapOptions = {
+      minZoom: viewMode === 'globe' ? GLOBE_MIN_ZOOM : MAP_MIN_ZOOM,
+      maxZoom: viewMode === 'globe' ? GLOBE_MAX_ZOOM : MAP_MAX_ZOOM,
+      renderWorldCopies: true,
+    };
+    if (perfCacheZoom != null) tunedMapOptions.maxTileCacheZoomLevels = perfCacheZoom;
+
+    var startCam = (VP.SCENES.filter(function (s) { return s.id === activeScene; })[0] || VP.SCENES[0]).camera;
+    var bootTileConfig = tileConfigFor(activeDem);
+    var style = VP.buildStyle({
+      paint: paint,
+      tileConfig: bootTileConfig,
+      farLandcover: 'none',
+      contourTiles: [],
+    });
+    var initialRelief = style.layers.filter(function (layer) { return layer.id === 'vl-relief'; })[0];
+    if (initialRelief) {
+      initialRelief.layout = initialRelief.layout || {};
+      initialRelief.layout.visibility = 'visible';
+      initialRelief.paint['color-relief-color'] = VP.elevationColorExpr(elevStops);
+    }
+    style.layers.forEach(function (layer) {
+      if (VP.LANDCOVER_LAYER_IDS && VP.LANDCOVER_LAYER_IDS.indexOf(layer.id) >= 0) {
+        layer.layout = layer.layout || {};
+        layer.layout.visibility = 'none';
+      }
+    });
+    style.sky = globeSky();
+    if (viewMode === 'globe') delete style.terrain;
+    map = FX.createMap(maplibregl, {
+      mode: 'tuner',
+      container: 'map',
+      style: style,
+      camera: startCam,
+      maxPitch: 85,
+      attributionControl: true,
+      terrain: viewMode === 'globe' ? null : {
+        sourceId: VP.TERRAIN_SOURCE_ID,
+        exaggeration: terrainEx,
+        sky: false,
+      },
+      runtimeOptions: runtimeOptions,
+      mapOptions: tunedMapOptions,
+    });
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
+    map.on('zoomend', function () {
+      syncTerrain();
+    });
+    map.on('move', syncPoleDem);
+    if (window.AntiqueIsolateWorkbench) {
+      isolateCtl = AntiqueIsolateWorkbench.mount({
+        map: map,
+        maplibregl: maplibregl,
+        FX: FX,
+        getViewMode: function () { return viewMode; },
+        getBackground: function () { return paint.background; },
+        toast: toast,
+        globeSky: globeSky,
+        wrapEl: document.getElementById('map'),
+        enabled: !!isolateDeepLink,
+        regionId: isolateRegionBoot,
+        sideColor: '#6d4a36',
+        onNeedMap: function () { applyProjection('map'); },
+        onChange: function (st) {
+          window.__vectorIsolateState = st;
+          if (!map || !FX) return;
+          if (st && st.enabled && st.island) {
+            terrainOn = true;
+            FX.setTerrainEx(map, VP.TERRAIN_SOURCE_ID, terrainEx, { budget: false });
+          } else {
+            syncTerrain();
+          }
+        },
+      });
+    }
+    window.__vectorDeepLink = skinDeepLink ? {
+      family: 'skin',
+      variant: deepVariant || lastSkin,
+      id: 'skin.' + (deepVariant || lastSkin),
+      skinId: lastSkin,
+      sceneId: activeScene,
+    } : (cameraDeepLink ? {
+      family: 'camera',
+      variant: deepVariant,
+      id: 'camera.' + deepVariant,
+      sceneId: activeScene,
+      isolate: !!isolateDeepLink,
+      regionId: isolateRegionBoot,
+    } : null);
+    window.__vectorDemo = {
+      map: map,
+      get paint() { return paint; },
+      get terrainEx() { return terrainEx; },
+      VP: VP,
+      FX: FX,
+      exportText: exportText,
+      applySkin: applySkin,
+      applyProjection: applyProjection,
+      applyScene: applyScene,
+      get viewMode() { return viewMode; },
+      syncLandcoverVis: syncLandcoverVis,
+      setTerrainExUi: setTerrainExUi,
+      applyDem: applyDem,
+      get demPreset() { return activeDem; },
+      flushUiChanges: flushUiChanges,
+      uiApplyStats: uiApplyStats,
+      isolate: isolateCtl,
+      perfTuning: {
+        workerCount: perfWorkers,
+        maxParallelImageRequests: perfImages,
+        maxTileCacheZoomLevels: perfCacheZoom,
+      },
+    };
+    // Patched 5.6 UMD: set projection after load (same as 6.6).
+    map.once('load', function () {
+      ensureSatellite();
+      ensureCities();
+      if (skinDeepLink || isolateDeepLink || (cameraDeepLink && viewMode === 'map')) {
+        applyProjection('map', { force: true, skipRestore: true });
+        applyScene(activeScene);
+      } else {
+        applyProjection('globe', { force: true, forceFrame: true });
+      }
+      syncMergedLook();
+      if (isolateCtl) isolateCtl.start();
+      poleDemHidden = false;
+      syncPoleDem();
+    });
+  })();
+  </script>
+</body>
+</html>

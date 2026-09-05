@@ -1,4 +1,4 @@
-# china-antique-maplibre
+# MapStage
 
 [English](README.md) | **中文**
 
@@ -6,21 +6,21 @@
 
 ## 在线演示
 
-**→ https://hopechen067.github.io/china-antique-maplibre/**  
+**→ https://hopechen067.github.io/MapStage/**  
 交互调参器（EOX 卫星底图 + Terrarium 山影需联网。无需安装。）
 
 ### 演示视频
 
 本栈在真实地图叙事片中的效果示例（**河西走廊 · 河西四郡**）。低分辨率短片，由 GitHub Pages 提供流式播放：
 
-https://hopechen067.github.io/china-antique-maplibre/media/hexi-ep07-demo-480p.mp4
+https://hopechen067.github.io/MapStage/media/hexi-ep07-demo-480p.mp4
 
 <video
   controls
   playsinline
   preload="metadata"
   width="720"
-  src="https://hopechen067.github.io/china-antique-maplibre/media/hexi-ep07-demo-480p.mp4">
+  src="https://hopechen067.github.io/MapStage/media/hexi-ep07-demo-480p.mp4">
 </video>
 
 更长片段（约 36 秒）：[showcases/hexi-ep07/hexi-ep07-map-clip.mp4](showcases/hexi-ep07/hexi-ep07-map-clip.mp4)
@@ -73,21 +73,21 @@ https://hopechen067.github.io/china-antique-maplibre/media/hexi-ep07-demo-480p.m
 | 水系 | **可选 / 不随仓库分发** — 本地 `water-data.js` + `water-pack.json` 的 `enabled:true`；见 [DATA-PROVENANCE.md](DATA-PROVENANCE.md) |
 | 风格 | 古卷 CSS 调参 + 分级城池（`HanCity3D`） |
 | 许可证 | 代码/文档 [MIT](LICENSE)；展示媒体与第三方条款见 [LICENSE-EXCEPTIONS.md](LICENSE-EXCEPTIONS.md) / [NOTICE.md](NOTICE.md) |
-| 在线演示 | [在线演示](https://hopechen067.github.io/china-antique-maplibre/) — Pages 将 `china-antique-maplibre/tuner` 发布到站点根路径 |
+| 在线演示 | [在线演示](https://hopechen067.github.io/MapStage/) — Pages 将 `china-antique-maplibre/tuner` 发布到站点根路径 |
 
 ## 快速拉取（安装）
 
 ### 1）克隆仓库
 
 ```bash
-git clone https://github.com/hopechen067/china-antique-maplibre.git
-cd china-antique-maplibre
+git clone https://github.com/hopechen067/MapStage.git
+cd MapStage
 ```
 
 之后更新：
 
 ```bash
-cd china-antique-maplibre
+cd MapStage
 git pull
 ```
 
@@ -116,28 +116,28 @@ Copy-Item -Recurse -Force $src $dst
 **macOS / Linux：**
 
 ```bash
-git clone https://github.com/hopechen067/china-antique-maplibre.git
-cp -R china-antique-maplibre/china-antique-maplibre ~/.grok/skills/china-antique-maplibre
+git clone https://github.com/hopechen067/MapStage.git
+cp -R MapStage/china-antique-maplibre ~/.grok/skills/china-antique-maplibre
 # 或：~/.codex/skills/china-antique-maplibre
 ```
 
 一条命令（Unix：克隆 + 装 skill）：
 
 ```bash
-git clone --depth 1 https://github.com/hopechen067/china-antique-maplibre.git \
-  && cp -R china-antique-maplibre/china-antique-maplibre ~/.grok/skills/china-antique-maplibre
+git clone --depth 1 https://github.com/hopechen067/MapStage.git \
+  && cp -R MapStage/china-antique-maplibre ~/.grok/skills/china-antique-maplibre
 ```
 
 ### 3）复制给 Agent 的话术
 
 ```text
 请使用 china-antique-maplibre skill。
-在线调参：https://hopechen067.github.io/china-antique-maplibre/
-仓库：https://github.com/hopechen067/china-antique-maplibre
+在线调参：https://hopechen067.github.io/MapStage/
+仓库：https://github.com/hopechen067/MapStage
 我会在 demo 里调好风格后导出 JSON，请按 SKILL.md / references 应用到地图场景（jumpTo + idle，encoding terrarium）。
 ```
 
-风格流程：打开 [在线演示](https://hopechen067.github.io/china-antique-maplibre/) → 调参 → **复制 JSON** → 粘贴给 agent。
+风格流程：打开 [在线演示](https://hopechen067.github.io/MapStage/) → 调参 → **复制 JSON** → 粘贴给 agent。
 
 ## 快速开始（本机调参）
 

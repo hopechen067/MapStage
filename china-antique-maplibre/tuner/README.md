@@ -1,6 +1,6 @@
 # Tuner · antique MapLibre
 
-Live CSS / paint tuner for **china-antique-maplibre**.
+Live CSS / paint tuner for **MapStage**.
 
 ## Start
 
@@ -9,7 +9,7 @@ cd china-antique-maplibre/tuner
 python -m http.server 8765
 ```
 
-Open [http://localhost:8765/](http://localhost:8765/).
+Open [http://localhost:8765/](http://localhost:8765/) for the merged map (`index.html`): 地图（卫星 + 城池）/ 地球（海拔设色 + 拆出）. No water overlay.
 
 HTTP (or localhost) only — do not use `file://`.
 
