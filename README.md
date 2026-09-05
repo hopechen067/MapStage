@@ -2,70 +2,34 @@
 
 **English** | [中文](README.zh-CN.md)
 
-Open-source **antique parchment** MapLibre stack for China historical maps and short-form video (HyperFrames or any MapLibre host).
+Open-source **MapLibre tuner**: map and globe projection, satellite, hypsometric relief, 3D terrain, region isolate, and JSON presets.
 
 ## Live demo
 
 **→ https://hopechen067.github.io/MapStage/**  
 Interactive tuner (EOX satellite + Mapterhorn DEM need internet. No install.)
 
-### Demo video
-
-Example output of this stack in a real map-story episode (**河西走廊 · 河西四郡**). Low-res clip streamed from GitHub Pages:
-
-https://hopechen067.github.io/MapStage/media/hexi-ep07-demo-480p.mp4
-
-<video
-  controls
-  playsinline
-  preload="metadata"
-  width="720"
-  src="https://hopechen067.github.io/MapStage/media/hexi-ep07-demo-480p.mp4">
-</video>
-
-Longer clip (~36s): [showcases/hexi-ep07/hexi-ep07-map-clip.mp4](showcases/hexi-ep07/hexi-ep07-map-clip.mp4)
-
 ## What's new
 
 - **Map / Globe** projection, independent satellite and hypsometric relief, optional region isolate (terrain island).
 - Hillshade and 3D terrain use **Mapterhorn** DEM (was AWS Terrarium).
 - Built-in OpenFreeMap vector water; the China hydrography pack is not shipped.
-- Antique CSS grade can be toggled; copy JSON includes the live camera and resource switches.
+- CSS color grade can be toggled; copy JSON includes the live camera and resource switches.
 - Public repo renamed to **MapStage**.
 
 ## Showcases
 
-Still frames from the Hexi episode, plus the current tuner.
+Current tuner: national map, 3D terrain, globe, isolate.
 
 <table>
-  <tr>
-    <td align="center" width="50%">
-      <img src="showcases/hexi-ep07/still-01-open.jpg" alt="Wuwei oasis and Shiyang River" />
-      <br /><sub>武威 · oasis / Shiyang River</sub>
-    </td>
-    <td align="center" width="50%">
-      <img src="showcases/hexi-ep07/still-03-commanderies.jpg" alt="Jiuquan terrain and water" />
-      <br /><sub>酒泉 · terrain + water</sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" width="50%">
-      <img src="showcases/hexi-ep07/still-02-corridor.jpg" alt="Hexi corridor map shot" />
-      <br /><sub>Hexi corridor map shot</sub>
-    </td>
-    <td align="center" width="50%">
-      <img src="showcases/hexi-ep07/still-05-close.jpg" alt="Settlement close-up" />
-      <br /><sub>Settlement close-up</sub>
-    </td>
-  </tr>
   <tr>
     <td align="center" width="50%">
       <img src="showcases/preview-tuner-china.jpg" alt="Tuner national map view" />
       <br /><sub>Tuner · national view (map)</sub>
     </td>
     <td align="center" width="50%">
-      <img src="showcases/preview-tuner-hexi.jpg" alt="Tuner Hexi 3D terrain" />
-      <br /><sub>Tuner · Hexi / 3D terrain</sub>
+      <img src="showcases/preview-tuner-hexi.jpg" alt="Tuner 3D terrain" />
+      <br /><sub>Tuner · 3D terrain</sub>
     </td>
   </tr>
   <tr>
@@ -75,12 +39,10 @@ Still frames from the Hexi episode, plus the current tuner.
     </td>
     <td align="center" width="50%">
       <img src="showcases/preview-tuner-isolate.jpg" alt="Tuner isolate China terrain island" />
-      <br /><sub>Tuner · isolate China</sub>
+      <br /><sub>Tuner · isolate</sub>
     </td>
   </tr>
 </table>
-
-More files: [showcases/hexi-ep07/](showcases/hexi-ep07/)
 
 | Item | Value |
 |------|--------|
@@ -89,7 +51,7 @@ More files: [showcases/hexi-ep07/](showcases/hexi-ep07/)
 | Default basemap | **EOX Sentinel-2 cloudless** (public demo WMTS; check provider terms) |
 | Terrain / hillshade | **Mapterhorn** DEM (runtime fetch; Terrarium encoding) |
 | Water | OpenFreeMap vector water; optional China pack **not shipped** — see [DATA-PROVENANCE.md](DATA-PROVENANCE.md) |
-| Look | Antique CSS tuner, map/globe, isolate island, `HanCity3D` settlements |
+| Look | CSS color grade, map/globe, isolate island, `HanCity3D` settlements |
 | License | [MIT](LICENSE) for code/docs; showcase media & third-party terms in [LICENSE-EXCEPTIONS.md](LICENSE-EXCEPTIONS.md) / [NOTICE.md](NOTICE.md) |
 | Hosted demo | [Live demo](https://hopechen067.github.io/MapStage/) — Pages publishes `china-antique-maplibre/tuner` to the site root |
 
@@ -188,7 +150,7 @@ node verify.mjs
 - **Configurable raster basemap** — default [EOX Sentinel-2 cloudless](https://s2maps.eu). Override with `map-tiles.config.local.js` (gitignored) for any tile URL you are allowed to use.
 - **Mapterhorn hillshade + 3D terrain** — Terrarium encoding; map/globe projection; optional region isolate.
 - **Vector water** — OpenFreeMap / OpenMapTiles. Optional China overlay is **not** redistributed (bring your own; see DATA-PROVENANCE.md).
-- **Antique CSS tuner** — sepia / warm tint / vignette / paint; filter can be toggled; export JSON presets.
+- **CSS color grade** — sepia / warm tint / vignette / paint; filter can be toggled; export JSON presets.
 - **City tiers** — capital / large / medium / small / pass / station / ordos via `HanCity3D`.
 
 ## Configure map tiles
@@ -214,7 +176,7 @@ Satellite and DEM tiles are fetched at runtime from configured URLs only.
 
 1. Copy `china-antique-maplibre` into your skills directory.
 2. Reload agent skills so `SKILL.md` is discovered.
-3. Ask the agent to apply the antique map stack, open the tuner, or migrate an exported preset.
+3. Ask the agent to open the tuner, apply an exported JSON preset, or wire the same look into a MapLibre scene.
 
 ## Layout
 

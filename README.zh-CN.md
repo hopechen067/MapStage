@@ -2,70 +2,34 @@
 
 [English](README.md) | **中文**
 
-面向中国历史地图与短视频制作的开源 **古卷羊皮纸** MapLibre 方案（HyperFrames 或其他 MapLibre 宿主均可）。
+开源 **MapLibre 调参器**：地图 / 地球投影、卫星底图、海拔设色、三维地形、区域拆出，参数可导出 JSON。
 
 ## 在线演示
 
 **→ https://hopechen067.github.io/MapStage/**  
 交互调参器（EOX 卫星底图 + Mapterhorn 地形需联网。无需安装。）
 
-### 演示视频
-
-本栈在真实地图叙事片中的效果示例（**河西走廊 · 河西四郡**）。低分辨率短片，由 GitHub Pages 提供流式播放：
-
-https://hopechen067.github.io/MapStage/media/hexi-ep07-demo-480p.mp4
-
-<video
-  controls
-  playsinline
-  preload="metadata"
-  width="720"
-  src="https://hopechen067.github.io/MapStage/media/hexi-ep07-demo-480p.mp4">
-</video>
-
-更长片段（约 36 秒）：[showcases/hexi-ep07/hexi-ep07-map-clip.mp4](showcases/hexi-ep07/hexi-ep07-map-clip.mp4)
-
 ## 更新说明
 
 - **地图 / 地球** 投影切换；卫星与海拔设色互相独立；可选区域拆出（独立地形块）。
 - 山影与三维地形改为 **Mapterhorn** DEM（原先为 AWS Terrarium）。
 - 水系用 OpenFreeMap 矢量水；中国水系包不再随仓库分发。
-- 古卷 CSS 滤镜可开关；复制 JSON 含当前相机与资源开关。
+- 色调滤镜可开关；复制 JSON 含当前相机与资源开关。
 - 开源仓库更名为 **MapStage**。
 
 ## 效果展示
 
-河西四郡成片静帧，以及当前调参器截图。
+当前调参器：全国地图、三维地形、地球、拆出。
 
 <table>
-  <tr>
-    <td align="center" width="50%">
-      <img src="showcases/hexi-ep07/still-01-open.jpg" alt="武威 · 绿洲与石羊河" />
-      <br /><sub>武威 · 绿洲 / 石羊河</sub>
-    </td>
-    <td align="center" width="50%">
-      <img src="showcases/hexi-ep07/still-03-commanderies.jpg" alt="酒泉 · 地形与水系" />
-      <br /><sub>酒泉 · 地形 + 水系</sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" width="50%">
-      <img src="showcases/hexi-ep07/still-02-corridor.jpg" alt="走廊视角" />
-      <br /><sub>河西走廊地图镜头</sub>
-    </td>
-    <td align="center" width="50%">
-      <img src="showcases/hexi-ep07/still-05-close.jpg" alt="近景城站" />
-      <br /><sub>城站近景</sub>
-    </td>
-  </tr>
   <tr>
     <td align="center" width="50%">
       <img src="showcases/preview-tuner-china.jpg" alt="调参器全国地图视角" />
       <br /><sub>调参器 · 全国 / 地图投影</sub>
     </td>
     <td align="center" width="50%">
-      <img src="showcases/preview-tuner-hexi.jpg" alt="调参器河西三维地形" />
-      <br /><sub>调参器 · 河西俯仰</sub>
+      <img src="showcases/preview-tuner-hexi.jpg" alt="调参器三维地形" />
+      <br /><sub>调参器 · 三维地形</sub>
     </td>
   </tr>
   <tr>
@@ -74,13 +38,11 @@ https://hopechen067.github.io/MapStage/media/hexi-ep07-demo-480p.mp4
       <br /><sub>调参器 · 地球</sub>
     </td>
     <td align="center" width="50%">
-      <img src="showcases/preview-tuner-isolate.jpg" alt="调参器拆出中国" />
-      <br /><sub>调参器 · 拆出中国</sub>
+      <img src="showcases/preview-tuner-isolate.jpg" alt="调参器拆出" />
+      <br /><sub>调参器 · 拆出</sub>
     </td>
   </tr>
 </table>
-
-更多文件：[showcases/hexi-ep07/](showcases/hexi-ep07/)
 
 | 项目 | 说明 |
 |------|------|
@@ -89,7 +51,7 @@ https://hopechen067.github.io/MapStage/media/hexi-ep07-demo-480p.mp4
 | 默认底图 | **EOX Sentinel-2 cloudless**（公开演示 WMTS，请自行遵守图源条款） |
 | 地形 / 山影 | **Mapterhorn** DEM（运行时拉取；Terrarium 编码） |
 | 水系 | OpenFreeMap 矢量水；可选中国水系包**不随仓库分发** — 见 [DATA-PROVENANCE.md](DATA-PROVENANCE.md) |
-| 风格 | 古卷 CSS 调参、地图/地球、拆出地形块、`HanCity3D` 城池 |
+| 风格 | 色调滤镜、地图/地球、拆出地形块、`HanCity3D` 城池 |
 | 许可证 | 代码/文档 [MIT](LICENSE)；展示媒体与第三方条款见 [LICENSE-EXCEPTIONS.md](LICENSE-EXCEPTIONS.md) / [NOTICE.md](NOTICE.md) |
 | 在线演示 | [在线演示](https://hopechen067.github.io/MapStage/) — Pages 将 `china-antique-maplibre/tuner` 发布到站点根路径 |
 
@@ -188,7 +150,7 @@ node verify.mjs
 - **可配置栅格底图** — 默认 [EOX Sentinel-2 cloudless](https://s2maps.eu)；其他源用 gitignore 的 `map-tiles.config.local.js`。
 - **Mapterhorn 山影 + 三维地形** — Terrarium 编码；地图/地球投影；可选区域拆出。
 - **矢量水系** — OpenFreeMap / OpenMapTiles。可选中国水系包**不**随仓库再分发（自备数据；见 DATA-PROVENANCE.md）。
-- **古卷 CSS 调参** — sepia / 暖调 / 暗角 / 画笔；滤镜可关；导出 JSON 预设。
+- **色调滤镜** — sepia / 暖调 / 暗角 / 画笔；滤镜可关；导出 JSON 预设。
 - **城池分级** — 都城 / 大城 / 中城 / 小城 / 关隘 / 驿站 / 都护等。
 
 ## 配置地图瓦片
@@ -214,7 +176,7 @@ EOX 公共瓦片多为非商用 + 需署名（约 10 m）。本项目不授予�
 
 1. 将 `china-antique-maplibre` 复制到 skills 目录。  
 2. 重载 skills，使 `SKILL.md` 生效。  
-3. 让 agent 应用古卷地图栈、打开调参器或迁移导出预设。
+3. 让 agent 打开调参器、套用导出的 JSON 预设，或把同一套外观接到 MapLibre 场景。
 
 ## 目录结构
 
