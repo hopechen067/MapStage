@@ -7,7 +7,7 @@ Open-source **antique parchment** MapLibre stack for China historical maps and s
 ## Live demo
 
 **→ https://hopechen067.github.io/MapStage/**  
-Interactive tuner (EOX satellite + Terrarium DEM need internet. No install.)
+Interactive tuner (EOX satellite + Mapterhorn DEM need internet. No install.)
 
 ### Demo video
 
@@ -25,9 +25,17 @@ https://hopechen067.github.io/MapStage/media/hexi-ep07-demo-480p.mp4
 
 Longer clip (~36s): [showcases/hexi-ep07/hexi-ep07-map-clip.mp4](showcases/hexi-ep07/hexi-ep07-map-clip.mp4)
 
+## What's new
+
+- **Map / Globe** projection, independent satellite and hypsometric relief, optional region isolate (terrain island).
+- Hillshade and 3D terrain use **Mapterhorn** DEM (was AWS Terrarium).
+- Built-in OpenFreeMap vector water; the China hydrography pack is not shipped.
+- Antique CSS grade can be toggled; copy JSON includes the live camera and resource switches.
+- Public repo renamed to **MapStage**.
+
 ## Showcases
 
-Still frames from the same open demo, plus live tuner captures.
+Still frames from the Hexi episode, plus the current tuner.
 
 <table>
   <tr>
@@ -52,12 +60,22 @@ Still frames from the same open demo, plus live tuner captures.
   </tr>
   <tr>
     <td align="center" width="50%">
-      <img src="showcases/preview-eox-china.png" alt="Tuner national view" />
-      <br /><sub>Tuner · national view (EOX)</sub>
+      <img src="showcases/preview-tuner-china.jpg" alt="Tuner national map view" />
+      <br /><sub>Tuner · national view (map)</sub>
     </td>
     <td align="center" width="50%">
-      <img src="showcases/preview-eox-hexi.png" alt="Tuner Hexi view" />
-      <br /><sub>Tuner · Hexi / hillshade</sub>
+      <img src="showcases/preview-tuner-hexi.jpg" alt="Tuner Hexi 3D terrain" />
+      <br /><sub>Tuner · Hexi / 3D terrain</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="showcases/preview-tuner-globe.jpg" alt="Tuner globe projection" />
+      <br /><sub>Tuner · globe</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="showcases/preview-tuner-isolate.jpg" alt="Tuner isolate China terrain island" />
+      <br /><sub>Tuner · isolate China</sub>
     </td>
   </tr>
 </table>
@@ -69,9 +87,9 @@ More files: [showcases/hexi-ep07/](showcases/hexi-ep07/)
 | Skill folder | `china-antique-maplibre` |
 | Runtime | [MapLibre GL JS](https://maplibre.org/) |
 | Default basemap | **EOX Sentinel-2 cloudless** (public demo WMTS; check provider terms) |
-| Terrain / hillshade | AWS Terrarium DEM (runtime fetch; `encoding: 'terrarium'`) |
-| Water | **Optional / not shipped** — local `water-data.js` + `water-pack.json` `enabled:true`; see [DATA-PROVENANCE.md](DATA-PROVENANCE.md) |
-| Look | Antique CSS tuner + tiered settlement extrusions (`HanCity3D`) |
+| Terrain / hillshade | **Mapterhorn** DEM (runtime fetch; Terrarium encoding) |
+| Water | OpenFreeMap vector water; optional China pack **not shipped** — see [DATA-PROVENANCE.md](DATA-PROVENANCE.md) |
+| Look | Antique CSS tuner, map/globe, isolate island, `HanCity3D` settlements |
 | License | [MIT](LICENSE) for code/docs; showcase media & third-party terms in [LICENSE-EXCEPTIONS.md](LICENSE-EXCEPTIONS.md) / [NOTICE.md](NOTICE.md) |
 | Hosted demo | [Live demo](https://hopechen067.github.io/MapStage/) — Pages publishes `china-antique-maplibre/tuner` to the site root |
 
@@ -168,15 +186,15 @@ node verify.mjs
 ## Features
 
 - **Configurable raster basemap** — default [EOX Sentinel-2 cloudless](https://s2maps.eu). Override with `map-tiles.config.local.js` (gitignored) for any tile URL you are allowed to use.
-- **Terrarium hillshade + terrain** — `encoding: 'terrarium'` is required.
-- **Optional water overlay** — loader + paint UI kept; hydrography data is **not** redistributed (bring your own; see DATA-PROVENANCE.md).
-- **Antique CSS tuner** — sepia / warm tint / vignette / paint; export JSON presets.
+- **Mapterhorn hillshade + 3D terrain** — Terrarium encoding; map/globe projection; optional region isolate.
+- **Vector water** — OpenFreeMap / OpenMapTiles. Optional China overlay is **not** redistributed (bring your own; see DATA-PROVENANCE.md).
+- **Antique CSS tuner** — sepia / warm tint / vignette / paint; filter can be toggled; export JSON presets.
 - **City tiers** — capital / large / medium / small / pass / station / ordos via `HanCity3D`.
 
 ## Configure map tiles
 
 1. Read [NOTICE.md](NOTICE.md).
-2. Defaults: `tuner/map-tiles.config.js` (EOX + Terrarium).
+2. Defaults: `tuner/map-tiles.config.js` (EOX + Mapterhorn).
 3. Personal endpoints: `map-tiles.config.local.js` (gitignored). See `map-tiles.config.example.js`.
 
 EOX public tiles are typically non-commercial with attribution (~10 m). This project does **not** grant rights to any commercial map vendor.

@@ -7,7 +7,7 @@
 ## 在线演示
 
 **→ https://hopechen067.github.io/MapStage/**  
-交互调参器（EOX 卫星底图 + Terrarium 山影需联网。无需安装。）
+交互调参器（EOX 卫星底图 + Mapterhorn 地形需联网。无需安装。）
 
 ### 演示视频
 
@@ -25,9 +25,17 @@ https://hopechen067.github.io/MapStage/media/hexi-ep07-demo-480p.mp4
 
 更长片段（约 36 秒）：[showcases/hexi-ep07/hexi-ep07-map-clip.mp4](showcases/hexi-ep07/hexi-ep07-map-clip.mp4)
 
+## 更新说明
+
+- **地图 / 地球** 投影切换；卫星与海拔设色互相独立；可选区域拆出（独立地形块）。
+- 山影与三维地形改为 **Mapterhorn** DEM（原先为 AWS Terrarium）。
+- 水系用 OpenFreeMap 矢量水；中国水系包不再随仓库分发。
+- 古卷 CSS 滤镜可开关；复制 JSON 含当前相机与资源开关。
+- 开源仓库更名为 **MapStage**。
+
 ## 效果展示
 
-同一开源演示的静帧，以及调参器截图。
+河西四郡成片静帧，以及当前调参器截图。
 
 <table>
   <tr>
@@ -52,12 +60,22 @@ https://hopechen067.github.io/MapStage/media/hexi-ep07-demo-480p.mp4
   </tr>
   <tr>
     <td align="center" width="50%">
-      <img src="showcases/preview-eox-china.png" alt="调参器全国视角" />
-      <br /><sub>调参器 · 全国视角 (EOX)</sub>
+      <img src="showcases/preview-tuner-china.jpg" alt="调参器全国地图视角" />
+      <br /><sub>调参器 · 全国 / 地图投影</sub>
     </td>
     <td align="center" width="50%">
-      <img src="showcases/preview-eox-hexi.png" alt="调参器河西视角" />
-      <br /><sub>调参器 · 河西 / 山影</sub>
+      <img src="showcases/preview-tuner-hexi.jpg" alt="调参器河西三维地形" />
+      <br /><sub>调参器 · 河西俯仰</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="showcases/preview-tuner-globe.jpg" alt="调参器地球投影" />
+      <br /><sub>调参器 · 地球</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="showcases/preview-tuner-isolate.jpg" alt="调参器拆出中国" />
+      <br /><sub>调参器 · 拆出中国</sub>
     </td>
   </tr>
 </table>
@@ -69,9 +87,9 @@ https://hopechen067.github.io/MapStage/media/hexi-ep07-demo-480p.mp4
 | Skill 目录 | `china-antique-maplibre` |
 | 运行时 | [MapLibre GL JS](https://maplibre.org/) |
 | 默认底图 | **EOX Sentinel-2 cloudless**（公开演示 WMTS，请自行遵守图源条款） |
-| 地形 / 山影 | AWS Terrarium DEM（运行时拉取；必须 `encoding: 'terrarium'`） |
-| 水系 | **可选 / 不随仓库分发** — 本地 `water-data.js` + `water-pack.json` 的 `enabled:true`；见 [DATA-PROVENANCE.md](DATA-PROVENANCE.md) |
-| 风格 | 古卷 CSS 调参 + 分级城池（`HanCity3D`） |
+| 地形 / 山影 | **Mapterhorn** DEM（运行时拉取；Terrarium 编码） |
+| 水系 | OpenFreeMap 矢量水；可选中国水系包**不随仓库分发** — 见 [DATA-PROVENANCE.md](DATA-PROVENANCE.md) |
+| 风格 | 古卷 CSS 调参、地图/地球、拆出地形块、`HanCity3D` 城池 |
 | 许可证 | 代码/文档 [MIT](LICENSE)；展示媒体与第三方条款见 [LICENSE-EXCEPTIONS.md](LICENSE-EXCEPTIONS.md) / [NOTICE.md](NOTICE.md) |
 | 在线演示 | [在线演示](https://hopechen067.github.io/MapStage/) — Pages 将 `china-antique-maplibre/tuner` 发布到站点根路径 |
 
@@ -168,15 +186,15 @@ node verify.mjs
 ## 功能
 
 - **可配置栅格底图** — 默认 [EOX Sentinel-2 cloudless](https://s2maps.eu)；其他源用 gitignore 的 `map-tiles.config.local.js`。
-- **Terrarium 山影 + 地形** — 必须 `encoding: 'terrarium'`。
-- **可选水系叠加** — 保留加载接口与调色 UI；水系原始数据**不**随仓库再分发（自备数据；见 DATA-PROVENANCE.md）。
-- **古卷 CSS 调参** — sepia / 暖调 / 暗角 / 画笔；导出 JSON 预设。
+- **Mapterhorn 山影 + 三维地形** — Terrarium 编码；地图/地球投影；可选区域拆出。
+- **矢量水系** — OpenFreeMap / OpenMapTiles。可选中国水系包**不**随仓库再分发（自备数据；见 DATA-PROVENANCE.md）。
+- **古卷 CSS 调参** — sepia / 暖调 / 暗角 / 画笔；滤镜可关；导出 JSON 预设。
 - **城池分级** — 都城 / 大城 / 中城 / 小城 / 关隘 / 驿站 / 都护等。
 
 ## 配置地图瓦片
 
 1. 阅读 [NOTICE.md](NOTICE.md)。
-2. 默认：`tuner/map-tiles.config.js`（EOX + Terrarium）。
+2. 默认：`tuner/map-tiles.config.js`（EOX + Mapterhorn）。
 3. 个人端点：`map-tiles.config.local.js`（不提交）。见 `map-tiles.config.example.js`。
 
 EOX 公共瓦片多为非商用 + 需署名（约 10 m）。本项目不授予任何商业图商权利。
