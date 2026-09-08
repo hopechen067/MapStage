@@ -90,46 +90,9 @@ GitHub CLI 2.90+：
 gh skill install hopechen067/MapStage mapstage --scope user
 ```
 
-装到 Grok：
-
-```bash
-gh skill install hopechen067/MapStage mapstage --dir ~/.grok/skills
-```
-
 然后重载 skills。Windows 上若无法创建符号链接，给 `npx` 加上 `--copy`。
 
-**或者**克隆整仓后再复制目录。**Windows（PowerShell）** — 按你用的宿主选路径：
-
-```powershell
-# Grok 等常用用户 skills 目录
-$src = ".\mapstage"
-$dst = Join-Path $env:USERPROFILE ".grok\skills\mapstage"
-New-Item -ItemType Directory -Force -Path (Split-Path $dst) | Out-Null
-Copy-Item -Recurse -Force $src $dst
-```
-
-```powershell
-# Codex 用户 skills（若你用 Codex）
-$src = ".\mapstage"
-$dst = Join-Path $env:USERPROFILE ".codex\skills\mapstage"
-New-Item -ItemType Directory -Force -Path (Split-Path $dst) | Out-Null
-Copy-Item -Recurse -Force $src $dst
-```
-
-**macOS / Linux：**
-
-```bash
-git clone https://github.com/hopechen067/MapStage.git
-cp -R MapStage/mapstage ~/.grok/skills/mapstage
-# 或：~/.codex/skills/mapstage
-```
-
-一条命令（Unix：克隆 + 装 skill）：
-
-```bash
-git clone --depth 1 https://github.com/hopechen067/MapStage.git \
-  && cp -R MapStage/mapstage ~/.grok/skills/mapstage
-```
+**或者**克隆整仓后，把 `mapstage/` 复制到你所用 agent 的 skills 目录。
 
 ### 3）复制给 Agent 的话术
 
@@ -199,7 +162,7 @@ EOX 公共瓦片多为非商用 + 需署名（约 10 m）。本项目不授予�
 
 GitHub 仓库是完整项目。Skill 只是其中的 **[`mapstage/`](https://github.com/hopechen067/MapStage/tree/master/mapstage)** 目录。
 
-1. 用 `npx skills add hopechen067/MapStage --skill mapstage -g`，或 `gh skill install hopechen067/MapStage mapstage --scope user`，或复制目录（Grok：`~/.grok/skills/mapstage`）。  
+1. 用 `npx skills add hopechen067/MapStage --skill mapstage -g`，或 `gh skill install hopechen067/MapStage mapstage --scope user`，或把 `mapstage/` 复制到你所用 agent 的 skills 目录。  
 2. 重载 skills，使 `SKILL.md` 生效。  
 3. 让 agent 打开调参器、套用导出的 JSON 预设（version 3），或把同一套外观接到 MapStage 场景。
 

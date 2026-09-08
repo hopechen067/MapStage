@@ -90,46 +90,9 @@ GitHub CLI 2.90+:
 gh skill install hopechen067/MapStage mapstage --scope user
 ```
 
-Grok destination:
-
-```bash
-gh skill install hopechen067/MapStage mapstage --dir ~/.grok/skills
-```
-
 Then reload skills. On Windows, add `--copy` to the `npx` command if symlink creation fails.
 
-**Or copy the folder** after a full clone. **Windows (PowerShell)** — pick the path your host uses:
-
-```powershell
-# Grok / common user skills dir
-$src = ".\mapstage"
-$dst = Join-Path $env:USERPROFILE ".grok\skills\mapstage"
-New-Item -ItemType Directory -Force -Path (Split-Path $dst) | Out-Null
-Copy-Item -Recurse -Force $src $dst
-```
-
-```powershell
-# Codex user skills (if you use Codex)
-$src = ".\mapstage"
-$dst = Join-Path $env:USERPROFILE ".codex\skills\mapstage"
-New-Item -ItemType Directory -Force -Path (Split-Path $dst) | Out-Null
-Copy-Item -Recurse -Force $src $dst
-```
-
-**macOS / Linux:**
-
-```bash
-git clone https://github.com/hopechen067/MapStage.git
-cp -R MapStage/mapstage ~/.grok/skills/mapstage
-# or: ~/.codex/skills/mapstage
-```
-
-One-shot clone + install (Unix):
-
-```bash
-git clone --depth 1 https://github.com/hopechen067/MapStage.git \
-  && cp -R MapStage/mapstage ~/.grok/skills/mapstage
-```
+**Or** after a full clone, copy `mapstage/` into your agent's skills directory.
 
 ### 3) Paste this to your agent
 
@@ -199,7 +162,7 @@ Satellite and DEM tiles are fetched at runtime from configured URLs only.
 
 The GitHub repo is the full project. The skill is **only** [`mapstage/`](https://github.com/hopechen067/MapStage/tree/master/mapstage).
 
-1. Install with `npx skills add hopechen067/MapStage --skill mapstage -g`, or `gh skill install hopechen067/MapStage mapstage --scope user`, or copy the folder (Grok: `~/.grok/skills/mapstage`).
+1. Install with `npx skills add hopechen067/MapStage --skill mapstage -g`, or `gh skill install hopechen067/MapStage mapstage --scope user`, or copy `mapstage/` into your agent's skills directory.
 2. Reload agent skills so `SKILL.md` is discovered.
 3. Ask the agent to open the tuner, apply an exported JSON preset (version 3), or wire the same look into a MapStage scene.
 

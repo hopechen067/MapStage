@@ -45,7 +45,7 @@ Do **not** use the tuner page as the final render host.
 
 ## Repo vs skill
 
-`git clone` of this GitHub repo pulls the **whole project**. The agent skill is only [`mapstage/`](https://github.com/hopechen067/MapStage/tree/master/mapstage). Install that folder with `npx skills add hopechen067/MapStage --skill mapstage -g` or `gh skill install hopechen067/MapStage mapstage --scope user`, or copy it into the host skills directory (e.g. `~/.grok/skills/mapstage`) and reload. Agents do not auto-discover `mapstage/SKILL.md` from a clone.
+`git clone` of this GitHub repo pulls the **whole project**. The agent skill is only [`mapstage/`](https://github.com/hopechen067/MapStage/tree/master/mapstage). Install that folder with `npx skills add hopechen067/MapStage --skill mapstage -g` or `gh skill install hopechen067/MapStage mapstage --scope user`, or copy it into the host skills directory and reload. Agents do not auto-discover `mapstage/SKILL.md` from a clone.
 
 ## References
 
