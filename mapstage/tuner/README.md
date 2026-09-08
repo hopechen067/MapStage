@@ -4,7 +4,9 @@ Live CSS / paint tuner for **MapStage**.
 
 ## Start
 
-Public demo: [https://hopechen067.github.io/MapStage/](https://hopechen067.github.io/MapStage/)
+Public demo (no local server): [https://hopechen067.github.io/MapStage/](https://hopechen067.github.io/MapStage/)
+
+To preview on your own computer, start a local HTTP server in this folder:
 
 ```bash
 cd mapstage/tuner
