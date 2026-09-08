@@ -6,14 +6,14 @@ Live CSS / paint tuner for **MapStage**.
 
 Public demo (no local server): [https://hopechen067.github.io/MapStage/](https://hopechen067.github.io/MapStage/)
 
-To preview on your own computer, start a local HTTP server in this folder:
+To preview on your own computer, start a local HTTP server in this folder, then open the local URL printed in the terminal:
 
 ```bash
 cd mapstage/tuner
-python -m http.server 8765
+python -m http.server
 ```
 
-Open [http://localhost:8765/](http://localhost:8765/) for the merged map (`index.html`): 地图 / 地球 · 卫星图 · 海拔设色 · 拆出. OpenFreeMap vector water is built-in (no GeoJSON overlay panel).
+Merged map (`index.html`): 地图 / 地球 · 卫星图 · 海拔设色 · 拆出. OpenFreeMap vector water is built-in (no GeoJSON overlay panel).
 
 HTTP (or localhost) only — do not use `file://`.
 

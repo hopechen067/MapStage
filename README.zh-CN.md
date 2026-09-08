@@ -109,22 +109,17 @@ gh skill install hopechen067/MapStage mapstage --scope user
 
 [在线演示](#在线演示) 已经在 GitHub Pages 上跑着，**你的电脑不用启动任何服务**。
 
-只有你要在本机改文件、离线预览时，才需要在**自己的电脑**上起一个本地 HTTP 服务（静态文件服务器，不是后台 API）。命令在你这台机器的终端里执行，浏览器也在同一台机器打开。
+只有你要在本机改文件、离线预览时，才在仓库里启动调参器。命令在你自己的电脑上执行；启动成功后看终端打印的本地地址，用浏览器打开（不要用 `file://`）。
 
 ```bash
 cd mapstage/tuner
 
 # 方式 A — Python 3
-python -m http.server 8765
+python -m http.server
 
 # 方式 B — Node
-npx --yes serve -l 8765
+npx --yes serve
 ```
-
-服务起来后，在**同一台电脑**打开：`http://127.0.0.1:8765/`  
-别人远程看，请用 [在线演示](#在线演示)，不要把 `127.0.0.1` 当公网地址。
-
-**不要**用 `file://` 打开 `index.html`。
 
 可选检查：
 

@@ -12,10 +12,10 @@ Local:
 
 ```bash
 cd mapstage/tuner
-python -m http.server 8765
+python -m http.server
 ```
 
-Open `http://localhost:8765/`.
+Open the local URL printed in the terminal.
 
 Do **not** open `index.html` via `file://` — preset fetch and site JSON will fail.
 

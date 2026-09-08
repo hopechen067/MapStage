@@ -24,7 +24,7 @@ Do **not** use the tuner page as the final render host.
 
 ## Workflow
 
-1. Open the tuner: public demo https://hopechen067.github.io/MapStage/ **or** `cd tuner && python -m http.server 8765` → `http://localhost:8765/`
+1. Open the tuner: public demo https://hopechen067.github.io/MapStage/ **or** `cd tuner && python -m http.server` and open the local URL printed in the terminal.
 2. Tiles: default **EOX Sentinel-2 cloudless** (on) + **Mapterhorn** (`tuner/map-tiles.config.js`). Override with gitignored `map-tiles.config.local.js`.
 3. Apply default preset [`tuner/preset-antique-default.json`](tuner/preset-antique-default.json) (same as [`tuner/presets/antique-default.json`](tuner/presets/antique-default.json)). Schema **version 3**.
 4. Adjust projection / satellite / relief / isolate / CSS / cities until the look locks.

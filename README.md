@@ -109,22 +109,17 @@ Style workflow: open the [live demo](https://hopechen067.github.io/MapStage/) �
 
 The [live demo](#live-demo) already runs on GitHub Pages. **You do not start a server on your computer** to use it.
 
-Only if you want to edit files or preview offline do you start a local HTTP server **on your own machine** (a static file server, not an API). Run the command in a terminal on that machine, then open the browser on the same machine.
+Only if you want to edit files or preview offline do you start the tuner locally. Run the command on your machine; when it is up, open the local URL printed in the terminal (do not use `file://`).
 
 ```bash
 cd mapstage/tuner
 
 # Option A — Python 3
-python -m http.server 8765
+python -m http.server
 
 # Option B — Node
-npx --yes serve -l 8765
+npx --yes serve
 ```
-
-Then open `http://127.0.0.1:8765/` on the **same computer**.  
-For sharing, use the [live demo](#live-demo) — `127.0.0.1` is not a public URL.
-
-Do **not** open `index.html` as `file://` — presets and optional local assets will fail.
 
 Optional check (Node on `PATH`):
 
