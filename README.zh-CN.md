@@ -74,11 +74,31 @@ cd MapStage
 git pull
 ```
 
-### 2）安装为 Agent Skill（复制目录）
+### 2）安装为 Agent Skill
 
-Skill 本体在 `mapstage/` 文件夹。把它复制到你的 agent skills 目录，然后重载 skills。
+Skill 目录（浏览，不是第二个仓库）：[`mapstage/`](https://github.com/hopechen067/MapStage/tree/master/mapstage)
 
-**Windows（PowerShell）** — 按你用的宿主选路径：
+**一条命令** — 只装这个文件夹：
+
+```bash
+npx skills add hopechen067/MapStage --skill mapstage -g
+```
+
+GitHub CLI 2.90+：
+
+```bash
+gh skill install hopechen067/MapStage mapstage --scope user
+```
+
+装到 Grok：
+
+```bash
+gh skill install hopechen067/MapStage mapstage --dir ~/.grok/skills
+```
+
+然后重载 skills。Windows 上若无法创建符号链接，给 `npx` 加上 `--copy`。
+
+**或者**克隆整仓后再复制目录。**Windows（PowerShell）** — 按你用的宿主选路径：
 
 ```powershell
 # Grok 等常用用户 skills 目录
@@ -177,9 +197,9 @@ EOX 公共瓦片多为非商用 + 需署名（约 10 m）。本项目不授予�
 
 ## 安装为 Agent Skill
 
-GitHub 仓库是完整项目。Skill 只是其中的 **`mapstage/`** 目录。
+GitHub 仓库是完整项目。Skill 只是其中的 **[`mapstage/`](https://github.com/hopechen067/MapStage/tree/master/mapstage)** 目录。
 
-1. 将 `mapstage` 复制到 skills 目录（Grok：`~/.grok/skills/mapstage`）。  
+1. 用 `npx skills add hopechen067/MapStage --skill mapstage -g`，或 `gh skill install hopechen067/MapStage mapstage --scope user`，或复制目录（Grok：`~/.grok/skills/mapstage`）。  
 2. 重载 skills，使 `SKILL.md` 生效。  
 3. 让 agent 打开调参器、套用导出的 JSON 预设（version 3），或把同一套外观接到 MapStage 场景。
 

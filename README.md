@@ -74,11 +74,31 @@ cd MapStage
 git pull
 ```
 
-### 2) Install as an agent skill (copy folder)
+### 2) Install as an agent skill
 
-The skill lives in `mapstage/`. Copy that folder into your agent skills directory, then reload skills.
+Skill folder (browse, not a second clone): [`mapstage/`](https://github.com/hopechen067/MapStage/tree/master/mapstage)
 
-**Windows (PowerShell)** — pick the path your host uses:
+**One command** — installs only that folder:
+
+```bash
+npx skills add hopechen067/MapStage --skill mapstage -g
+```
+
+GitHub CLI 2.90+:
+
+```bash
+gh skill install hopechen067/MapStage mapstage --scope user
+```
+
+Grok destination:
+
+```bash
+gh skill install hopechen067/MapStage mapstage --dir ~/.grok/skills
+```
+
+Then reload skills. On Windows, add `--copy` to the `npx` command if symlink creation fails.
+
+**Or copy the folder** after a full clone. **Windows (PowerShell)** — pick the path your host uses:
 
 ```powershell
 # Grok / common user skills dir
@@ -177,9 +197,9 @@ Satellite and DEM tiles are fetched at runtime from configured URLs only.
 
 ## Install as an agent skill
 
-The GitHub repo is the full project. The skill is **only** `mapstage/`.
+The GitHub repo is the full project. The skill is **only** [`mapstage/`](https://github.com/hopechen067/MapStage/tree/master/mapstage).
 
-1. Copy `mapstage` into your skills directory (Grok: `~/.grok/skills/mapstage`).
+1. Install with `npx skills add hopechen067/MapStage --skill mapstage -g`, or `gh skill install hopechen067/MapStage mapstage --scope user`, or copy the folder (Grok: `~/.grok/skills/mapstage`).
 2. Reload agent skills so `SKILL.md` is discovered.
 3. Ask the agent to open the tuner, apply an exported JSON preset (version 3), or wire the same look into a MapStage scene.
 
