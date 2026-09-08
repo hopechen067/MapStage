@@ -57,6 +57,9 @@ Current tuner: national map, 3D terrain, globe, isolate.
 
 ## Quick pull (install)
 
+**`git clone` pulls the whole repository, not a standalone skill.**  
+You get README, showcases, the tuner, and the `mapstage/` skill folder. Agents do not auto-discover that folder from a clone. Copy `mapstage/` into your skills directory (step 2) if you want the agent skill.
+
 ### 1) Clone the repo
 
 ```bash
@@ -174,9 +177,11 @@ Satellite and DEM tiles are fetched at runtime from configured URLs only.
 
 ## Install as an agent skill
 
-1. Copy `mapstage` into your skills directory.
+The GitHub repo is the full project. The skill is **only** `mapstage/`.
+
+1. Copy `mapstage` into your skills directory (Grok: `~/.grok/skills/mapstage`).
 2. Reload agent skills so `SKILL.md` is discovered.
-3. Ask the agent to open the tuner, apply an exported JSON preset, or wire the same look into a MapStage scene.
+3. Ask the agent to open the tuner, apply an exported JSON preset (version 3), or wire the same look into a MapStage scene.
 
 ## Layout
 

@@ -3,8 +3,11 @@ default_prompt: |
   Use the mapstage skill: MapStage tuner with map/globe projection, optional
   satellite raster, Mapterhorn hillshade (encoding terrarium), OpenFreeMap
   vector water, CSS color grade, region isolate, and city extrusions. Prefer
-  tuner preset-antique-default.json, export JSON, migrate into the production
-  MapStage host. Configure tiles only via map-tiles.config.js /
-  map-tiles.config.local.js with endpoints the user is allowed to use. Use
-  jumpTo + idle (no easeTo/flyTo). Do not host final render on the tuner.
-  Follow references/*.md for parameters and layer order.
+  tuner preset-antique-default.json (version 3). Export JSON includes
+  ui.projection, ui.showSatellite, ui.showRelief, ui.showCssFilter, and
+  isolate. Migrate into the production MapStage host. Configure tiles only
+  via map-tiles.config.js / map-tiles.config.local.js with endpoints the
+  user is allowed to use. Use jumpTo + idle (no easeTo/flyTo). Do not host
+  final render on the tuner. Follow references/*.md for parameters and
+  layer order. git clone of the GitHub repo is the whole project; copy
+  mapstage/ into the host skills directory to install the skill.

@@ -1041,8 +1041,8 @@
     // 默认 = 用户手调 antique-default（保留三级河 / 高亮水系字段）
     const DEFAULT_PARAMS = {
       id: PRESET_ID,
-      label: '手绘古地图 · MapStage + Terrarium 山影',
-      version: 1,
+      label: '手绘古地图 · MapStage + Mapterhorn 山影',
+      version: 3,
       camera: {
         center: [104.0, 35.5],
         zoom: 4.2,
@@ -3441,7 +3441,7 @@
       const hasLocal = !!localStorage.getItem(STORAGE_KEY);
       if (!hasLocal) {
         try {
-          const res = await fetch('preset-antique-default.json');
+          const res = await fetch('preset-antique-default.json?v=20260908-v3');
           if (res.ok) {
             const preset = await res.json();
             params = mergeParams(DEFAULT_PARAMS, preset);

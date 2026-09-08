@@ -57,6 +57,9 @@
 
 ## 快速拉取（安装）
 
+**`git clone` 拉的是整个仓库，不是单独的 skill。**  
+克隆后得到 README、showcases、调参器，以及 `mapstage/` skill 目录。Agent 不会从仓库根目录自动发现这份 skill。要用 skill，再把 `mapstage/` 复制到 skills 目录（第 2 步）。
+
 ### 1）克隆仓库
 
 ```bash
@@ -174,9 +177,11 @@ EOX 公共瓦片多为非商用 + 需署名（约 10 m）。本项目不授予�
 
 ## 安装为 Agent Skill
 
-1. 将 `mapstage` 复制到 skills 目录。  
+GitHub 仓库是完整项目。Skill 只是其中的 **`mapstage/`** 目录。
+
+1. 将 `mapstage` 复制到 skills 目录（Grok：`~/.grok/skills/mapstage`）。  
 2. 重载 skills，使 `SKILL.md` 生效。  
-3. 让 agent 打开调参器、套用导出的 JSON 预设，或把同一套外观接到 MapStage 场景。
+3. 让 agent 打开调参器、套用导出的 JSON 预设（version 3），或把同一套外观接到 MapStage 场景。
 
 ## 目录结构
 

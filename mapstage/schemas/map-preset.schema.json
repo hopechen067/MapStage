@@ -8,8 +8,12 @@
   "properties": {
     "id": { "type": "string" },
     "label": { "type": "string" },
-    "version": { "type": "integer", "minimum": 1 },
+    "version": { "type": "integer", "minimum": 1, "description": "Current tuner export is 3" },
     "savedAt": { "type": "string" },
+    "season": {
+      "type": ["string", "null"],
+      "enum": [null, "spring", "summer", "autumn", "winter"]
+    },
     "camera": {
       "type": "object",
       "required": ["center", "zoom"],
@@ -28,7 +32,7 @@
     },
     "mapstage": {
       "type": "object",
-      "required": ["backgroundColor", "terrainExaggeration", "satellite", "hillshade", "water"],
+      "required": ["backgroundColor", "terrainExaggeration", "satellite", "hillshade"],
       "properties": {
         "backgroundColor": { "type": "string" },
         "terrainExaggeration": { "type": "number" },
@@ -57,6 +61,7 @@
         },
         "water": {
           "type": "object",
+          "description": "Legacy overlay paint. Public tuner does not drive OpenFreeMap from these keys.",
           "properties": {
             "lakeFill": { "type": "string" },
             "lakeOutline": { "type": "string" },
@@ -82,6 +87,10 @@
       },
       "additionalProperties": true
     },
+    "maplibre": {
+      "type": "object",
+      "description": "Legacy alias of mapstage"
+    },
     "css": {
       "type": "object",
       "properties": {
@@ -99,16 +108,31 @@
     "ui": {
       "type": "object",
       "properties": {
-        "showWater": { "type": "boolean" },
+        "projection": { "type": "string", "enum": ["map", "globe"] },
+        "showSatellite": { "type": "boolean" },
+        "showRelief": { "type": "boolean" },
+        "showCssFilter": { "type": "boolean" },
+        "showCities": { "type": "boolean" },
+        "showRef": { "type": "boolean" },
+        "showWater": {
+          "type": "boolean",
+          "description": "Legacy GeoJSON overlay. Public export is always false."
+        },
         "showHighlight": { "type": "boolean" },
         "showQilian": {
           "type": "boolean",
           "description": "Legacy alias of showHighlight"
         },
-        "showCities": { "type": "boolean" },
-        "showRef": { "type": "boolean" },
         "showRiverLabels": { "type": "boolean" },
         "refMode": { "type": "string", "enum": ["pip", "split"] }
+      },
+      "additionalProperties": true
+    },
+    "isolate": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "regionId": { "type": "string" }
       },
       "additionalProperties": true
     },

@@ -46,6 +46,34 @@ if (existsSync(localCfg)) {
   console.log('—   map-tiles.config.local.js (optional, not present)');
 }
 
+function checkPresetV3(rel) {
+  const p = join(root, rel);
+  if (!existsSync(p)) return;
+  try {
+    const preset = JSON.parse(readFileSync(p, 'utf8'));
+    const problems = [];
+    if (preset.version !== 3) problems.push(`version=${preset.version} (want 3)`);
+    if (!preset.ui || preset.ui.projection !== 'map') problems.push('ui.projection');
+    if (!preset.ui || preset.ui.showSatellite !== true) problems.push('ui.showSatellite');
+    if (!preset.ui || preset.ui.showRelief !== false) problems.push('ui.showRelief');
+    if (!preset.ui || preset.ui.showWater !== false) problems.push('ui.showWater');
+    if (!preset.isolate || preset.isolate.enabled !== false) problems.push('isolate.enabled');
+    if (!preset.isolate || preset.isolate.regionId !== 'china') problems.push('isolate.regionId');
+    if (problems.length) {
+      console.error(`FAIL ${rel} not v3 homepage defaults: ${problems.join(', ')}`);
+      ok = false;
+    } else {
+      console.log(`OK  ${rel} version 3 (projection/satellite/isolate)`);
+    }
+  } catch (e) {
+    console.error(`FAIL parsing ${rel}`, e);
+    ok = false;
+  }
+}
+
+checkPresetV3('preset-antique-default.json');
+checkPresetV3('presets/antique-default.json');
+
 // Tiny pack flag must default to disabled (no in-repo redistribution).
 const waterPackPath = join(root, 'assets/water-pack.json');
 if (existsSync(waterPackPath)) {

@@ -1,8 +1,9 @@
 {
   "id": "antique-default",
   "label": "Antique parchment default",
-  "version": 2,
-  "savedAt": "2026-07-20T12:28:00",
+  "version": 3,
+  "savedAt": "2026-09-08T12:00:00",
+  "season": null,
   "camera": {
     "center": [104.0, 35.5],
     "zoom": 4.2,
@@ -51,10 +52,18 @@
     "vignetteStrength": 0.1
   },
   "ui": {
-    "showWater": true,
-    "showHighlight": true,
+    "projection": "map",
+    "showSatellite": true,
+    "showRelief": false,
+    "showCssFilter": true,
     "showCities": true,
-    "showRef": false
+    "showRef": false,
+    "showWater": false,
+    "showHighlight": false
+  },
+  "isolate": {
+    "enabled": false,
+    "regionId": "china"
   },
   "cities": {
     "dataFile": "assets/sample-sites.json",
