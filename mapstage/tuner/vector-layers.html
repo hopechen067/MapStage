@@ -153,8 +153,27 @@
     #vl-isolate-region {
       width: calc(100% - 16px); margin: 0 8px 6px;
       background: rgba(6, 11, 20, 0.45); color: var(--ink);
-      border: 1px solid var(--line); padding: 6px 8px; font-size: 12px;
+      border: 1px solid var(--line); padding: 4px 6px; font-size: 12px;
+      min-height: 148px; height: auto; overflow: auto;
     }
+    #vl-isolate-region.is-filtering {
+      border-color: rgba(201, 166, 107, 0.55);
+    }
+    #vl-isolate-region-results {
+      display: none; margin: 0 8px 8px; max-height: 220px; overflow: auto;
+      border: 1px solid var(--line); background: rgba(6, 11, 20, 0.55);
+    }
+    #vl-isolate-region-results:not([hidden]) { display: block; }
+    #vl-isolate-region-results[hidden] { display: none !important; }
+    .isolate-result {
+      display: flex; justify-content: space-between; gap: 8px; width: 100%;
+      border: 0; border-bottom: 1px solid rgba(201, 166, 107, 0.12);
+      background: transparent; color: var(--ink); text-align: left;
+      padding: 7px 8px; font-size: 12px; cursor: pointer;
+    }
+    .isolate-result:hover, .isolate-result.active { background: rgba(201, 166, 107, 0.12); color: var(--gold); }
+    .isolate-result.empty { color: var(--muted); cursor: default; }
+    .isolate-result-meta { color: var(--muted); font-size: 10px; letter-spacing: 0.04em; }
     #vl-isolate-seas-row {
       display: flex; gap: 6px; padding: 0 8px 6px; align-items: center;
     }
@@ -207,7 +226,8 @@
     <div class="group-label">拆出</div>
     <div class="toggle-row">拆出 <button type="button" class="sw" id="sw-isolate" aria-pressed="false"></button></div>
     <input type="search" id="vl-isolate-region-search" placeholder="搜索省 / 市…" autocomplete="off" spellcheck="false" aria-label="搜索拆出区域" />
-    <select id="vl-isolate-region" aria-label="拆出区域"></select>
+    <select id="vl-isolate-region" aria-label="拆出区域" size="10"></select>
+    <div id="vl-isolate-region-results" hidden></div>
     <div id="vl-isolate-seas-row">
       <button type="button" class="btn" id="btn-isolate-seas" title="框住南海诸岛与十段线">海域视角</button>
     </div>
@@ -217,9 +237,9 @@
   <div id="toast"></div>
   <script src="assets/map-fx.js?v=20260911-skysoft"></script>
   <script src="assets/region-isolate.js?v=20260911-maritime"></script>
-  <script src="assets/region-isolate-data.js?v=20260911-search"></script>
+  <script src="assets/region-isolate-data.js?v=20260911-searchfix"></script>
   <script src="assets/terrain-island.js?v=20260905-flat-wall"></script>
-  <script src="assets/isolate-workbench.js?v=20260911-search"></script>
+  <script src="assets/isolate-workbench.js?v=20260911-searchfix"></script>
   <script>
   (function () {
     var maplibregl = window.maplibregl;
@@ -317,6 +337,41 @@
     }
     var isolateRegionBoot = q.region || (deepVariant === 'hexi-rise' ? 'gansu' : 'china');
     var isolateCtl = null;
+
+    function mountIsolateWorkbench(mapRef) {
+      if (!window.AntiqueIsolateWorkbench) return;
+      if (isolateCtl) {
+        if (mapRef && typeof isolateCtl.setMap === 'function') isolateCtl.setMap(mapRef);
+        return;
+      }
+      isolateCtl = AntiqueIsolateWorkbench.mount({
+        map: mapRef || null,
+        maplibregl: maplibregl,
+        FX: FX,
+        getViewMode: function () { return viewMode; },
+        getBackground: function () { return paint.background; },
+        toast: toast,
+        globeSky: globeSky,
+        wrapEl: document.getElementById('map'),
+        enabled: !!isolateDeepLink,
+        regionId: isolateRegionBoot,
+        sideColor: '#6d4a36',
+        onNeedMap: function () { applyProjection('map'); },
+        onChange: function (st) {
+          window.__vectorIsolateState = st;
+          if (!map || !FX) return;
+          if (st && st.enabled && st.island) {
+            terrainOn = true;
+            FX.setTerrainEx(map, VP.TERRAIN_SOURCE_ID, terrainEx, { budget: false });
+          } else {
+            syncTerrain();
+          }
+        },
+      });
+    }
+
+    // Mount isolate UI immediately so region search works even if WebGL/map boot fails.
+    mountIsolateWorkbench(null);
     var pendingPaintKeys = {};
     var pendingElevation = false;
     var pendingTerrain = false;
@@ -984,35 +1039,9 @@
       syncTerrain();
     });
     map.on('move', syncPoleDem);
-    if (window.AntiqueIsolateWorkbench) {
-      isolateCtl = AntiqueIsolateWorkbench.mount({
-        map: map,
-        maplibregl: maplibregl,
-        FX: FX,
-        getViewMode: function () { return viewMode; },
-        getBackground: function () { return paint.background; },
-        toast: toast,
-        globeSky: globeSky,
-        wrapEl: document.getElementById('map'),
-        enabled: !!isolateDeepLink,
-        regionId: isolateRegionBoot,
-        sideColor: '#6d4a36',
-        onNeedMap: function () { applyProjection('map'); },
-        onChange: function (st) {
-          window.__vectorIsolateState = st;
-          if (!map || !FX) return;
-          if (st && st.enabled && st.island) {
-            terrainOn = true;
-            FX.setTerrainEx(map, VP.TERRAIN_SOURCE_ID, terrainEx, { budget: false });
-          } else {
-            syncTerrain();
-          }
-        },
-      });
+    mountIsolateWorkbench(map);
     if (seasQuery && isolateCtl && typeof isolateCtl.frameSeas === 'function') {
       map.once('idle', function () { try { isolateCtl.frameSeas(); } catch (e) {} });
-    }
-
     }
     window.__vectorDeepLink = skinDeepLink ? {
       family: 'skin',

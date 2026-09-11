@@ -25,7 +25,7 @@
     return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, 1];
   }
 
-  var ISOLATE_DATA_REL = 'assets/region-isolate-data.js?v=20260911-search';
+  var ISOLATE_DATA_REL = 'assets/region-isolate-data.js?v=20260911-searchfix';
   var isolateDataPromise = null;
 
   function isolateDataSrc() {
@@ -674,17 +674,29 @@
       });
       var ids = [];
       for (var i = 0; i < sel.options.length; i++) ids.push(sel.options[i].value);
+      if (q && !ids.length) {
+        var ogEmpty = document.createElement('optgroup');
+        ogEmpty.label = '无匹配';
+        addOption(ogEmpty, '', '无匹配「' + regionSearchQueryRaw() + '」');
+        sel.appendChild(ogEmpty);
+        sel.options[0].disabled = true;
+      }
       if (ids.indexOf(prev) >= 0) sel.value = prev;
       else if (!q && ids.length) {
         sel.value = ids[0];
         state.regionId = ids[0];
       }
-      sel.disabled = ids.length === 0 && !q;
+      sel.disabled = false;
+      // Keep a visible listbox so typing visibly shrinks options (closed
+      // native <select> looks inert while filtering).
+      var visible = ids.length || (q ? 1 : 0);
+      sel.size = Math.max(6, Math.min(14, visible || 6));
+      sel.classList.toggle('is-filtering', !!q);
 
       var cityRow = opts.cityRowEl || document.getElementById('vl-isolate-cities');
       if (cityRow) {
         cityRow.innerHTML = '';
-        var active = regions.filter(function (r) { return r.id === sel.value; })[0];
+        var active = regions.filter(function (r) { return r.id === (sel.value || prev); })[0];
         var parentProv = null;
         if (active && active.kind === 'city' && active.parentId) {
           parentProv = regions.filter(function (r) { return r.id === active.parentId; })[0] || null;
@@ -692,11 +704,16 @@
           parentProv = active;
         }
         var cityList = parentProv ? citiesByParent[parentProv.id] || [] : [];
+        if (q) {
+          cityList = cityList.filter(function (c) {
+            return labelMatchesQuery(c.label || c.id, q);
+          });
+        }
         if (parentProv && cityList.length) {
           cityRow.style.display = '';
           var lab = document.createElement('span');
           lab.className = 'isolate-group-label';
-          lab.textContent = parentProv.label + ' · 市级';
+          lab.textContent = parentProv.label + ' · 市级' + (q ? '（筛选）' : '');
           cityRow.appendChild(lab);
           cityList.forEach(function (c) {
             var btn = document.createElement('button');
@@ -710,6 +727,77 @@
           cityRow.style.display = 'none';
         }
       }
+      renderRegionResults(regions, citiesByParent, q, prev);
+    }
+
+    function regionSearchQueryRaw() {
+      var el = opts.searchEl || document.getElementById('vl-isolate-region-search');
+      return el ? String(el.value || '').trim() : '';
+    }
+
+    function renderRegionResults(regions, citiesByParent, q, prev) {
+      var host = opts.resultsEl || document.getElementById('vl-isolate-region-results');
+      if (!host) return;
+      host.innerHTML = '';
+      host.hidden = false;
+      var rows = [];
+      function pushRow(id, label, meta) {
+        rows.push({ id: id, label: label, meta: meta || '' });
+      }
+      regions.forEach(function (r) {
+        if (!r) return;
+        if (r.kind === 'nation' || r.id === 'china') {
+          if (labelMatchesQuery(r.label || r.id, q) || r.id === prev) {
+            pushRow(r.id, r.label || r.id, '全国');
+          }
+          return;
+        }
+        if (r.kind === 'city') return;
+        var pLabel = r.label || r.id;
+        var cities = citiesByParent[r.id] || [];
+        var provinceHit = !q || labelMatchesQuery(pLabel, q);
+        var matchedCities = cities.filter(function (c) {
+          return !q || labelMatchesQuery(c.label || c.id, q) || c.id === prev;
+        });
+        if (!provinceHit && !matchedCities.length && r.id !== prev) return;
+        if (provinceHit || r.id === prev) pushRow(r.id, pLabel + '（全省）', pLabel);
+        (provinceHit && q ? cities : matchedCities).forEach(function (c) {
+          if (!q) return; // full tree lives in the listbox; results list is for search hits
+          pushRow(c.id, c.label || c.id, pLabel);
+        });
+        if (!q && r.id === prev) {
+          // no-op: idle state uses native listbox
+        }
+      });
+      if (!q) {
+        host.hidden = true;
+        host.innerHTML = '';
+        return;
+      }
+      if (!rows.length) {
+        var empty = document.createElement('div');
+        empty.className = 'isolate-result empty';
+        empty.textContent = '无匹配「' + regionSearchQueryRaw() + '」';
+        host.appendChild(empty);
+        return;
+      }
+      // Deduplicate by id while preserving order
+      var seen = {};
+      rows.forEach(function (row) {
+        if (seen[row.id]) return;
+        seen[row.id] = true;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'isolate-result' + (row.id === prev ? ' active' : '');
+        btn.setAttribute('data-region-id', row.id);
+        btn.innerHTML = '<span class="isolate-result-label"></span><span class="isolate-result-meta"></span>';
+        btn.querySelector('.isolate-result-label').textContent = row.label;
+        btn.querySelector('.isolate-result-meta').textContent = row.meta;
+        btn.addEventListener('click', function () {
+          setRegion(row.id, { frame: true, enable: true });
+        });
+        host.appendChild(btn);
+      });
     }
 
     function syncToggleUi() {
@@ -833,7 +921,8 @@
     function prefetchIsolateData() {
       ensureIsolateData()
         .then(function () {
-          if (ready) renderSelect();
+          // Render even before start()/map load so search works immediately.
+          renderSelect();
         })
         .catch(function () { /* keep stub select until retry */ });
     }
@@ -858,6 +947,12 @@
       if (search && !search._isoBound) {
         search._isoBound = true;
         var onSearch = function () {
+          // Synchronous path when data already in page — avoids “typed but
+          // nothing happened” while a Promise microtask is pending.
+          if (root.REGION_ISOLATE_DATA) {
+            renderSelect();
+            return;
+          }
           ensureIsolateData()
             .then(function () { renderSelect(); })
             .catch(function () { renderSelect(); });
@@ -921,6 +1016,19 @@
       }
     }
 
+    function setMap(nextMap) {
+      map = nextMap || null;
+      if (ready) {
+        ensureLayers();
+        sync();
+      }
+    }
+
+    // Bind search/select immediately — do not wait for map `load` / start().
+    // Otherwise typing into the search box looks dead until WebGL is ready.
+    bind();
+    prefetchIsolateData();
+
     return {
       start: start,
       sync: sync,
@@ -928,6 +1036,7 @@
       setEnabled: setEnabled,
       setRegion: setRegion,
       setSideColor: setSideColor,
+      setMap: setMap,
       pasteGeoJSON: pasteGeoJSON,
       frameRegion: frameRegion,
       frameSeas: frameSeas,

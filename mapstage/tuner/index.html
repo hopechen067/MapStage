@@ -374,8 +374,28 @@
     #vl-isolate-region {
       width: calc(100% - 24px); margin: 4px 12px 8px;
       background: var(--panel-2); color: var(--text);
-      border: 1px solid var(--border); padding: 6px 8px; font-size: 12px;
+      border: 1px solid var(--border); padding: 4px 6px; font-size: 12px;
+      min-height: 148px; height: auto; overflow: auto;
     }
+    #vl-isolate-region-search {
+      width: calc(100% - 24px); margin: 4px 12px 4px;
+      background: var(--panel-2); color: var(--text);
+      border: 1px solid var(--border); padding: 6px 8px; font-size: 12px;
+      box-sizing: border-box;
+    }
+    #vl-isolate-region-results {
+      margin: 0 12px 8px; max-height: 220px; overflow: auto;
+      border: 1px solid var(--border); background: var(--panel-2);
+    }
+    #vl-isolate-region-results[hidden] { display: none !important; }
+    .isolate-result {
+      display: flex; justify-content: space-between; gap: 8px; width: 100%;
+      border: 0; border-bottom: 1px solid rgba(201, 160, 106, 0.12);
+      background: transparent; color: var(--text); text-align: left;
+      padding: 7px 8px; font-size: 12px; cursor: pointer;
+    }
+    .isolate-result:hover, .isolate-result.active { color: var(--gold); background: rgba(201, 160, 106, 0.12); }
+    .isolate-result-meta { color: var(--muted); font-size: 10px; }
     .group-label {
       font-size: 10px; letter-spacing: 0.14em; color: var(--cy-dim);
       padding: 10px 12px 4px; border-top: 1px solid rgba(201, 160, 106, 0.16);
@@ -835,7 +855,9 @@
       <div class="toggle-row">海拔设色 <button type="button" class="sw" id="sw-relief" aria-pressed="false"></button></div>
       <div class="group-label">拆出</div>
       <div class="toggle-row">拆出 <button type="button" class="sw" id="sw-isolate" aria-pressed="false"></button></div>
-      <select id="vl-isolate-region" aria-label="拆出区域"></select>
+      <input type="search" id="vl-isolate-region-search" placeholder="搜索省 / 市…" autocomplete="off" spellcheck="false" aria-label="搜索拆出区域" />
+      <select id="vl-isolate-region" aria-label="拆出区域" size="10"></select>
+      <div id="vl-isolate-region-results" hidden></div>
 
       <div id="panel-actions">
         <button class="btn primary" id="btn-reset" title="重置为 antique-default">重置预设</button>
@@ -1027,7 +1049,7 @@
   <script src="assets/map-fx.js?v=20260911-skysoft"></script>
   <script src="assets/region-isolate.js?v=20260911-maritime"></script>
   <script src="assets/terrain-island.js?v=20260905-flat-wall"></script>
-  <script src="assets/isolate-workbench.js?v=20260911-seas"></script>
+  <script src="assets/isolate-workbench.js?v=20260911-searchfix"></script>
   <script>
   (function () {
     'use strict';
