@@ -25,7 +25,7 @@
     return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, 1];
   }
 
-  var ISOLATE_DATA_REL = 'assets/region-isolate-data.js?v=20260911-full-cn';
+  var ISOLATE_DATA_REL = 'assets/region-isolate-data.js?v=20260911-zangnan';
   var isolateDataPromise = null;
 
   function isolateDataSrc() {
