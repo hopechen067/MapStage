@@ -14,6 +14,7 @@
     { id: 'southwest', label: '西南' },
     { id: 'northwest', label: '西北' },
     { id: 'special', label: '港澳台' },
+    { id: 'maritime', label: '海域' },
   ];
   var EMPTY = { type: 'FeatureCollection', features: [] };
 
@@ -25,7 +26,7 @@
     return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, 1];
   }
 
-  var ISOLATE_DATA_REL = 'assets/region-isolate-data.js?v=20260911-regiondisplay';
+  var ISOLATE_DATA_REL = 'assets/region-isolate-data.js?v=20260911-islands';
   var isolateDataPromise = null;
 
   function isolateDataSrc() {
@@ -621,6 +622,26 @@
       return String(label || '').toLowerCase().indexOf(q) >= 0;
     }
 
+    function regionMatchesQuery(region, q) {
+      if (!q) return true;
+      if (!region) return false;
+      if (labelMatchesQuery(region.label || region.id, q)) return true;
+      if (labelMatchesQuery(region.id, q)) return true;
+      var aliases = region.aliases;
+      if (aliases && aliases.length) {
+        for (var i = 0; i < aliases.length; i++) {
+          if (labelMatchesQuery(aliases[i], q)) return true;
+        }
+      }
+      return false;
+    }
+
+    function provinceOptLabel(p) {
+      var pLabel = (p && p.label) || (p && p.id) || '';
+      if (p && p.group === 'maritime') return pLabel + '（全部）';
+      return pLabel + '（全省）';
+    }
+
     function findRegionLabel(regions, id) {
       for (var i = 0; i < regions.length; i++) {
         if (regions[i] && regions[i].id === id) return regions[i].label || id;
@@ -732,22 +753,17 @@
       if (ogNation.children.length) sel.appendChild(ogNation);
       tree.ordered.forEach(function (p) {
         var pLabel = p.label || p.id;
-        var provinceOptLabel = pLabel + '（全省）';
+        var pOpt = provinceOptLabel(p);
         var cities = tree.citiesByParent[p.id] || [];
-        var provinceHit = !q || labelMatchesQuery(pLabel, q) || labelMatchesQuery(provinceOptLabel, q);
+        var provinceHit = !q || regionMatchesQuery(p, q) || labelMatchesQuery(pOpt, q);
         var matchedCities = cities.filter(function (c) {
-          return !q || labelMatchesQuery(c.label || c.id, q);
+          return !q || regionMatchesQuery(c, q);
         });
-        if (!provinceHit && !matchedCities.length && prev !== p.id && matchedCities.every(function () { return true; })) {
-          if (!(prev === p.id || cities.some(function (c) { return c.id === prev; }))) {
-            if (!provinceHit && !matchedCities.length) return;
-          }
-        }
         if (!provinceHit && !matchedCities.length && prev !== p.id && !cities.some(function (c) { return c.id === prev; })) return;
         var showCities = (!q || provinceHit) ? cities : matchedCities;
         var og = document.createElement('optgroup');
         og.label = pLabel;
-        if (provinceHit || prev === p.id) addOption(og, p.id, provinceOptLabel);
+        if (provinceHit || prev === p.id) addOption(og, p.id, pOpt);
         showCities.forEach(function (c) { addOption(og, c.id, c.label || c.id); });
         if (og.children.length) sel.appendChild(og);
       });
@@ -804,11 +820,11 @@
 
       tree.ordered.forEach(function (p) {
         var pLabel = p.label || p.id;
-        var provinceOptLabel = pLabel + '（全省）';
+        var pOpt = provinceOptLabel(p);
         var cities = tree.citiesByParent[p.id] || [];
-        var provinceHit = !q || labelMatchesQuery(pLabel, q) || labelMatchesQuery(provinceOptLabel, q);
+        var provinceHit = !q || regionMatchesQuery(p, q) || labelMatchesQuery(pOpt, q);
         var matchedCities = cities.filter(function (c) {
-          return !q || labelMatchesQuery(c.label || c.id, q);
+          return !q || regionMatchesQuery(c, q);
         });
         // Parent header only when the province itself matches or a child matches.
         if (!provinceHit && !matchedCities.length) return;
@@ -816,7 +832,7 @@
         appendListGroup(list, pLabel);
         if (provinceHit || !q) {
           matchCount += 1;
-          appendListItem(list, p.id, provinceOptLabel, { active: p.id === prev });
+          appendListItem(list, p.id, pOpt, { active: p.id === prev });
         }
         showCities.forEach(function (c) {
           matchCount += 1;
