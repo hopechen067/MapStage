@@ -15,11 +15,13 @@ Shipped for the globe / vector editor (`tuner/vector-layers.html`). Default isol
 
 A **narrative silhouette** used to hide worldwide terrain outside a polygon. It is **not** an official national boundary.
 
-The bundled `china` region is a simplified union of Natural Earth 50m admin-0 features `CHN`, `TWN`, `HKG`, and `MAC` (public domain). Tiny islets below the builder’s area threshold are dropped.
+The bundled `china` nation silhouette is a simplified Chinese-standard national atlas polygon set (geojson.cn `100000.json`): full PRC land extent including Zangnan (藏南), Taiwan / Hong Kong / Macao, Diaoyu, and South China Sea island groups, plus the ten-dash maritime line (`maritimeLines`). It is a **narrative** complete-territory outline for isolate / terrain-island demos — not an official survey product.
 
-Provincial-level isolate modules plus curated city extras are simplified OpenStreetMap administrative polygons (ODbL). All are narrative silhouettes, not official borders.
+Rebuild with `node mapstage/tuner/scripts/patch-china-boundaries.mjs [atlas.geojson]`.
 
-Natural Earth is public domain. OSM extracts are © OpenStreetMap contributors, [ODbL 1.0](https://www.openstreetmap.org/copyright).
+Provincial-level isolate modules plus curated city extras are simplified OpenStreetMap administrative polygons (ODbL), except `xizang` which is patched from the same atlas so Tibet includes Zangnan. All are narrative silhouettes, not official borders.
+
+Atlas-derived China / Tibet silhouettes follow the geojson.cn national presentation used by the patch script. OSM extracts are © OpenStreetMap contributors, [ODbL 1.0](https://www.openstreetmap.org/copyright). Polar ice remains Natural Earth (public domain).
 
 ## Polar ice overlay
 

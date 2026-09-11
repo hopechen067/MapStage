@@ -75,7 +75,7 @@
       position: absolute;
       inset: 0;
       min-width: 0;
-      background: #04070d;
+      background: #1a1612;
     }
 
     #map {
@@ -371,11 +371,37 @@
     }
     .sw.on { background: rgba(87, 200, 200, 0.18); border-color: var(--cy-dim); }
     .sw.on::after { left: 18px; background: var(--cy); }
-    #vl-isolate-region {
-      width: calc(100% - 24px); margin: 4px 12px 8px;
-      background: var(--panel-2); color: var(--text);
-      border: 1px solid var(--border); padding: 6px 8px; font-size: 12px;
+    #vl-isolate-picker { position: relative; margin: 4px 12px 8px; }
+    #vl-isolate-region-search-wrap {
+      display: flex; align-items: stretch;
+      border: 1px solid var(--border); background: var(--panel-2);
     }
+    #vl-isolate-region-search-wrap:focus-within { border-color: rgba(201, 160, 106, 0.55); }
+    #vl-isolate-region-search {
+      flex: 1; min-width: 0; margin: 0; border: 0; background: transparent;
+      color: var(--text); padding: 7px 8px; font-size: 12px; outline: none;
+    }
+    #vl-isolate-region-caret {
+      border: 0; border-left: 1px solid var(--border); background: transparent;
+      color: var(--muted); padding: 0 8px; cursor: pointer; font-size: 11px;
+    }
+    #vl-isolate-region-list {
+      display: none; position: absolute; left: 0; right: 0; top: calc(100% + 4px);
+      z-index: 50; max-height: 260px; overflow: auto;
+      border: 1px solid var(--border); background: rgba(20, 16, 12, 0.98);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.45);
+    }
+    #vl-isolate-region-list[hidden] { display: none !important; }
+    #vl-isolate-picker.is-open #vl-isolate-region-list:not([hidden]) { display: block; }
+    #vl-isolate-region { display: none !important; }
+    .isolate-list-group { padding: 6px 8px 2px; font-size: 10px; color: var(--muted); letter-spacing: 0.08em; }
+    .isolate-list-item {
+      display: block; width: 100%; border: 0; background: transparent;
+      color: var(--text); text-align: left; padding: 7px 10px; font-size: 12px; cursor: pointer;
+    }
+    .isolate-list-item:hover, .isolate-list-item.active { color: var(--gold); background: rgba(201, 160, 106, 0.12); }
+    .isolate-list-item.is-child { padding-left: 18px; }
+    .isolate-list-empty { padding: 10px 8px; font-size: 12px; color: var(--muted); }
     .group-label {
       font-size: 10px; letter-spacing: 0.14em; color: var(--cy-dim);
       padding: 10px 12px 4px; border-top: 1px solid rgba(201, 160, 106, 0.16);
@@ -833,9 +859,16 @@
       <div class="group-label">资源</div>
       <div class="toggle-row">卫星图 <button type="button" class="sw on" id="sw-satellite" aria-pressed="true"></button></div>
       <div class="toggle-row">海拔设色 <button type="button" class="sw" id="sw-relief" aria-pressed="false"></button></div>
-      <div class="group-label">拆出</div>
-      <div class="toggle-row">拆出 <button type="button" class="sw" id="sw-isolate" aria-pressed="false"></button></div>
-      <select id="vl-isolate-region" aria-label="拆出区域"></select>
+      <div class="group-label">地区显示</div>
+      <div class="toggle-row">地区显示 <button type="button" class="sw" id="sw-isolate" aria-label="地区显示" aria-pressed="false"></button></div>
+      <div id="vl-isolate-picker" class="isolate-picker">
+        <div id="vl-isolate-region-search-wrap">
+          <input type="search" id="vl-isolate-region-search" placeholder="搜索省 / 市…" autocomplete="off" spellcheck="false" aria-label="搜索地区" aria-autocomplete="list" aria-controls="vl-isolate-region-list" aria-expanded="false" />
+          <button type="button" id="vl-isolate-region-caret" aria-label="打开地区列表" tabindex="-1">▾</button>
+        </div>
+        <div id="vl-isolate-region-list" role="listbox" aria-label="地区列表" hidden></div>
+        <select id="vl-isolate-region" aria-hidden="true" tabindex="-1" hidden></select>
+      </div>
 
       <div id="panel-actions">
         <button class="btn primary" id="btn-reset" title="重置为 antique-default">重置预设</button>
@@ -1024,10 +1057,10 @@
 
   <div id="toast"></div>
 
-  <script src="assets/map-fx.js?v=20260826-globe-perf"></script>
-  <script src="assets/region-isolate.js?v=20260824-scanedge8"></script>
+  <script src="assets/map-fx.js?v=20260911-skysoft"></script>
+  <script src="assets/region-isolate.js?v=20260911-maritime"></script>
   <script src="assets/terrain-island.js?v=20260905-flat-wall"></script>
-  <script src="assets/isolate-workbench.js?v=20260905-lazy-iso"></script>
+  <script src="assets/isolate-workbench.js?v=20260911-islands"></script>
   <script>
   (function () {
     'use strict';
@@ -3063,7 +3096,7 @@
         try {
           setupGlobeAndIsolate();
         } catch (e) {
-          console.warn('地球/拆出初始化失败', e);
+          console.warn('地球/地区显示初始化失败', e);
         }
         applyCssOverlays();
         applyMapStyles();

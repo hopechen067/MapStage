@@ -60,15 +60,19 @@
 
   /**
    * Drop OSM speck rings (Beijing/Tianjin coastal fragments, tiny islets).
-   * Nation-scale silhouettes (China) must keep Hainan / Taiwan: they are ~0.3%
-   * of the mainland, so the 2% city/province cut would erase them.
+   * Nation-scale silhouettes (China) must keep Hainan / Taiwan / Diaoyu /
+   * SCS islets: the old 1°² nation cut erased maritime islands. Complete-
+   * territory China sets keepMaritimeIslands and uses a micro floor instead.
    */
   var NARRATIVE_MIN_FRAC = 0.02;
   var NARRATIVE_MIN_AREA = 0.002;
   var NARRATIVE_NATION_AREA = 100;
   var NARRATIVE_NATION_MIN_AREA = 1;
+  /** deg² — keeps Diaoyu / Xisha / Nansha islets while dropping numeric dust */
+  var NARRATIVE_NATION_MARITIME_MIN_AREA = 1e-6;
 
-  function dominantOuterRings(geom) {
+  function dominantOuterRings(geom, opts) {
+    opts = opts || {};
     var rings = extractOuterRings(geom);
     if (rings.length <= 1) return rings;
     var areas = [];
@@ -81,8 +85,11 @@
       if (a > maxA) maxA = a;
     }
     var nation = maxA >= NARRATIVE_NATION_AREA;
+    var keepMaritime = !!(opts.keepMaritimeIslands || opts.completeTerritory);
     var cut = nation
-      ? NARRATIVE_NATION_MIN_AREA
+      ? keepMaritime
+        ? NARRATIVE_NATION_MARITIME_MIN_AREA
+        : NARRATIVE_NATION_MIN_AREA
       : Math.max(maxA * NARRATIVE_MIN_FRAC, NARRATIVE_MIN_AREA);
     var out = [];
     for (i = 0; i < rings.length; i++) {
@@ -97,7 +104,8 @@
   function narrativeFeature(input) {
     var feat = featureFromUnknown(input);
     if (!feat) return null;
-    var rings = dominantOuterRings(feat.geometry);
+    var props = feat.properties || {};
+    var rings = dominantOuterRings(feat.geometry, props);
     if (!rings.length) return null;
     var polys = [];
     var i;
@@ -108,7 +116,7 @@
     if (!polys.length) return null;
     return {
       type: 'Feature',
-      properties: feat.properties || {},
+      properties: props,
       geometry:
         polys.length === 1
           ? { type: 'Polygon', coordinates: polys[0] }

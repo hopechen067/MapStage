@@ -14,6 +14,7 @@
     { id: 'southwest', label: '西南' },
     { id: 'northwest', label: '西北' },
     { id: 'special', label: '港澳台' },
+    { id: 'maritime', label: '海域' },
   ];
   var EMPTY = { type: 'FeatureCollection', features: [] };
 
@@ -25,7 +26,7 @@
     return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, 1];
   }
 
-  var ISOLATE_DATA_REL = 'assets/region-isolate-data.js?v=20260823-cities';
+  var ISOLATE_DATA_REL = 'assets/region-isolate-data.js?v=20260911-islands';
   var isolateDataPromise = null;
 
   function isolateDataSrc() {
@@ -253,7 +254,16 @@
         if (forceOpts.forceClip || sig !== islandClipSig) {
           if (use) {
             root.__islandLast = Island.setClip(map, currentFeature(), { force: !!forceOpts.forceClip });
-            if (root.__islandLast && root.__islandLast.ok === false) return;
+            if (root.__islandLast && root.__islandLast.ok === false) {
+              // Clip failed → drop island mode and fall through to silhouette mask
+              // so the viewport is never a blank void.
+              try { Island.clearClip(map); } catch (eClr) { /* ignore */ }
+              islandClipSig = 'fallback-mask';
+              islandMotionKey = '';
+              applyVoidPaint();
+              sync();
+              return;
+            }
             applyVoidPaint();
             applySideColor();
             islandWallsNeedSettle = false;
@@ -301,12 +311,21 @@
           buffer: 256,
         });
       }
+      if (!map.getSource('region-maritime')) {
+        map.addSource('region-maritime', {
+          type: 'geojson',
+          data: EMPTY,
+          tolerance: 0,
+          buffer: 256,
+        });
+      }
       var vis =
         state.enabled && hasFeature() && wantedMaskKind() !== 'empty' && wantedMaskKind() !== 'island'
           ? 'visible'
           : 'none';
       var outlineVis =
         state.enabled && hasFeature() && wantedMaskKind() !== 'island' ? 'visible' : 'none';
+      var maritimeVis = state.enabled && hasFeature() ? 'visible' : 'none';
       var bg = usesIsland()
         ? voidColor()
         : (opts.getBackground ? opts.getBackground() : '#04070d');
@@ -342,10 +361,102 @@
           layout: { visibility: outlineVis },
         });
       }
+      // Soft glow under 十段线 so 海域 reads on the black isolate void.
+      if (!map.getLayer('region-maritime-glow')) {
+        map.addLayer({
+          id: 'region-maritime-glow',
+          type: 'line',
+          source: 'region-maritime',
+          layout: {
+            visibility: maritimeVis,
+            'line-join': 'round',
+            'line-cap': 'round',
+          },
+          paint: {
+            'line-color': 'rgba(255, 214, 140, 0.35)',
+            'line-width': 6.5,
+            'line-blur': 1.2,
+          },
+        });
+      }
+      if (!map.getLayer('region-maritime-line')) {
+        map.addLayer({
+          id: 'region-maritime-line',
+          type: 'line',
+          source: 'region-maritime',
+          layout: {
+            visibility: maritimeVis,
+            'line-join': 'round',
+            'line-cap': 'round',
+          },
+          paint: {
+            // Bright dash: ten-dash maritime claim on isolate void / dark basemap.
+            'line-color': 'rgba(255, 220, 150, 0.98)',
+            'line-width': 3.1,
+            'line-dasharray': [1.6, 1.1],
+          },
+        });
+      }
+      // Flat silhouette underlay — always drawn under island terrain so a
+      // black WebGL/terrain failure still shows China land + islands.
+      if (!map.getSource('region-silhouette')) {
+        map.addSource('region-silhouette', {
+          type: 'geojson',
+          data: EMPTY,
+          tolerance: 0,
+          buffer: 256,
+        });
+      }
+      if (!map.getLayer('region-silhouette-fill')) {
+        map.addLayer(
+          {
+            id: 'region-silhouette-fill',
+            type: 'fill',
+            source: 'region-silhouette',
+            layout: { visibility: state.enabled && hasFeature() ? 'visible' : 'none' },
+            paint: {
+              'fill-color': 'rgba(196, 150, 96, 0.22)',
+              'fill-outline-color': 'rgba(236, 210, 150, 0.55)',
+            },
+          },
+          map.getLayer('satellite') ? 'satellite' : undefined
+        );
+      }
+      if (!map.getLayer('region-silhouette-line')) {
+        map.addLayer({
+          id: 'region-silhouette-line',
+          type: 'line',
+          source: 'region-silhouette',
+          layout: {
+            visibility: state.enabled && hasFeature() ? 'visible' : 'none',
+            'line-join': 'round',
+            'line-cap': 'round',
+          },
+          paint: {
+            'line-color': 'rgba(236, 210, 150, 0.9)',
+            'line-width': 1.6,
+          },
+        });
+      }
+    }
+
+    function currentMaritimeLines() {
+      var api = root.REGION_ISOLATE;
+      if (!api || !root.REGION_ISOLATE_DATA) return null;
+      var region = api.findRegion(root.REGION_ISOLATE_DATA, state.regionId);
+      return region && region.maritimeLines ? region.maritimeLines : null;
     }
 
     function restack() {
-      ['region-mask-fill', 'region-edge-seal', 'region-outline'].forEach(function (id) {
+      [
+        'region-mask-fill',
+        'region-edge-seal',
+        'region-outline',
+        'region-silhouette-fill',
+        'region-silhouette-line',
+        'region-maritime-glow',
+        'region-maritime-line',
+      ].forEach(function (id) {
         if (map.getLayer && map.getLayer(id)) {
           try { map.moveLayer(id); } catch (e) { /* ignore */ }
         }
@@ -380,6 +491,29 @@
         var outline = feat ? api.featureFromUnknown(feat) : null;
         map.getSource('region-outline').setData(outline || EMPTY);
       }
+      if (map.getSource('region-maritime')) {
+        var maritime = state.enabled ? currentMaritimeLines() : null;
+        map.getSource('region-maritime').setData(maritime || EMPTY);
+      }
+      var marVis =
+        state.enabled && hasFeature() && currentMaritimeLines() ? 'visible' : 'none';
+      if (map.getLayer('region-maritime-glow')) {
+        map.setLayoutProperty('region-maritime-glow', 'visibility', marVis);
+      }
+      if (map.getLayer('region-maritime-line')) {
+        map.setLayoutProperty('region-maritime-line', 'visibility', marVis);
+      }
+      if (map.getSource('region-silhouette')) {
+        var sil = feat ? (api && api.featureFromUnknown ? api.featureFromUnknown(feat) : feat) : null;
+        map.getSource('region-silhouette').setData(sil || EMPTY);
+      }
+      var silVis = state.enabled && hasFeature() ? 'visible' : 'none';
+      if (map.getLayer('region-silhouette-fill')) {
+        map.setLayoutProperty('region-silhouette-fill', 'visibility', silVis);
+      }
+      if (map.getLayer('region-silhouette-line')) {
+        map.setLayoutProperty('region-silhouette-line', 'visibility', silVis);
+      }
       isolateVisLast = outlineVis;
       var bg = island ? voidColor() : (opts.getBackground ? opts.getBackground() : '#04070d');
       if (map.getLayer('region-mask-fill')) {
@@ -396,16 +530,21 @@
       }
       applyIsland();
       restack();
+      updateSeasHint(false);
       root.__vectorIsolateState = getState();
     }
 
-    function frameRegion() {
+    function frameRegion(extra) {
       if (!map || !FX) return;
+      extra = extra || {};
       var id = state.regionId;
       var jump = typeof FX.easeToCamera === 'function' ? FX.easeToCamera : null;
       var to = typeof FX.jumpTo === 'function' ? FX.jumpTo.bind(FX, map) : function (cam) { map.jumpTo(cam); };
+      // Full China framing includes 藏南 + SCS islands + 十段线 (not mainland-only).
       if (!id || id === 'china') {
-        var chinaCam = { center: [103.6, 35.2], zoom: 3.85, pitch: 46, bearing: -16 };
+        var chinaCam = extra.seas
+          ? { center: [114.2, 15.8], zoom: 3.55, pitch: 42, bearing: -12 }
+          : { center: [108.0, 28.5], zoom: 3.25, pitch: 44, bearing: -14 };
         if (jump) jump(map, chinaCam, 900);
         else to(chinaCam);
         return;
@@ -418,6 +557,33 @@
       else to(cam);
     }
 
+    function frameSeas() {
+      if (state.regionId !== 'china') {
+        setRegion('china', { frame: false, enable: true });
+      } else if (!state.enabled) {
+        setEnabled(true, false);
+      }
+      // Allow setRegion async path to settle, then frame seas.
+      setTimeout(function () {
+        frameRegion({ seas: true });
+        updateSeasHint(true);
+      }, 50);
+    }
+
+    function updateSeasHint(flash) {
+      var el = opts.seasHintEl || document.getElementById('vl-isolate-seas-hint');
+      if (!el) return;
+      var show =
+        state.enabled &&
+        state.regionId === 'china' &&
+        !!currentMaritimeLines();
+      el.style.display = show ? 'block' : 'none';
+      if (flash && show) {
+        el.classList.add('flash');
+        setTimeout(function () { el.classList.remove('flash'); }, 1200);
+      }
+    }
+
     function addOption(host, id, label) {
       var opt = document.createElement('option');
       opt.value = id;
@@ -425,24 +591,88 @@
       host.appendChild(opt);
     }
 
-    function renderSelect() {
-      var sel = opts.selectEl || document.getElementById('vl-isolate-region');
-      if (!sel) return;
-      var api = root.REGION_ISOLATE;
-      var regions = api ? api.listRegions(root.REGION_ISOLATE_DATA) : [];
-      var prev = state.regionId || 'china';
-      if (!regions.length) {
-        sel.innerHTML = '';
-        var ogStub = document.createElement('optgroup');
-        ogStub.label = '全国';
-        addOption(ogStub, prev, prev === 'china' ? '中国' : prev);
-        sel.appendChild(ogStub);
-        sel.value = prev;
-        sel.disabled = false;
-        var cityRowStub = opts.cityRowEl || document.getElementById('vl-isolate-cities');
-        if (cityRowStub) cityRowStub.style.display = 'none';
-        return;
+    var listOpen = false;
+    var suppressBlurClose = false;
+
+    function pickerEl() {
+      return opts.pickerEl || document.getElementById('vl-isolate-picker');
+    }
+    function searchEl() {
+      return opts.searchEl || document.getElementById('vl-isolate-region-search');
+    }
+    function listEl() {
+      return opts.listEl || document.getElementById('vl-isolate-region-list');
+    }
+    function selectEl() {
+      return opts.selectEl || document.getElementById('vl-isolate-region');
+    }
+
+    function regionSearchQuery() {
+      var el = searchEl();
+      return el ? String(el.value || '').trim().toLowerCase() : '';
+    }
+
+    function regionSearchQueryRaw() {
+      var el = searchEl();
+      return el ? String(el.value || '').trim() : '';
+    }
+
+    function labelMatchesQuery(label, q) {
+      if (!q) return true;
+      return String(label || '').toLowerCase().indexOf(q) >= 0;
+    }
+
+    function regionMatchesQuery(region, q) {
+      if (!q) return true;
+      if (!region) return false;
+      if (labelMatchesQuery(region.label || region.id, q)) return true;
+      if (labelMatchesQuery(region.id, q)) return true;
+      var aliases = region.aliases;
+      if (aliases && aliases.length) {
+        for (var i = 0; i < aliases.length; i++) {
+          if (labelMatchesQuery(aliases[i], q)) return true;
+        }
       }
+      return false;
+    }
+
+    function provinceOptLabel(p) {
+      var pLabel = (p && p.label) || (p && p.id) || '';
+      if (p && p.group === 'maritime') return pLabel + '（全部）';
+      return pLabel + '（全省）';
+    }
+
+    function findRegionLabel(regions, id) {
+      for (var i = 0; i < regions.length; i++) {
+        if (regions[i] && regions[i].id === id) return regions[i].label || id;
+      }
+      if (id === 'custom') return '粘贴轮廓';
+      return id || '中国';
+    }
+
+    function setListOpen(open) {
+      listOpen = !!open;
+      var picker = pickerEl();
+      var list = listEl();
+      var search = searchEl();
+      if (picker) picker.classList.toggle('is-open', listOpen);
+      if (list) {
+        if (listOpen) list.hidden = false;
+        else list.hidden = true;
+      }
+      if (search) search.setAttribute('aria-expanded', listOpen ? 'true' : 'false');
+    }
+
+    function openList() {
+      setListOpen(true);
+      renderSelect();
+    }
+
+    function closeList() {
+      setListOpen(false);
+    }
+
+    function buildRegionTree(regions) {
       var citiesByParent = {};
       regions.forEach(function (r) {
         if (r && r.kind === 'city' && r.parentId) {
@@ -454,13 +684,7 @@
           return a.label.localeCompare(b.label, 'zh');
         });
       });
-      sel.innerHTML = '';
-      var ogNation = document.createElement('optgroup');
-      ogNation.label = '全国';
       var nation = regions.filter(function (r) { return r.kind === 'nation' || r.id === 'china'; });
-      nation.forEach(function (r) { addOption(ogNation, r.id, r.label || r.id); });
-      if (state.customFeature) addOption(ogNation, 'custom', '粘贴轮廓');
-      sel.appendChild(ogNation);
       var provinces = regions.filter(function (r) {
         return r.kind !== 'nation' && r.id !== 'china' && r.kind !== 'city';
       });
@@ -471,52 +695,166 @@
       provinces.filter(function (p) {
         return !p.group || !GROUP_ORDER.some(function (m) { return m.id === p.group; });
       }).forEach(function (p) { ordered.push(p); });
-      ordered.forEach(function (p) {
-        var og = document.createElement('optgroup');
-        og.label = p.label || p.id;
-        addOption(og, p.id, (p.label || p.id) + '（全省）');
-        (citiesByParent[p.id] || []).forEach(function (c) {
-          addOption(og, c.id, c.label || c.id);
+      return { nation: nation, ordered: ordered, citiesByParent: citiesByParent };
+    }
+
+    function appendListGroup(host, title) {
+      var g = document.createElement('div');
+      g.className = 'isolate-list-group';
+      g.textContent = title;
+      host.appendChild(g);
+    }
+
+    function appendListItem(host, id, label, optsItem) {
+      optsItem = optsItem || {};
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'isolate-list-item'
+        + (optsItem.child ? ' is-child' : '')
+        + (optsItem.active ? ' active' : '');
+      btn.setAttribute('role', 'option');
+      btn.setAttribute('data-region-id', id);
+      btn.textContent = label;
+      btn.addEventListener('mousedown', function (ev) {
+        // Keep focus while choosing; prevent input blur-close race.
+        suppressBlurClose = true;
+        ev.preventDefault();
+      });
+      btn.addEventListener('click', function () {
+        chooseRegion(id, label);
+      });
+      host.appendChild(btn);
+    }
+
+    function chooseRegion(id, label) {
+      if (!id) return;
+      var search = searchEl();
+      if (search) search.value = label || id;
+      closeList();
+      setRegion(id, { frame: true, enable: true });
+      renderSelect();
+    }
+
+    function syncHiddenSelect(regions, prev, q, tree) {
+      var sel = selectEl();
+      if (!sel) return;
+      sel.innerHTML = '';
+      sel.hidden = true;
+      sel.setAttribute('aria-hidden', 'true');
+      var ogNation = document.createElement('optgroup');
+      ogNation.label = '全国';
+      tree.nation.forEach(function (r) {
+        var nLabel = r.label || r.id;
+        if (labelMatchesQuery(nLabel, q) || r.id === prev) addOption(ogNation, r.id, nLabel);
+      });
+      if (state.customFeature && (labelMatchesQuery('粘贴轮廓', q) || prev === 'custom')) {
+        addOption(ogNation, 'custom', '粘贴轮廓');
+      }
+      if (ogNation.children.length) sel.appendChild(ogNation);
+      tree.ordered.forEach(function (p) {
+        var pLabel = p.label || p.id;
+        var pOpt = provinceOptLabel(p);
+        var cities = tree.citiesByParent[p.id] || [];
+        var provinceHit = !q || regionMatchesQuery(p, q) || labelMatchesQuery(pOpt, q);
+        var matchedCities = cities.filter(function (c) {
+          return !q || regionMatchesQuery(c, q);
         });
-        sel.appendChild(og);
+        if (!provinceHit && !matchedCities.length && prev !== p.id && !cities.some(function (c) { return c.id === prev; })) return;
+        var showCities = (!q || provinceHit) ? cities : matchedCities;
+        var og = document.createElement('optgroup');
+        og.label = pLabel;
+        if (provinceHit || prev === p.id) addOption(og, p.id, pOpt);
+        showCities.forEach(function (c) { addOption(og, c.id, c.label || c.id); });
+        if (og.children.length) sel.appendChild(og);
       });
       var ids = [];
       for (var i = 0; i < sel.options.length; i++) ids.push(sel.options[i].value);
       if (ids.indexOf(prev) >= 0) sel.value = prev;
-      else if (ids.length) {
-        sel.value = ids[0];
-        state.regionId = ids[0];
-      }
-      sel.disabled = ids.length === 0;
+    }
 
+    function renderSelect() {
+      var api = root.REGION_ISOLATE;
+      var regions = api ? api.listRegions(root.REGION_ISOLATE_DATA) : [];
+      var prev = state.regionId || 'china';
+      var q = regionSearchQuery();
+      var list = listEl();
+      var search = searchEl();
+      var tree = buildRegionTree(regions);
+
+      // Keep search field showing the active region when not actively filtering.
+      if (search && !q && document.activeElement !== search) {
+        search.value = findRegionLabel(regions, prev);
+      }
+
+      syncHiddenSelect(regions, prev, q, tree);
+
+      if (!list) return;
+      list.innerHTML = '';
+
+      if (!regions.length) {
+        var emptyBoot = document.createElement('div');
+        emptyBoot.className = 'isolate-list-empty';
+        emptyBoot.textContent = '地区列表加载中…';
+        list.appendChild(emptyBoot);
+        return;
+      }
+
+      var matchCount = 0;
+
+      // Nation / 全国
+      var nationRows = [];
+      tree.nation.forEach(function (r) {
+        var nLabel = r.label || r.id;
+        if (!q || labelMatchesQuery(nLabel, q)) nationRows.push(r);
+      });
+      if (state.customFeature && (!q || labelMatchesQuery('粘贴轮廓', q))) {
+        nationRows.push({ id: 'custom', label: '粘贴轮廓' });
+      }
+      if (nationRows.length) {
+        appendListGroup(list, '全国');
+        nationRows.forEach(function (r) {
+          matchCount += 1;
+          appendListItem(list, r.id, r.label || r.id, { active: r.id === prev });
+        });
+      }
+
+      tree.ordered.forEach(function (p) {
+        var pLabel = p.label || p.id;
+        var pOpt = provinceOptLabel(p);
+        var cities = tree.citiesByParent[p.id] || [];
+        var provinceHit = !q || regionMatchesQuery(p, q) || labelMatchesQuery(pOpt, q);
+        var matchedCities = cities.filter(function (c) {
+          return !q || regionMatchesQuery(c, q);
+        });
+        // Parent header only when the province itself matches or a child matches.
+        if (!provinceHit && !matchedCities.length) return;
+        var showCities = (!q || provinceHit) ? cities : matchedCities;
+        appendListGroup(list, pLabel);
+        if (provinceHit || !q) {
+          matchCount += 1;
+          appendListItem(list, p.id, pOpt, { active: p.id === prev });
+        }
+        showCities.forEach(function (c) {
+          matchCount += 1;
+          appendListItem(list, c.id, c.label || c.id, {
+            child: true,
+            active: c.id === prev,
+          });
+        });
+      });
+
+      if (!matchCount) {
+        var empty = document.createElement('div');
+        empty.className = 'isolate-list-empty';
+        empty.textContent = '无匹配「' + regionSearchQueryRaw() + '」';
+        list.appendChild(empty);
+      }
+
+      // City chip row: hide — hierarchy lives in the dropdown now.
       var cityRow = opts.cityRowEl || document.getElementById('vl-isolate-cities');
       if (cityRow) {
         cityRow.innerHTML = '';
-        var active = regions.filter(function (r) { return r.id === sel.value; })[0];
-        var parentProv = null;
-        if (active && active.kind === 'city' && active.parentId) {
-          parentProv = regions.filter(function (r) { return r.id === active.parentId; })[0] || null;
-        } else if (active && active.kind === 'province') {
-          parentProv = active;
-        }
-        var cityList = parentProv ? citiesByParent[parentProv.id] || [] : [];
-        if (parentProv && cityList.length) {
-          cityRow.style.display = '';
-          var lab = document.createElement('span');
-          lab.className = 'isolate-group-label';
-          lab.textContent = parentProv.label + ' · 市级';
-          cityRow.appendChild(lab);
-          cityList.forEach(function (c) {
-            var btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'btn' + (c.id === sel.value ? ' active' : '');
-            btn.textContent = c.label || c.id;
-            btn.addEventListener('click', function () { setRegion(c.id, { frame: true, enable: true }); });
-            cityRow.appendChild(btn);
-          });
-        } else {
-          cityRow.style.display = 'none';
-        }
+        cityRow.style.display = 'none';
       }
     }
 
@@ -545,7 +883,7 @@
           .then(function () { applyEnabled(true, frame); })
           .catch(function (e) {
             console.warn('[isolate] data', e);
-            toast('拆出轮廓未加载');
+            toast('地区轮廓未加载');
           });
         return;
       }
@@ -569,7 +907,7 @@
           .then(function () { applyRegion(id, extra); })
           .catch(function (e) {
             console.warn('[isolate] data', e);
-            toast('拆出轮廓未加载');
+            toast('地区轮廓未加载');
           });
         return;
       }
@@ -585,23 +923,24 @@
     function toggle() {
       if (state.enabled) {
         applyEnabled(false, true);
-        toast('拆出关');
+        toast('地区显示关');
         return getState();
       }
       ensureIsolateData()
         .then(function () {
           if (!hasFeature()) {
-            toast('没有可拆出的轮廓');
+            toast('没有可显示的地区轮廓');
             return;
           }
           applyEnabled(true, true);
+          openList();
           toast(usesIsland()
-            ? '拆出开 · 独立地形块，皮肤不变'
-            : '拆出开 · 区外遮盖，皮肤不变');
+            ? '地区显示开 · 独立地形块，皮肤不变'
+            : '地区显示开 · 区外遮盖，皮肤不变');
         })
         .catch(function (e) {
           console.warn('[isolate] data', e);
-          toast('拆出轮廓未加载');
+          toast('地区轮廓未加载');
         });
       return getState();
     }
@@ -609,7 +948,7 @@
     function pasteGeoJSON(obj) {
       var api = root.REGION_ISOLATE;
       if (!api) {
-        toast('拆出模块未加载');
+        toast('地区模块未加载');
         return null;
       }
       var feat = api.featureFromUnknown(obj);
@@ -641,7 +980,8 @@
     function prefetchIsolateData() {
       ensureIsolateData()
         .then(function () {
-          if (ready) renderSelect();
+          // Render even before start()/map load so search works immediately.
+          renderSelect();
         })
         .catch(function () { /* keep stub select until retry */ });
     }
@@ -650,17 +990,94 @@
       var sw = opts.toggleEl || document.getElementById('sw-isolate');
       if (sw && !sw._isoBound) {
         sw._isoBound = true;
-        sw.addEventListener('click', function () { toggle(); });
+        sw.addEventListener('click', function () {
+          var wasOn = !!state.enabled;
+          toggle();
+          // Opening 地区显示 also opens the region list for quick picking.
+          if (!wasOn && state.enabled) openList();
+          else if (wasOn && !state.enabled) closeList();
+        });
         sw.addEventListener('pointerenter', prefetchIsolateData);
       }
       var sel = opts.selectEl || document.getElementById('vl-isolate-region');
       if (sel && !sel._isoBound) {
         sel._isoBound = true;
-        sel.addEventListener('change', function (ev) {
-          setRegion(ev.target.value, { frame: true, enable: true });
+        sel.hidden = true;
+        sel.setAttribute('aria-hidden', 'true');
+        sel.tabIndex = -1;
+      }
+      var search = opts.searchEl || document.getElementById('vl-isolate-region-search');
+      if (search && !search._isoBound) {
+        search._isoBound = true;
+        var onSearch = function () {
+          openList();
+          if (root.REGION_ISOLATE_DATA) {
+            renderSelect();
+            return;
+          }
+          ensureIsolateData()
+            .then(function () { renderSelect(); })
+            .catch(function () { renderSelect(); });
+        };
+        search.addEventListener('input', onSearch);
+        search.addEventListener('search', onSearch);
+        search.addEventListener('pointerenter', prefetchIsolateData);
+        search.addEventListener('focus', function () {
+          prefetchIsolateData();
+          openList();
+          // Select current label so the next keystroke replaces it for filtering.
+          try { search.select(); } catch (e) {}
         });
-        sel.addEventListener('pointerenter', prefetchIsolateData);
-        sel.addEventListener('focus', prefetchIsolateData);
+        search.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Escape' || ev.key === 'Esc') {
+            ev.preventDefault();
+            closeList();
+            // type=search uses Esc to clear; keep that, then close the menu.
+            search.blur();
+          } else if (ev.key === 'ArrowDown') {
+            ev.preventDefault();
+            openList();
+          } else if (ev.key === 'Enter') {
+            var list = listEl();
+            var first = list && list.querySelector('.isolate-list-item');
+            if (first) {
+              ev.preventDefault();
+              first.click();
+            }
+          }
+        });
+      }
+      var caret = opts.caretEl || document.getElementById('vl-isolate-region-caret');
+      if (caret && !caret._isoBound) {
+        caret._isoBound = true;
+        caret.addEventListener('mousedown', function (ev) {
+          suppressBlurClose = true;
+          ev.preventDefault();
+        });
+        caret.addEventListener('click', function () {
+          if (listOpen) closeList();
+          else {
+            openList();
+            var s = searchEl();
+            if (s) s.focus();
+          }
+          suppressBlurClose = false;
+        });
+      }
+      if (!document._isoPickerOutsideBound) {
+        document._isoPickerOutsideBound = true;
+        document.addEventListener('mousedown', function (ev) {
+          var picker = pickerEl();
+          if (!listOpen || !picker) return;
+          if (picker.contains(ev.target)) return;
+          closeList();
+        });
+        document.addEventListener('keydown', function (ev) {
+          if ((ev.key === 'Escape' || ev.key === 'Esc') && listOpen) {
+            ev.preventDefault();
+            closeList();
+          }
+        }, true);
       }
       var paste = opts.pasteEl || document.getElementById('btn-isolate-paste');
       if (paste && !paste._isoBound) {
@@ -681,6 +1098,13 @@
       if (side && !side._isoBound) {
         side._isoBound = true;
         side.addEventListener('input', function () { setSideColor(side.value); });
+      }
+      var seasBtn = opts.seasBtnEl || document.getElementById('btn-isolate-seas');
+      if (seasBtn && !seasBtn._isoBound) {
+        seasBtn._isoBound = true;
+        seasBtn.addEventListener('click', function () {
+          frameSeas();
+        });
       }
     }
 
@@ -711,6 +1135,19 @@
       }
     }
 
+    function setMap(nextMap) {
+      map = nextMap || null;
+      if (ready) {
+        ensureLayers();
+        sync();
+      }
+    }
+
+    // Bind search/select immediately — do not wait for map `load` / start().
+    // Otherwise typing into the search box looks dead until WebGL is ready.
+    bind();
+    prefetchIsolateData();
+
     return {
       start: start,
       sync: sync,
@@ -718,8 +1155,10 @@
       setEnabled: setEnabled,
       setRegion: setRegion,
       setSideColor: setSideColor,
+      setMap: setMap,
       pasteGeoJSON: pasteGeoJSON,
       frameRegion: frameRegion,
+      frameSeas: frameSeas,
       getState: getState,
       currentFeature: currentFeature,
     };

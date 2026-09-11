@@ -140,10 +140,67 @@
     #terrain-presets { margin-top: 8px; width: 100%; }
     #terrain-presets button { flex: 1; font-size: 12px; padding: 7px 8px; }
     #dem-presets { display: none; }
-    #vl-isolate-region {
-      width: calc(100% - 16px); margin: 4px 8px 8px;
-      background: rgba(6, 11, 20, 0.45); color: var(--ink);
-      border: 1px solid var(--line); padding: 6px 8px; font-size: 12px;
+    #vl-isolate-picker {
+      position: relative; margin: 4px 8px 8px;
+    }
+    #vl-isolate-region-search-wrap {
+      display: flex; align-items: stretch; gap: 0;
+      border: 1px solid var(--line); background: rgba(6, 11, 20, 0.45);
+    }
+    #vl-isolate-region-search-wrap:focus-within {
+      border-color: rgba(201, 166, 107, 0.55);
+    }
+    #vl-isolate-region-search {
+      flex: 1; min-width: 0; margin: 0; border: 0; background: transparent;
+      color: var(--ink); padding: 7px 8px; font-size: 12px; outline: none;
+    }
+    #vl-isolate-region-search::placeholder { color: var(--muted); }
+    #vl-isolate-region-caret {
+      border: 0; border-left: 1px solid var(--line); background: transparent;
+      color: var(--muted); padding: 0 8px; cursor: pointer; font-size: 11px;
+    }
+    #vl-isolate-region-caret:hover { color: var(--gold); }
+    #vl-isolate-region-list {
+      display: none; position: absolute; left: 0; right: 0; top: calc(100% + 4px);
+      z-index: 30; max-height: 260px; overflow: auto;
+      border: 1px solid var(--line); background: rgba(6, 11, 20, 0.97);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+    }
+    #vl-isolate-region-list[hidden] { display: none !important; }
+    #vl-isolate-picker.is-open #vl-isolate-region-list:not([hidden]) { display: block; }
+    #vl-isolate-region { display: none !important; }
+    .isolate-list-group {
+      padding: 6px 8px 2px; font-size: 10px; color: var(--muted);
+      letter-spacing: 0.08em;
+    }
+    .isolate-list-item {
+      display: block; width: 100%; border: 0; background: transparent;
+      color: var(--ink); text-align: left; padding: 7px 10px; font-size: 12px;
+      cursor: pointer;
+    }
+    .isolate-list-item:hover, .isolate-list-item.active {
+      background: rgba(201, 166, 107, 0.12); color: var(--gold);
+    }
+    .isolate-list-item.is-child { padding-left: 18px; color: rgba(236, 228, 212, 0.88); }
+    .isolate-list-empty {
+      padding: 10px 8px; font-size: 12px; color: var(--muted);
+    }
+    #vl-isolate-seas-row {
+      display: flex; gap: 6px; padding: 0 8px 6px; align-items: center;
+    }
+    #btn-isolate-seas {
+      font-size: 11px; padding: 4px 8px; cursor: pointer;
+      border: 1px solid var(--line); background: transparent; color: var(--gold);
+      letter-spacing: 0.04em;
+    }
+    #btn-isolate-seas:hover { border-color: var(--gold); }
+    #vl-isolate-seas-hint {
+      display: none; margin: 0 8px 8px; padding: 6px 8px;
+      font-size: 11px; line-height: 1.45; color: rgba(236, 210, 150, 0.92);
+      border: 1px solid rgba(201, 166, 107, 0.35); background: rgba(201, 166, 107, 0.08);
+    }
+    #vl-isolate-seas-hint.flash {
+      border-color: var(--gold); background: rgba(201, 166, 107, 0.18);
     }
     #vl-isolate-cities { padding: 0 8px 8px; display: none; }
     #vl-isolate-cities .btn { margin: 2px 4px 2px 0; font-size: 11px; padding: 4px 8px; }
@@ -177,16 +234,28 @@
       <input type="range" id="terrain-ex" min="0" max="3" step="0.05" value="1" />
     </div>
     <div class="toggle-row">海拔设色 <button type="button" class="sw on" id="sw-relief" aria-pressed="true"></button></div>
-    <div class="group-label">拆出</div>
-    <div class="toggle-row">拆出 <button type="button" class="sw" id="sw-isolate" aria-pressed="false"></button></div>
-    <select id="vl-isolate-region" aria-label="拆出区域"></select>
+    <div class="group-label">地区显示</div>
+    <div class="toggle-row">地区显示 <button type="button" class="sw" id="sw-isolate" aria-pressed="false" aria-label="地区显示"></button></div>
+    <div id="vl-isolate-picker" class="isolate-picker">
+      <div id="vl-isolate-region-search-wrap">
+        <input type="search" id="vl-isolate-region-search" placeholder="搜索省 / 市…" autocomplete="off" spellcheck="false" aria-label="搜索地区" aria-autocomplete="list" aria-controls="vl-isolate-region-list" aria-expanded="false" />
+        <button type="button" id="vl-isolate-region-caret" aria-label="打开地区列表" tabindex="-1">▾</button>
+      </div>
+      <div id="vl-isolate-region-list" role="listbox" aria-label="地区列表" hidden></div>
+      <select id="vl-isolate-region" aria-hidden="true" tabindex="-1" hidden></select>
+    </div>
+    <div id="vl-isolate-seas-row">
+      <button type="button" class="btn" id="btn-isolate-seas" title="框住南海诸岛与十段线">海域视角</button>
+    </div>
+    <div id="vl-isolate-seas-hint">海域：金色虚线为十段线；岛块为东沙/西沙/中沙/南沙等。点「海域视角」可框住南海。</div>
+    <div id="vl-isolate-cities"></div>
   </aside>
   <div id="toast"></div>
-  <script src="assets/map-fx.js?v=20260826-globe-perf"></script>
-  <script src="assets/region-isolate.js?v=20260824-scanedge8"></script>
-  <script src="assets/region-isolate-data.js?v=20260823-cities"></script>
+  <script src="assets/map-fx.js?v=20260911-skysoft"></script>
+  <script src="assets/region-isolate.js?v=20260911-maritime"></script>
+  <script src="assets/region-isolate-data.js?v=20260911-islands"></script>
   <script src="assets/terrain-island.js?v=20260905-flat-wall"></script>
-  <script src="assets/isolate-workbench.js?v=20260905-lazy-iso"></script>
+  <script src="assets/isolate-workbench.js?v=20260911-islands"></script>
   <script>
   (function () {
     var maplibregl = window.maplibregl;
@@ -273,12 +342,52 @@
     }
     var isolateQuery = q.isolate === '1' || q.isolate === 'true';
     if (isolateQuery) isolateDeepLink = true;
+    var seasQuery = q.seas === '1' || q.seas === 'true' || deepVariant === 'china-seas';
+    if (seasQuery) {
+      isolateDeepLink = true;
+      if (!q.region) isolateRegionBoot = 'china';
+    }
     if (isolateDeepLink && viewMode === 'globe') {
       viewMode = 'map';
       activeScene = deepVariant === 'hexi-rise' ? 'hexi' : 'china';
     }
     var isolateRegionBoot = q.region || (deepVariant === 'hexi-rise' ? 'gansu' : 'china');
     var isolateCtl = null;
+
+    function mountIsolateWorkbench(mapRef) {
+      if (!window.AntiqueIsolateWorkbench) return;
+      if (isolateCtl) {
+        if (mapRef && typeof isolateCtl.setMap === 'function') isolateCtl.setMap(mapRef);
+        return;
+      }
+      isolateCtl = AntiqueIsolateWorkbench.mount({
+        map: mapRef || null,
+        maplibregl: maplibregl,
+        FX: FX,
+        getViewMode: function () { return viewMode; },
+        getBackground: function () { return paint.background; },
+        toast: toast,
+        globeSky: globeSky,
+        wrapEl: document.getElementById('map'),
+        enabled: !!isolateDeepLink,
+        regionId: isolateRegionBoot,
+        sideColor: '#6d4a36',
+        onNeedMap: function () { applyProjection('map'); },
+        onChange: function (st) {
+          window.__vectorIsolateState = st;
+          if (!map || !FX) return;
+          if (st && st.enabled && st.island) {
+            terrainOn = true;
+            FX.setTerrainEx(map, VP.TERRAIN_SOURCE_ID, terrainEx, { budget: false });
+          } else {
+            syncTerrain();
+          }
+        },
+      });
+    }
+
+    // Mount isolate UI immediately so region search works even if WebGL/map boot fails.
+    mountIsolateWorkbench(null);
     var pendingPaintKeys = {};
     var pendingElevation = false;
     var pendingTerrain = false;
@@ -946,31 +1055,9 @@
       syncTerrain();
     });
     map.on('move', syncPoleDem);
-    if (window.AntiqueIsolateWorkbench) {
-      isolateCtl = AntiqueIsolateWorkbench.mount({
-        map: map,
-        maplibregl: maplibregl,
-        FX: FX,
-        getViewMode: function () { return viewMode; },
-        getBackground: function () { return paint.background; },
-        toast: toast,
-        globeSky: globeSky,
-        wrapEl: document.getElementById('map'),
-        enabled: !!isolateDeepLink,
-        regionId: isolateRegionBoot,
-        sideColor: '#6d4a36',
-        onNeedMap: function () { applyProjection('map'); },
-        onChange: function (st) {
-          window.__vectorIsolateState = st;
-          if (!map || !FX) return;
-          if (st && st.enabled && st.island) {
-            terrainOn = true;
-            FX.setTerrainEx(map, VP.TERRAIN_SOURCE_ID, terrainEx, { budget: false });
-          } else {
-            syncTerrain();
-          }
-        },
-      });
+    mountIsolateWorkbench(map);
+    if (seasQuery && isolateCtl && typeof isolateCtl.frameSeas === 'function') {
+      map.once('idle', function () { try { isolateCtl.frameSeas(); } catch (e) {} });
     }
     window.__vectorDeepLink = skinDeepLink ? {
       family: 'skin',

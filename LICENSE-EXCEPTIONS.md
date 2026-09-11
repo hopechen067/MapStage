@@ -13,9 +13,10 @@ Demo water comes from OpenFreeMap / OpenMapTiles (OSM attribution). This
 repository does **not** include a separate China hydrography pack.
 
 Region isolate silhouettes in `tuner/assets/region-isolate-data.js` are **not**
-MIT: Natural Earth portions are public domain; OSM-derived province/city
-polygons remain [ODbL 1.0](https://www.openstreetmap.org/copyright). Polar ice
-and optional landcover GeoJSON packs are documented in DATA-PROVENANCE.md.
+MIT: the nation `china` silhouette (+ patched `xizang`) follows a Chinese-standard
+national atlas GeoJSON presentation (see DATA-PROVENANCE.md); remaining
+OSM-derived province/city polygons remain [ODbL 1.0](https://www.openstreetmap.org/copyright).
+Polar ice and optional landcover GeoJSON packs are documented in DATA-PROVENANCE.md.
 
 ## 2. Showcase media under `showcases/`
 

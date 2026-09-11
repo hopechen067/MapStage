@@ -2,7 +2,7 @@
 
 [English](README.md) | **中文**
 
-开源 **MapStage 调参器**：地图 / 地球投影、卫星底图、海拔设色、三维地形、区域拆出，参数可导出 JSON。
+开源 **MapStage 调参器**：地图 / 地球投影、卫星底图、海拔设色、三维地形、地区显示，参数可导出 JSON。
 
 ## 在线演示
 
@@ -11,7 +11,7 @@
 
 ## 更新说明
 
-- **地图 / 地球** 投影切换；卫星与海拔设色互相独立；可选区域拆出（独立地形块）。
+- **地图 / 地球** 投影切换；卫星与海拔设色互相独立；可选地区显示（独立地形块）。
 - 山影与三维地形改为 **Mapterhorn** DEM（原先为 AWS Terrarium）。
 - 水系为内置 OpenFreeMap / OpenMapTiles 矢量水。
 - 色调滤镜可开关；复制 JSON 含当前相机与资源开关。
@@ -19,7 +19,7 @@
 
 ## 效果展示
 
-当前调参器：全国地图、三维地形、地球、拆出。
+当前调参器：全国地图、三维地形、地球、地区显示。
 
 <table>
   <tr>
@@ -38,8 +38,8 @@
       <br /><sub>调参器 · 地球</sub>
     </td>
     <td align="center" width="50%">
-      <img src="showcases/preview-tuner-isolate.jpg" alt="调参器拆出" />
-      <br /><sub>调参器 · 拆出</sub>
+      <img src="showcases/preview-tuner-isolate.jpg" alt="调参器地区显示" />
+      <br /><sub>调参器 · 地区显示</sub>
     </td>
   </tr>
 </table>
@@ -51,7 +51,7 @@
 | 默认底图 | **EOX Sentinel-2 cloudless**（公开演示 WMTS，请自行遵守图源条款） |
 | 地形 / 山影 | **Mapterhorn** DEM（运行时拉取；Terrarium 编码） |
 | 水系 | OpenFreeMap / OpenMapTiles 矢量水 |
-| 风格 | 色调滤镜、地图/地球、拆出地形块、`HanCity3D` 城池 |
+| 风格 | 色调滤镜、地图/地球、地区显示地形块、`HanCity3D` 城池 |
 | 许可证 | 代码/文档 [MIT](LICENSE)；展示媒体与第三方条款见 [LICENSE-EXCEPTIONS.md](LICENSE-EXCEPTIONS.md) / [NOTICE.md](NOTICE.md) |
 | 在线演示 | [在线演示](https://hopechen067.github.io/MapStage/) — Pages 将 `mapstage/tuner` 发布到站点根路径 |
 
@@ -131,7 +131,7 @@ node verify.mjs
 ## 功能
 
 - **可配置栅格底图** — 默认 [EOX Sentinel-2 cloudless](https://s2maps.eu)；其他源用 gitignore 的 `map-tiles.config.local.js`。
-- **Mapterhorn 山影 + 三维地形** — Terrarium 编码；地图/地球投影；可选区域拆出。
+- **Mapterhorn 山影 + 三维地形** — Terrarium 编码；地图/地球投影；可选地区显示。
 - **矢量水系** — OpenFreeMap / OpenMapTiles（内置）。
 - **色调滤镜** — sepia / 暖调 / 暗角 / 画笔；滤镜可关；导出 JSON 预设。
 - **城池分级** — 都城 / 大城 / 中城 / 小城 / 关隘 / 驿站 / 都护等。
