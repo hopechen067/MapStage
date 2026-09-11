@@ -38,8 +38,8 @@ Current tuner: national map, 3D terrain, globe, isolate.
       <br /><sub>Tuner · globe</sub>
     </td>
     <td align="center" width="50%">
-      <img src="showcases/preview-tuner-isolate.jpg" alt="Tuner isolate China terrain island" />
-      <br /><sub>Tuner · isolate</sub>
+      <img src="showcases/preview-tuner-isolate.jpg" alt="Tuner region isolate (China terrain island)" />
+      <br /><sub>Tuner · isolate (region display)</sub>
     </td>
   </tr>
 </table>
