@@ -253,7 +253,16 @@
         if (forceOpts.forceClip || sig !== islandClipSig) {
           if (use) {
             root.__islandLast = Island.setClip(map, currentFeature(), { force: !!forceOpts.forceClip });
-            if (root.__islandLast && root.__islandLast.ok === false) return;
+            if (root.__islandLast && root.__islandLast.ok === false) {
+              // Clip failed → drop island mode and fall through to silhouette mask
+              // so the viewport is never a blank void.
+              try { Island.clearClip(map); } catch (eClr) { /* ignore */ }
+              islandClipSig = 'fallback-mask';
+              islandMotionKey = '';
+              applyVoidPaint();
+              sync();
+              return;
+            }
             applyVoidPaint();
             applySideColor();
             islandWallsNeedSettle = false;
@@ -362,9 +371,51 @@
             'line-cap': 'round',
           },
           paint: {
-            'line-color': 'rgba(72, 58, 42, 0.85)',
-            'line-width': 1.4,
-            'line-dasharray': [1.2, 1.6],
+            // Brighter dash so 十段线 reads on the isolate void / dark basemap.
+            'line-color': 'rgba(236, 210, 150, 0.95)',
+            'line-width': 2.4,
+            'line-dasharray': [1.4, 1.2],
+          },
+        });
+      }
+      // Flat silhouette underlay — always drawn under island terrain so a
+      // black WebGL/terrain failure still shows China land + islands.
+      if (!map.getSource('region-silhouette')) {
+        map.addSource('region-silhouette', {
+          type: 'geojson',
+          data: EMPTY,
+          tolerance: 0,
+          buffer: 256,
+        });
+      }
+      if (!map.getLayer('region-silhouette-fill')) {
+        map.addLayer(
+          {
+            id: 'region-silhouette-fill',
+            type: 'fill',
+            source: 'region-silhouette',
+            layout: { visibility: state.enabled && hasFeature() ? 'visible' : 'none' },
+            paint: {
+              'fill-color': 'rgba(196, 150, 96, 0.22)',
+              'fill-outline-color': 'rgba(236, 210, 150, 0.55)',
+            },
+          },
+          map.getLayer('satellite') ? 'satellite' : undefined
+        );
+      }
+      if (!map.getLayer('region-silhouette-line')) {
+        map.addLayer({
+          id: 'region-silhouette-line',
+          type: 'line',
+          source: 'region-silhouette',
+          layout: {
+            visibility: state.enabled && hasFeature() ? 'visible' : 'none',
+            'line-join': 'round',
+            'line-cap': 'round',
+          },
+          paint: {
+            'line-color': 'rgba(236, 210, 150, 0.9)',
+            'line-width': 1.6,
           },
         });
       }
@@ -423,6 +474,17 @@
           'visibility',
           state.enabled && hasFeature() && currentMaritimeLines() ? 'visible' : 'none'
         );
+      }
+      if (map.getSource('region-silhouette')) {
+        var sil = feat ? (api && api.featureFromUnknown ? api.featureFromUnknown(feat) : feat) : null;
+        map.getSource('region-silhouette').setData(sil || EMPTY);
+      }
+      var silVis = state.enabled && hasFeature() ? 'visible' : 'none';
+      if (map.getLayer('region-silhouette-fill')) {
+        map.setLayoutProperty('region-silhouette-fill', 'visibility', silVis);
+      }
+      if (map.getLayer('region-silhouette-line')) {
+        map.setLayoutProperty('region-silhouette-line', 'visibility', silVis);
       }
       isolateVisLast = outlineVis;
       var bg = island ? voidColor() : (opts.getBackground ? opts.getBackground() : '#04070d');

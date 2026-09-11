@@ -134,13 +134,15 @@
   }
 
   function antiqueSky() {
+    // Soft parchment sky — pure black sky/fog made pitched views look like a
+    // dead black viewport while DEM/satellite tiles were still fetching.
     return {
-      'sky-color': '#000000',
-      'horizon-color': '#000000',
-      'fog-color': '#000000',
-      'sky-horizon-blend': 0.85,
-      'horizon-fog-blend': 0.9,
-      'fog-ground-blend': 0.45,
+      'sky-color': '#1a1612',
+      'horizon-color': '#2a241c',
+      'fog-color': '#18140f',
+      'sky-horizon-blend': 0.7,
+      'horizon-fog-blend': 0.55,
+      'fog-ground-blend': 0.2,
     };
   }
 
