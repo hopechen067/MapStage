@@ -25,7 +25,7 @@
     return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, 1];
   }
 
-  var ISOLATE_DATA_REL = 'assets/region-isolate-data.js?v=20260911-seas';
+  var ISOLATE_DATA_REL = 'assets/region-isolate-data.js?v=20260911-search';
   var isolateDataPromise = null;
 
   function isolateDataSrc() {
@@ -590,12 +590,23 @@
       host.appendChild(opt);
     }
 
+    function regionSearchQuery() {
+      var el = opts.searchEl || document.getElementById('vl-isolate-region-search');
+      return el ? String(el.value || '').trim().toLowerCase() : '';
+    }
+
+    function labelMatchesQuery(label, q) {
+      if (!q) return true;
+      return String(label || '').toLowerCase().indexOf(q) >= 0;
+    }
+
     function renderSelect() {
       var sel = opts.selectEl || document.getElementById('vl-isolate-region');
       if (!sel) return;
       var api = root.REGION_ISOLATE;
       var regions = api ? api.listRegions(root.REGION_ISOLATE_DATA) : [];
       var prev = state.regionId || 'china';
+      var q = regionSearchQuery();
       if (!regions.length) {
         sel.innerHTML = '';
         var ogStub = document.createElement('optgroup');
@@ -623,9 +634,14 @@
       var ogNation = document.createElement('optgroup');
       ogNation.label = '全国';
       var nation = regions.filter(function (r) { return r.kind === 'nation' || r.id === 'china'; });
-      nation.forEach(function (r) { addOption(ogNation, r.id, r.label || r.id); });
-      if (state.customFeature) addOption(ogNation, 'custom', '粘贴轮廓');
-      sel.appendChild(ogNation);
+      nation.forEach(function (r) {
+        var nLabel = r.label || r.id;
+        if (labelMatchesQuery(nLabel, q) || r.id === prev) addOption(ogNation, r.id, nLabel);
+      });
+      if (state.customFeature && (labelMatchesQuery('粘贴轮廓', q) || prev === 'custom')) {
+        addOption(ogNation, 'custom', '粘贴轮廓');
+      }
+      if (ogNation.children.length) sel.appendChild(ogNation);
       var provinces = regions.filter(function (r) {
         return r.kind !== 'nation' && r.id !== 'china' && r.kind !== 'city';
       });
@@ -637,22 +653,34 @@
         return !p.group || !GROUP_ORDER.some(function (m) { return m.id === p.group; });
       }).forEach(function (p) { ordered.push(p); });
       ordered.forEach(function (p) {
+        var pLabel = p.label || p.id;
+        var provinceOptLabel = pLabel + '（全省）';
+        var cities = citiesByParent[p.id] || [];
+        var provinceHit = !q || labelMatchesQuery(pLabel, q) || labelMatchesQuery(provinceOptLabel, q);
+        var matchedCities = cities.filter(function (c) {
+          return !q || labelMatchesQuery(c.label || c.id, q) || c.id === prev;
+        });
+        var keepSelectedProvince = prev === p.id;
+        var keepSelectedCity = matchedCities.some(function (c) { return c.id === prev; });
+        if (!provinceHit && !matchedCities.length && !keepSelectedProvince) return;
+        var showCities = provinceHit ? cities : matchedCities;
+        if (!q) showCities = cities;
         var og = document.createElement('optgroup');
-        og.label = p.label || p.id;
-        addOption(og, p.id, (p.label || p.id) + '（全省）');
-        (citiesByParent[p.id] || []).forEach(function (c) {
+        og.label = pLabel;
+        if (provinceHit || keepSelectedProvince) addOption(og, p.id, provinceOptLabel);
+        showCities.forEach(function (c) {
           addOption(og, c.id, c.label || c.id);
         });
-        sel.appendChild(og);
+        if (og.children.length) sel.appendChild(og);
       });
       var ids = [];
       for (var i = 0; i < sel.options.length; i++) ids.push(sel.options[i].value);
       if (ids.indexOf(prev) >= 0) sel.value = prev;
-      else if (ids.length) {
+      else if (!q && ids.length) {
         sel.value = ids[0];
         state.regionId = ids[0];
       }
-      sel.disabled = ids.length === 0;
+      sel.disabled = ids.length === 0 && !q;
 
       var cityRow = opts.cityRowEl || document.getElementById('vl-isolate-cities');
       if (cityRow) {
@@ -826,6 +854,19 @@
         });
         sel.addEventListener('pointerenter', prefetchIsolateData);
         sel.addEventListener('focus', prefetchIsolateData);
+      }
+      var search = opts.searchEl || document.getElementById('vl-isolate-region-search');
+      if (search && !search._isoBound) {
+        search._isoBound = true;
+        var onSearch = function () {
+          ensureIsolateData()
+            .then(function () { renderSelect(); })
+            .catch(function () { renderSelect(); });
+        };
+        search.addEventListener('input', onSearch);
+        search.addEventListener('search', onSearch);
+        search.addEventListener('pointerenter', prefetchIsolateData);
+        search.addEventListener('focus', prefetchIsolateData);
       }
       var paste = opts.pasteEl || document.getElementById('btn-isolate-paste');
       if (paste && !paste._isoBound) {
