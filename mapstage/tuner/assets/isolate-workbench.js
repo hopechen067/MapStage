@@ -25,7 +25,7 @@
     return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, 1];
   }
 
-  var ISOLATE_DATA_REL = 'assets/region-isolate-data.js?v=20260911-searchfix';
+  var ISOLATE_DATA_REL = 'assets/region-isolate-data.js?v=20260911-regiondisplay';
   var isolateDataPromise = null;
 
   function isolateDataSrc() {
@@ -590,9 +590,30 @@
       host.appendChild(opt);
     }
 
+    var listOpen = false;
+    var suppressBlurClose = false;
+
+    function pickerEl() {
+      return opts.pickerEl || document.getElementById('vl-isolate-picker');
+    }
+    function searchEl() {
+      return opts.searchEl || document.getElementById('vl-isolate-region-search');
+    }
+    function listEl() {
+      return opts.listEl || document.getElementById('vl-isolate-region-list');
+    }
+    function selectEl() {
+      return opts.selectEl || document.getElementById('vl-isolate-region');
+    }
+
     function regionSearchQuery() {
-      var el = opts.searchEl || document.getElementById('vl-isolate-region-search');
+      var el = searchEl();
       return el ? String(el.value || '').trim().toLowerCase() : '';
+    }
+
+    function regionSearchQueryRaw() {
+      var el = searchEl();
+      return el ? String(el.value || '').trim() : '';
     }
 
     function labelMatchesQuery(label, q) {
@@ -600,25 +621,37 @@
       return String(label || '').toLowerCase().indexOf(q) >= 0;
     }
 
-    function renderSelect() {
-      var sel = opts.selectEl || document.getElementById('vl-isolate-region');
-      if (!sel) return;
-      var api = root.REGION_ISOLATE;
-      var regions = api ? api.listRegions(root.REGION_ISOLATE_DATA) : [];
-      var prev = state.regionId || 'china';
-      var q = regionSearchQuery();
-      if (!regions.length) {
-        sel.innerHTML = '';
-        var ogStub = document.createElement('optgroup');
-        ogStub.label = '全国';
-        addOption(ogStub, prev, prev === 'china' ? '中国' : prev);
-        sel.appendChild(ogStub);
-        sel.value = prev;
-        sel.disabled = false;
-        var cityRowStub = opts.cityRowEl || document.getElementById('vl-isolate-cities');
-        if (cityRowStub) cityRowStub.style.display = 'none';
-        return;
+    function findRegionLabel(regions, id) {
+      for (var i = 0; i < regions.length; i++) {
+        if (regions[i] && regions[i].id === id) return regions[i].label || id;
       }
+      if (id === 'custom') return '粘贴轮廓';
+      return id || '中国';
+    }
+
+    function setListOpen(open) {
+      listOpen = !!open;
+      var picker = pickerEl();
+      var list = listEl();
+      var search = searchEl();
+      if (picker) picker.classList.toggle('is-open', listOpen);
+      if (list) {
+        if (listOpen) list.hidden = false;
+        else list.hidden = true;
+      }
+      if (search) search.setAttribute('aria-expanded', listOpen ? 'true' : 'false');
+    }
+
+    function openList() {
+      setListOpen(true);
+      renderSelect();
+    }
+
+    function closeList() {
+      setListOpen(false);
+    }
+
+    function buildRegionTree(regions) {
       var citiesByParent = {};
       regions.forEach(function (r) {
         if (r && r.kind === 'city' && r.parentId) {
@@ -630,18 +663,7 @@
           return a.label.localeCompare(b.label, 'zh');
         });
       });
-      sel.innerHTML = '';
-      var ogNation = document.createElement('optgroup');
-      ogNation.label = '全国';
       var nation = regions.filter(function (r) { return r.kind === 'nation' || r.id === 'china'; });
-      nation.forEach(function (r) {
-        var nLabel = r.label || r.id;
-        if (labelMatchesQuery(nLabel, q) || r.id === prev) addOption(ogNation, r.id, nLabel);
-      });
-      if (state.customFeature && (labelMatchesQuery('粘贴轮廓', q) || prev === 'custom')) {
-        addOption(ogNation, 'custom', '粘贴轮廓');
-      }
-      if (ogNation.children.length) sel.appendChild(ogNation);
       var provinces = regions.filter(function (r) {
         return r.kind !== 'nation' && r.id !== 'china' && r.kind !== 'city';
       });
@@ -652,152 +674,172 @@
       provinces.filter(function (p) {
         return !p.group || !GROUP_ORDER.some(function (m) { return m.id === p.group; });
       }).forEach(function (p) { ordered.push(p); });
-      ordered.forEach(function (p) {
+      return { nation: nation, ordered: ordered, citiesByParent: citiesByParent };
+    }
+
+    function appendListGroup(host, title) {
+      var g = document.createElement('div');
+      g.className = 'isolate-list-group';
+      g.textContent = title;
+      host.appendChild(g);
+    }
+
+    function appendListItem(host, id, label, optsItem) {
+      optsItem = optsItem || {};
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'isolate-list-item'
+        + (optsItem.child ? ' is-child' : '')
+        + (optsItem.active ? ' active' : '');
+      btn.setAttribute('role', 'option');
+      btn.setAttribute('data-region-id', id);
+      btn.textContent = label;
+      btn.addEventListener('mousedown', function (ev) {
+        // Keep focus while choosing; prevent input blur-close race.
+        suppressBlurClose = true;
+        ev.preventDefault();
+      });
+      btn.addEventListener('click', function () {
+        chooseRegion(id, label);
+      });
+      host.appendChild(btn);
+    }
+
+    function chooseRegion(id, label) {
+      if (!id) return;
+      var search = searchEl();
+      if (search) search.value = label || id;
+      closeList();
+      setRegion(id, { frame: true, enable: true });
+      renderSelect();
+    }
+
+    function syncHiddenSelect(regions, prev, q, tree) {
+      var sel = selectEl();
+      if (!sel) return;
+      sel.innerHTML = '';
+      sel.hidden = true;
+      sel.setAttribute('aria-hidden', 'true');
+      var ogNation = document.createElement('optgroup');
+      ogNation.label = '全国';
+      tree.nation.forEach(function (r) {
+        var nLabel = r.label || r.id;
+        if (labelMatchesQuery(nLabel, q) || r.id === prev) addOption(ogNation, r.id, nLabel);
+      });
+      if (state.customFeature && (labelMatchesQuery('粘贴轮廓', q) || prev === 'custom')) {
+        addOption(ogNation, 'custom', '粘贴轮廓');
+      }
+      if (ogNation.children.length) sel.appendChild(ogNation);
+      tree.ordered.forEach(function (p) {
         var pLabel = p.label || p.id;
         var provinceOptLabel = pLabel + '（全省）';
-        var cities = citiesByParent[p.id] || [];
+        var cities = tree.citiesByParent[p.id] || [];
         var provinceHit = !q || labelMatchesQuery(pLabel, q) || labelMatchesQuery(provinceOptLabel, q);
         var matchedCities = cities.filter(function (c) {
-          return !q || labelMatchesQuery(c.label || c.id, q) || c.id === prev;
+          return !q || labelMatchesQuery(c.label || c.id, q);
         });
-        var keepSelectedProvince = prev === p.id;
-        if (!provinceHit && !matchedCities.length && !keepSelectedProvince) return;
-        var showCities = provinceHit ? cities : matchedCities;
-        if (!q) showCities = cities;
+        if (!provinceHit && !matchedCities.length && prev !== p.id && matchedCities.every(function () { return true; })) {
+          if (!(prev === p.id || cities.some(function (c) { return c.id === prev; }))) {
+            if (!provinceHit && !matchedCities.length) return;
+          }
+        }
+        if (!provinceHit && !matchedCities.length && prev !== p.id && !cities.some(function (c) { return c.id === prev; })) return;
+        var showCities = (!q || provinceHit) ? cities : matchedCities;
         var og = document.createElement('optgroup');
         og.label = pLabel;
-        if (provinceHit || keepSelectedProvince) addOption(og, p.id, provinceOptLabel);
-        showCities.forEach(function (c) {
-          addOption(og, c.id, c.label || c.id);
-        });
+        if (provinceHit || prev === p.id) addOption(og, p.id, provinceOptLabel);
+        showCities.forEach(function (c) { addOption(og, c.id, c.label || c.id); });
         if (og.children.length) sel.appendChild(og);
       });
       var ids = [];
       for (var i = 0; i < sel.options.length; i++) ids.push(sel.options[i].value);
-      if (q && !ids.length) {
-        var ogEmpty = document.createElement('optgroup');
-        ogEmpty.label = '无匹配';
-        addOption(ogEmpty, '', '无匹配「' + regionSearchQueryRaw() + '」');
-        sel.appendChild(ogEmpty);
-        sel.options[0].disabled = true;
-      }
       if (ids.indexOf(prev) >= 0) sel.value = prev;
-      else if (!q && ids.length) {
-        sel.value = ids[0];
-        state.regionId = ids[0];
-      }
-      sel.disabled = false;
-      // Keep a visible listbox so typing visibly shrinks options (closed
-      // native <select> looks inert while filtering).
-      var visible = ids.length || (q ? 1 : 0);
-      sel.size = Math.max(6, Math.min(14, visible || 6));
-      sel.classList.toggle('is-filtering', !!q);
+    }
 
+    function renderSelect() {
+      var api = root.REGION_ISOLATE;
+      var regions = api ? api.listRegions(root.REGION_ISOLATE_DATA) : [];
+      var prev = state.regionId || 'china';
+      var q = regionSearchQuery();
+      var list = listEl();
+      var search = searchEl();
+      var tree = buildRegionTree(regions);
+
+      // Keep search field showing the active region when not actively filtering.
+      if (search && !q && document.activeElement !== search) {
+        search.value = findRegionLabel(regions, prev);
+      }
+
+      syncHiddenSelect(regions, prev, q, tree);
+
+      if (!list) return;
+      list.innerHTML = '';
+
+      if (!regions.length) {
+        var emptyBoot = document.createElement('div');
+        emptyBoot.className = 'isolate-list-empty';
+        emptyBoot.textContent = '地区列表加载中…';
+        list.appendChild(emptyBoot);
+        return;
+      }
+
+      var matchCount = 0;
+
+      // Nation / 全国
+      var nationRows = [];
+      tree.nation.forEach(function (r) {
+        var nLabel = r.label || r.id;
+        if (!q || labelMatchesQuery(nLabel, q)) nationRows.push(r);
+      });
+      if (state.customFeature && (!q || labelMatchesQuery('粘贴轮廓', q))) {
+        nationRows.push({ id: 'custom', label: '粘贴轮廓' });
+      }
+      if (nationRows.length) {
+        appendListGroup(list, '全国');
+        nationRows.forEach(function (r) {
+          matchCount += 1;
+          appendListItem(list, r.id, r.label || r.id, { active: r.id === prev });
+        });
+      }
+
+      tree.ordered.forEach(function (p) {
+        var pLabel = p.label || p.id;
+        var provinceOptLabel = pLabel + '（全省）';
+        var cities = tree.citiesByParent[p.id] || [];
+        var provinceHit = !q || labelMatchesQuery(pLabel, q) || labelMatchesQuery(provinceOptLabel, q);
+        var matchedCities = cities.filter(function (c) {
+          return !q || labelMatchesQuery(c.label || c.id, q);
+        });
+        // Parent header only when the province itself matches or a child matches.
+        if (!provinceHit && !matchedCities.length) return;
+        var showCities = (!q || provinceHit) ? cities : matchedCities;
+        appendListGroup(list, pLabel);
+        if (provinceHit || !q) {
+          matchCount += 1;
+          appendListItem(list, p.id, provinceOptLabel, { active: p.id === prev });
+        }
+        showCities.forEach(function (c) {
+          matchCount += 1;
+          appendListItem(list, c.id, c.label || c.id, {
+            child: true,
+            active: c.id === prev,
+          });
+        });
+      });
+
+      if (!matchCount) {
+        var empty = document.createElement('div');
+        empty.className = 'isolate-list-empty';
+        empty.textContent = '无匹配「' + regionSearchQueryRaw() + '」';
+        list.appendChild(empty);
+      }
+
+      // City chip row: hide — hierarchy lives in the dropdown now.
       var cityRow = opts.cityRowEl || document.getElementById('vl-isolate-cities');
       if (cityRow) {
         cityRow.innerHTML = '';
-        var active = regions.filter(function (r) { return r.id === (sel.value || prev); })[0];
-        var parentProv = null;
-        if (active && active.kind === 'city' && active.parentId) {
-          parentProv = regions.filter(function (r) { return r.id === active.parentId; })[0] || null;
-        } else if (active && active.kind === 'province') {
-          parentProv = active;
-        }
-        var cityList = parentProv ? citiesByParent[parentProv.id] || [] : [];
-        if (q) {
-          cityList = cityList.filter(function (c) {
-            return labelMatchesQuery(c.label || c.id, q);
-          });
-        }
-        if (parentProv && cityList.length) {
-          cityRow.style.display = '';
-          var lab = document.createElement('span');
-          lab.className = 'isolate-group-label';
-          lab.textContent = parentProv.label + ' · 市级' + (q ? '（筛选）' : '');
-          cityRow.appendChild(lab);
-          cityList.forEach(function (c) {
-            var btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'btn' + (c.id === sel.value ? ' active' : '');
-            btn.textContent = c.label || c.id;
-            btn.addEventListener('click', function () { setRegion(c.id, { frame: true, enable: true }); });
-            cityRow.appendChild(btn);
-          });
-        } else {
-          cityRow.style.display = 'none';
-        }
+        cityRow.style.display = 'none';
       }
-      renderRegionResults(regions, citiesByParent, q, prev);
-    }
-
-    function regionSearchQueryRaw() {
-      var el = opts.searchEl || document.getElementById('vl-isolate-region-search');
-      return el ? String(el.value || '').trim() : '';
-    }
-
-    function renderRegionResults(regions, citiesByParent, q, prev) {
-      var host = opts.resultsEl || document.getElementById('vl-isolate-region-results');
-      if (!host) return;
-      host.innerHTML = '';
-      host.hidden = false;
-      var rows = [];
-      function pushRow(id, label, meta) {
-        rows.push({ id: id, label: label, meta: meta || '' });
-      }
-      regions.forEach(function (r) {
-        if (!r) return;
-        if (r.kind === 'nation' || r.id === 'china') {
-          if (labelMatchesQuery(r.label || r.id, q) || r.id === prev) {
-            pushRow(r.id, r.label || r.id, '全国');
-          }
-          return;
-        }
-        if (r.kind === 'city') return;
-        var pLabel = r.label || r.id;
-        var cities = citiesByParent[r.id] || [];
-        var provinceHit = !q || labelMatchesQuery(pLabel, q);
-        var matchedCities = cities.filter(function (c) {
-          return !q || labelMatchesQuery(c.label || c.id, q) || c.id === prev;
-        });
-        if (!provinceHit && !matchedCities.length && r.id !== prev) return;
-        if (provinceHit || r.id === prev) pushRow(r.id, pLabel + '（全省）', pLabel);
-        (provinceHit && q ? cities : matchedCities).forEach(function (c) {
-          if (!q) return; // full tree lives in the listbox; results list is for search hits
-          pushRow(c.id, c.label || c.id, pLabel);
-        });
-        if (!q && r.id === prev) {
-          // no-op: idle state uses native listbox
-        }
-      });
-      if (!q) {
-        host.hidden = true;
-        host.innerHTML = '';
-        return;
-      }
-      if (!rows.length) {
-        var empty = document.createElement('div');
-        empty.className = 'isolate-result empty';
-        empty.textContent = '无匹配「' + regionSearchQueryRaw() + '」';
-        host.appendChild(empty);
-        return;
-      }
-      // Deduplicate by id while preserving order
-      var seen = {};
-      rows.forEach(function (row) {
-        if (seen[row.id]) return;
-        seen[row.id] = true;
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'isolate-result' + (row.id === prev ? ' active' : '');
-        btn.setAttribute('data-region-id', row.id);
-        btn.innerHTML = '<span class="isolate-result-label"></span><span class="isolate-result-meta"></span>';
-        btn.querySelector('.isolate-result-label').textContent = row.label;
-        btn.querySelector('.isolate-result-meta').textContent = row.meta;
-        btn.addEventListener('click', function () {
-          setRegion(row.id, { frame: true, enable: true });
-        });
-        host.appendChild(btn);
-      });
     }
 
     function syncToggleUi() {
@@ -825,7 +867,7 @@
           .then(function () { applyEnabled(true, frame); })
           .catch(function (e) {
             console.warn('[isolate] data', e);
-            toast('拆出轮廓未加载');
+            toast('地区轮廓未加载');
           });
         return;
       }
@@ -849,7 +891,7 @@
           .then(function () { applyRegion(id, extra); })
           .catch(function (e) {
             console.warn('[isolate] data', e);
-            toast('拆出轮廓未加载');
+            toast('地区轮廓未加载');
           });
         return;
       }
@@ -865,23 +907,24 @@
     function toggle() {
       if (state.enabled) {
         applyEnabled(false, true);
-        toast('拆出关');
+        toast('地区显示关');
         return getState();
       }
       ensureIsolateData()
         .then(function () {
           if (!hasFeature()) {
-            toast('没有可拆出的轮廓');
+            toast('没有可显示的地区轮廓');
             return;
           }
           applyEnabled(true, true);
+          openList();
           toast(usesIsland()
-            ? '拆出开 · 独立地形块，皮肤不变'
-            : '拆出开 · 区外遮盖，皮肤不变');
+            ? '地区显示开 · 独立地形块，皮肤不变'
+            : '地区显示开 · 区外遮盖，皮肤不变');
         })
         .catch(function (e) {
           console.warn('[isolate] data', e);
-          toast('拆出轮廓未加载');
+          toast('地区轮廓未加载');
         });
       return getState();
     }
@@ -889,7 +932,7 @@
     function pasteGeoJSON(obj) {
       var api = root.REGION_ISOLATE;
       if (!api) {
-        toast('拆出模块未加载');
+        toast('地区模块未加载');
         return null;
       }
       var feat = api.featureFromUnknown(obj);
@@ -931,24 +974,27 @@
       var sw = opts.toggleEl || document.getElementById('sw-isolate');
       if (sw && !sw._isoBound) {
         sw._isoBound = true;
-        sw.addEventListener('click', function () { toggle(); });
+        sw.addEventListener('click', function () {
+          var wasOn = !!state.enabled;
+          toggle();
+          // Opening 地区显示 also opens the region list for quick picking.
+          if (!wasOn && state.enabled) openList();
+          else if (wasOn && !state.enabled) closeList();
+        });
         sw.addEventListener('pointerenter', prefetchIsolateData);
       }
       var sel = opts.selectEl || document.getElementById('vl-isolate-region');
       if (sel && !sel._isoBound) {
         sel._isoBound = true;
-        sel.addEventListener('change', function (ev) {
-          setRegion(ev.target.value, { frame: true, enable: true });
-        });
-        sel.addEventListener('pointerenter', prefetchIsolateData);
-        sel.addEventListener('focus', prefetchIsolateData);
+        sel.hidden = true;
+        sel.setAttribute('aria-hidden', 'true');
+        sel.tabIndex = -1;
       }
       var search = opts.searchEl || document.getElementById('vl-isolate-region-search');
       if (search && !search._isoBound) {
         search._isoBound = true;
         var onSearch = function () {
-          // Synchronous path when data already in page — avoids “typed but
-          // nothing happened” while a Promise microtask is pending.
+          openList();
           if (root.REGION_ISOLATE_DATA) {
             renderSelect();
             return;
@@ -960,7 +1006,62 @@
         search.addEventListener('input', onSearch);
         search.addEventListener('search', onSearch);
         search.addEventListener('pointerenter', prefetchIsolateData);
-        search.addEventListener('focus', prefetchIsolateData);
+        search.addEventListener('focus', function () {
+          prefetchIsolateData();
+          openList();
+          // Select current label so the next keystroke replaces it for filtering.
+          try { search.select(); } catch (e) {}
+        });
+        search.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Escape' || ev.key === 'Esc') {
+            ev.preventDefault();
+            closeList();
+            // type=search uses Esc to clear; keep that, then close the menu.
+            search.blur();
+          } else if (ev.key === 'ArrowDown') {
+            ev.preventDefault();
+            openList();
+          } else if (ev.key === 'Enter') {
+            var list = listEl();
+            var first = list && list.querySelector('.isolate-list-item');
+            if (first) {
+              ev.preventDefault();
+              first.click();
+            }
+          }
+        });
+      }
+      var caret = opts.caretEl || document.getElementById('vl-isolate-region-caret');
+      if (caret && !caret._isoBound) {
+        caret._isoBound = true;
+        caret.addEventListener('mousedown', function (ev) {
+          suppressBlurClose = true;
+          ev.preventDefault();
+        });
+        caret.addEventListener('click', function () {
+          if (listOpen) closeList();
+          else {
+            openList();
+            var s = searchEl();
+            if (s) s.focus();
+          }
+          suppressBlurClose = false;
+        });
+      }
+      if (!document._isoPickerOutsideBound) {
+        document._isoPickerOutsideBound = true;
+        document.addEventListener('mousedown', function (ev) {
+          var picker = pickerEl();
+          if (!listOpen || !picker) return;
+          if (picker.contains(ev.target)) return;
+          closeList();
+        });
+        document.addEventListener('keydown', function (ev) {
+          if ((ev.key === 'Escape' || ev.key === 'Esc') && listOpen) {
+            ev.preventDefault();
+            closeList();
+          }
+        }, true);
       }
       var paste = opts.pasteEl || document.getElementById('btn-isolate-paste');
       if (paste && !paste._isoBound) {
@@ -985,7 +1086,9 @@
       var seasBtn = opts.seasBtnEl || document.getElementById('btn-isolate-seas');
       if (seasBtn && !seasBtn._isoBound) {
         seasBtn._isoBound = true;
-        seasBtn.addEventListener('click', function () { frameSeas(); });
+        seasBtn.addEventListener('click', function () {
+          frameSeas();
+        });
       }
     }
 
