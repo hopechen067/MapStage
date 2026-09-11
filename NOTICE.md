@@ -11,7 +11,7 @@ and terms of service for your use case.
 | [maplibre-contour](https://github.com/onthegomap/maplibre-contour) | Optional contour protocol | Used by `vector-layers.html` (`tuner/vendor/maplibre-contour.min.js`). Follow upstream license. |
 | [Three.js](https://threejs.org/) | Optional 3D settlement models | MIT. Loaded from unpkg in the CSS tuner demo. |
 | `han-city-3d.js` | Settlement extrusion / custom layer | Project code; MIT under root LICENSE. |
-| `region-isolate.js` / `region-isolate-data.js` | Region isolate mask | Helper is MIT. `china` silhouette is public-domain Natural Earth. Provincial / city silhouettes are simplified OSM administrative polygons (ODbL). Narrative use; not official borders. |
+| `region-isolate.js` / `region-isolate-data.js` | Region isolate mask | Helper is MIT. `china` (+ patched `xizang`) silhouettes use a Chinese-standard national atlas GeoJSON presentation (complete land incl. Zangnan, islands, ten-dash maritime line). Other provincial / city silhouettes are simplified OSM administrative polygons (ODbL). Narrative use; not official borders. |
 
 ## Not bundled — fetched or configured by you
 

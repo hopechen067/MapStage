@@ -25,7 +25,7 @@
     return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, 1];
   }
 
-  var ISOLATE_DATA_REL = 'assets/region-isolate-data.js?v=20260823-cities';
+  var ISOLATE_DATA_REL = 'assets/region-isolate-data.js?v=20260911-full-cn';
   var isolateDataPromise = null;
 
   function isolateDataSrc() {
@@ -301,12 +301,21 @@
           buffer: 256,
         });
       }
+      if (!map.getSource('region-maritime')) {
+        map.addSource('region-maritime', {
+          type: 'geojson',
+          data: EMPTY,
+          tolerance: 0,
+          buffer: 256,
+        });
+      }
       var vis =
         state.enabled && hasFeature() && wantedMaskKind() !== 'empty' && wantedMaskKind() !== 'island'
           ? 'visible'
           : 'none';
       var outlineVis =
         state.enabled && hasFeature() && wantedMaskKind() !== 'island' ? 'visible' : 'none';
+      var maritimeVis = state.enabled && hasFeature() ? 'visible' : 'none';
       var bg = usesIsland()
         ? voidColor()
         : (opts.getBackground ? opts.getBackground() : '#04070d');
@@ -342,10 +351,34 @@
           layout: { visibility: outlineVis },
         });
       }
+      if (!map.getLayer('region-maritime-line')) {
+        map.addLayer({
+          id: 'region-maritime-line',
+          type: 'line',
+          source: 'region-maritime',
+          layout: {
+            visibility: maritimeVis,
+            'line-join': 'round',
+            'line-cap': 'round',
+          },
+          paint: {
+            'line-color': 'rgba(72, 58, 42, 0.85)',
+            'line-width': 1.4,
+            'line-dasharray': [1.2, 1.6],
+          },
+        });
+      }
+    }
+
+    function currentMaritimeLines() {
+      var api = root.REGION_ISOLATE;
+      if (!api || !root.REGION_ISOLATE_DATA) return null;
+      var region = api.findRegion(root.REGION_ISOLATE_DATA, state.regionId);
+      return region && region.maritimeLines ? region.maritimeLines : null;
     }
 
     function restack() {
-      ['region-mask-fill', 'region-edge-seal', 'region-outline'].forEach(function (id) {
+      ['region-mask-fill', 'region-edge-seal', 'region-outline', 'region-maritime-line'].forEach(function (id) {
         if (map.getLayer && map.getLayer(id)) {
           try { map.moveLayer(id); } catch (e) { /* ignore */ }
         }
@@ -379,6 +412,17 @@
       if (map.getSource('region-outline') && api && regionChanged) {
         var outline = feat ? api.featureFromUnknown(feat) : null;
         map.getSource('region-outline').setData(outline || EMPTY);
+      }
+      if (map.getSource('region-maritime')) {
+        var maritime = state.enabled ? currentMaritimeLines() : null;
+        map.getSource('region-maritime').setData(maritime || EMPTY);
+      }
+      if (map.getLayer('region-maritime-line')) {
+        map.setLayoutProperty(
+          'region-maritime-line',
+          'visibility',
+          state.enabled && hasFeature() && currentMaritimeLines() ? 'visible' : 'none'
+        );
       }
       isolateVisLast = outlineVis;
       var bg = island ? voidColor() : (opts.getBackground ? opts.getBackground() : '#04070d');
