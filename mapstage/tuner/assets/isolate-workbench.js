@@ -661,7 +661,6 @@
           return !q || labelMatchesQuery(c.label || c.id, q) || c.id === prev;
         });
         var keepSelectedProvince = prev === p.id;
-        var keepSelectedCity = matchedCities.some(function (c) { return c.id === prev; });
         if (!provinceHit && !matchedCities.length && !keepSelectedProvince) return;
         var showCities = provinceHit ? cities : matchedCities;
         if (!q) showCities = cities;
