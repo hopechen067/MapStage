@@ -25,7 +25,7 @@
     return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, 1];
   }
 
-  var ISOLATE_DATA_REL = 'assets/region-isolate-data.js?v=20260911-zangnan';
+  var ISOLATE_DATA_REL = 'assets/region-isolate-data.js?v=20260911-seas';
   var isolateDataPromise = null;
 
   function isolateDataSrc() {
@@ -360,6 +360,24 @@
           layout: { visibility: outlineVis },
         });
       }
+      // Soft glow under 十段线 so 海域 reads on the black isolate void.
+      if (!map.getLayer('region-maritime-glow')) {
+        map.addLayer({
+          id: 'region-maritime-glow',
+          type: 'line',
+          source: 'region-maritime',
+          layout: {
+            visibility: maritimeVis,
+            'line-join': 'round',
+            'line-cap': 'round',
+          },
+          paint: {
+            'line-color': 'rgba(255, 214, 140, 0.35)',
+            'line-width': 6.5,
+            'line-blur': 1.2,
+          },
+        });
+      }
       if (!map.getLayer('region-maritime-line')) {
         map.addLayer({
           id: 'region-maritime-line',
@@ -371,10 +389,10 @@
             'line-cap': 'round',
           },
           paint: {
-            // Brighter dash so 十段线 reads on the isolate void / dark basemap.
-            'line-color': 'rgba(236, 210, 150, 0.95)',
-            'line-width': 2.4,
-            'line-dasharray': [1.4, 1.2],
+            // Bright dash: ten-dash maritime claim on isolate void / dark basemap.
+            'line-color': 'rgba(255, 220, 150, 0.98)',
+            'line-width': 3.1,
+            'line-dasharray': [1.6, 1.1],
           },
         });
       }
@@ -429,7 +447,15 @@
     }
 
     function restack() {
-      ['region-mask-fill', 'region-edge-seal', 'region-outline', 'region-maritime-line'].forEach(function (id) {
+      [
+        'region-mask-fill',
+        'region-edge-seal',
+        'region-outline',
+        'region-silhouette-fill',
+        'region-silhouette-line',
+        'region-maritime-glow',
+        'region-maritime-line',
+      ].forEach(function (id) {
         if (map.getLayer && map.getLayer(id)) {
           try { map.moveLayer(id); } catch (e) { /* ignore */ }
         }
@@ -468,12 +494,13 @@
         var maritime = state.enabled ? currentMaritimeLines() : null;
         map.getSource('region-maritime').setData(maritime || EMPTY);
       }
+      var marVis =
+        state.enabled && hasFeature() && currentMaritimeLines() ? 'visible' : 'none';
+      if (map.getLayer('region-maritime-glow')) {
+        map.setLayoutProperty('region-maritime-glow', 'visibility', marVis);
+      }
       if (map.getLayer('region-maritime-line')) {
-        map.setLayoutProperty(
-          'region-maritime-line',
-          'visibility',
-          state.enabled && hasFeature() && currentMaritimeLines() ? 'visible' : 'none'
-        );
+        map.setLayoutProperty('region-maritime-line', 'visibility', marVis);
       }
       if (map.getSource('region-silhouette')) {
         var sil = feat ? (api && api.featureFromUnknown ? api.featureFromUnknown(feat) : feat) : null;
@@ -502,16 +529,21 @@
       }
       applyIsland();
       restack();
+      updateSeasHint(false);
       root.__vectorIsolateState = getState();
     }
 
-    function frameRegion() {
+    function frameRegion(extra) {
       if (!map || !FX) return;
+      extra = extra || {};
       var id = state.regionId;
       var jump = typeof FX.easeToCamera === 'function' ? FX.easeToCamera : null;
       var to = typeof FX.jumpTo === 'function' ? FX.jumpTo.bind(FX, map) : function (cam) { map.jumpTo(cam); };
+      // Full China framing includes 藏南 + SCS islands + 十段线 (not mainland-only).
       if (!id || id === 'china') {
-        var chinaCam = { center: [103.6, 35.2], zoom: 3.85, pitch: 46, bearing: -16 };
+        var chinaCam = extra.seas
+          ? { center: [114.2, 15.8], zoom: 3.55, pitch: 42, bearing: -12 }
+          : { center: [108.0, 28.5], zoom: 3.25, pitch: 44, bearing: -14 };
         if (jump) jump(map, chinaCam, 900);
         else to(chinaCam);
         return;
@@ -522,6 +554,33 @@
       if (!cam) return;
       if (jump) jump(map, cam, 900);
       else to(cam);
+    }
+
+    function frameSeas() {
+      if (state.regionId !== 'china') {
+        setRegion('china', { frame: false, enable: true });
+      } else if (!state.enabled) {
+        setEnabled(true, false);
+      }
+      // Allow setRegion async path to settle, then frame seas.
+      setTimeout(function () {
+        frameRegion({ seas: true });
+        updateSeasHint(true);
+      }, 50);
+    }
+
+    function updateSeasHint(flash) {
+      var el = opts.seasHintEl || document.getElementById('vl-isolate-seas-hint');
+      if (!el) return;
+      var show =
+        state.enabled &&
+        state.regionId === 'china' &&
+        !!currentMaritimeLines();
+      el.style.display = show ? 'block' : 'none';
+      if (flash && show) {
+        el.classList.add('flash');
+        setTimeout(function () { el.classList.remove('flash'); }, 1200);
+      }
     }
 
     function addOption(host, id, label) {
@@ -788,6 +847,11 @@
         side._isoBound = true;
         side.addEventListener('input', function () { setSideColor(side.value); });
       }
+      var seasBtn = opts.seasBtnEl || document.getElementById('btn-isolate-seas');
+      if (seasBtn && !seasBtn._isoBound) {
+        seasBtn._isoBound = true;
+        seasBtn.addEventListener('click', function () { frameSeas(); });
+      }
     }
 
     function start() {
@@ -826,6 +890,7 @@
       setSideColor: setSideColor,
       pasteGeoJSON: pasteGeoJSON,
       frameRegion: frameRegion,
+      frameSeas: frameSeas,
       getState: getState,
       currentFeature: currentFeature,
     };
