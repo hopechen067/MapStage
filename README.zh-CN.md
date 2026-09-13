@@ -100,7 +100,6 @@ gh skill install hopechen067/MapStage mapstage --scope user
 请使用 MapStage skill。
 在线调参：https://hopechen067.github.io/MapStage/
 仓库：https://github.com/hopechen067/MapStage
-我会在 demo 里调好风格后导出 JSON，请按 SKILL.md / references 应用到地图场景（jumpTo + idle，encoding terrarium）。
 ```
 
 风格流程：打开 [在线演示](https://hopechen067.github.io/MapStage/) → 调参 → **复制 JSON** → 粘贴给 agent。
