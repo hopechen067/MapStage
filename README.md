@@ -2,16 +2,39 @@
 
 **English** | [中文](README.zh-CN.md)
 
-Open-source **antique parchment** MapLibre stack for China historical maps and short-form video (HyperFrames or any MapLibre host).
+A narrative map stage for historical videos: one **MapLibre** engine plus one **agent skill**. Antique parchment basemap, routes that march, place names that fade in, cameras that follow the narration, and a `seek(t)` contract so HyperFrames, Remotion or Playwright can capture frame by frame.
 
-## Live demo
+## Live site
 
-**→ https://hopechen067.github.io/MapStage/**  
-Interactive tuner (EOX satellite + Terrarium DEM need internet. No install.)
+- **https://hopechen067.github.io/MapStage/** (GitHub Pages)
+- **https://mapstage1.pages.dev/** (Cloudflare Pages mirror)
+
+Home, docs, examples and the Studio tuner. Satellite imagery and terrain tiles are fetched at runtime, so you need internet access. Nothing to install.
+
+| Path | What |
+|------|------|
+| `/` | Home: live map hero with a scrubbable timeline |
+| `/docs/` | Docs, rendered straight from `mapstage/references/*.md` (people and agents read the same files) |
+| `/examples/` | Example library, filtered by Look / Story / Stage / Play, each with source |
+| `/studio/` | Studio: tune the look, copy the preset JSON |
+
+## What it does
+
+Three layers:
+
+- **Look**: the basemap preset (v3), exported from the Studio tuner. Skins, relief, settlement tiers, optional region isolate.
+- **Story**: `story.json` v1. Places, routes, place-name beats, camera, cards, compliance.
+- **Stage**: the `seek(t)` time contract, frame capture and QA.
+
+Plus **Play**: `MapStageBoard` gives games and interactive pages the same parchment map. MapStage only draws the map; the rules are yours.
+
+Built-in rules for platform-safe output: no provincial or national border lines, no fog or vignette, Taiwan, Hainan and the South China Sea shown complete. The ten-dash line appears only on full-China shots. See `mapstage/references/compliance.md`.
+
+Not in scope: interactive web-map products, a marketplace, navigation or surveying.
 
 ### Demo video
 
-Example output of this stack in a real map-story episode (**河西走廊 · 河西四郡**). Low-res clip streamed from GitHub Pages:
+Example output of this stack in a real map-story episode (**河西走廊 · 河西四郡**). Low-res clip:
 
 https://hopechen067.github.io/MapStage/studio/media/hexi-ep07-demo-480p.mp4
 
@@ -27,7 +50,7 @@ Longer clip (~36s): [showcases/hexi-ep07/hexi-ep07-map-clip.mp4](showcases/hexi-
 
 ## Showcases
 
-Still frames from the same open demo, plus live tuner captures.
+Still frames from the same demo, plus Studio captures.
 
 <table>
   <tr>
@@ -52,12 +75,12 @@ Still frames from the same open demo, plus live tuner captures.
   </tr>
   <tr>
     <td align="center" width="50%">
-      <img src="showcases/preview-eox-china.png" alt="Tuner national view" />
-      <br /><sub>Tuner · national view (EOX)</sub>
+      <img src="showcases/preview-eox-china.png" alt="Studio national view" />
+      <br /><sub>Studio · national view (EOX)</sub>
     </td>
     <td align="center" width="50%">
-      <img src="showcases/preview-eox-hexi.png" alt="Tuner Hexi view" />
-      <br /><sub>Tuner · Hexi / hillshade</sub>
+      <img src="showcases/preview-eox-hexi.png" alt="Studio Hexi view" />
+      <br /><sub>Studio · Hexi / hillshade</sub>
     </td>
   </tr>
 </table>
@@ -67,168 +90,87 @@ More files: [showcases/hexi-ep07/](showcases/hexi-ep07/)
 | Item | Value |
 |------|--------|
 | Skill folder | `mapstage` |
-| Runtime | [MapLibre GL JS](https://maplibre.org/) |
+| Runtime | [MapLibre GL JS](https://maplibre.org/) 5.6.0, no bundler, no npm runtime dependency |
 | Default basemap | **EOX Sentinel-2 cloudless** (public demo WMTS; check provider terms) |
-| Terrain / hillshade | AWS Terrarium DEM (runtime fetch; `encoding: 'terrarium'`) |
-| Water | OpenFreeMap vector tiles (OpenMapTiles water / waterway); no data file in the repo, see [DATA-PROVENANCE.md](DATA-PROVENANCE.md) |
-| Region isolate | Optional parchment mask (`ui.showRegionIsolate`); Natural Earth China-POV outline (incl. Zangnan / islands) + OSM silhouettes — [DATA-PROVENANCE.md](DATA-PROVENANCE.md) |
-| Look | Antique CSS tuner + tiered settlement extrusions (`HanCity3D`) |
-| License | [MIT](LICENSE) for code/docs; showcase media & third-party terms in [LICENSE-EXCEPTIONS.md](LICENSE-EXCEPTIONS.md) / [NOTICE.md](NOTICE.md) |
-| Hosted demo | [Live demo](https://hopechen067.github.io/MapStage/) — Pages publishes `mapstage/site` at the root and `mapstage/tuner` at `/studio/` |
+| Terrain / hillshade | Terrarium-encoded DEM tiles (runtime fetch; `encoding: 'terrarium'`) |
+| Water / roads | OpenFreeMap vector tiles (OpenMapTiles); no data file in the repo, see [DATA-PROVENANCE.md](DATA-PROVENANCE.md) |
+| Region isolate | Optional parchment mask (`ui.showRegionIsolate`). The China outline comes from Natural Earth 10m (public domain); provincial / city shapes are simplified OSM polygons (ODbL). Narrative silhouettes, not official borders |
+| License | [MIT](LICENSE) for code and docs; showcase media and third-party terms in [LICENSE-EXCEPTIONS.md](LICENSE-EXCEPTIONS.md) / [NOTICE.md](NOTICE.md) |
 
-## Quick pull (install)
+## Install as an agent skill
 
-### 1) Clone the repo
-
-```bash
-git clone https://github.com/hopechen067/MapStage.git
-cd MapStage
-```
-
-Update later:
-
-```bash
-cd MapStage
-git pull
-```
-
-### 2) Install as an agent skill (copy folder)
-
-The skill lives in `mapstage/`. Copy that folder into your agent skills directory, then reload skills.
-
-**Windows (PowerShell)** — pick the path your host uses:
-
-```powershell
-# Grok / common user skills dir
-$src = ".\mapstage"
-$dst = Join-Path $env:USERPROFILE ".grok\skills\mapstage"
-New-Item -ItemType Directory -Force -Path (Split-Path $dst) | Out-Null
-Copy-Item -Recurse -Force $src $dst
-```
-
-```powershell
-# Codex user skills (if you use Codex)
-$src = ".\mapstage"
-$dst = Join-Path $env:USERPROFILE ".codex\skills\mapstage"
-New-Item -ItemType Directory -Force -Path (Split-Path $dst) | Out-Null
-Copy-Item -Recurse -Force $src $dst
-```
-
-**macOS / Linux:**
+The skill lives in `mapstage/`. Copy that folder into your agent skills directory and reload skills.
 
 ```bash
 git clone https://github.com/hopechen067/MapStage.git
 cp -R MapStage/mapstage ~/.grok/skills/mapstage
-# or: ~/.codex/skills/mapstage
+# or: ~/.claude/skills/mapstage, ~/.codex/skills/mapstage
 ```
 
-One-shot clone + install (Unix):
+On Windows (PowerShell):
 
-```bash
-git clone --depth 1 https://github.com/hopechen067/MapStage.git \
-  && cp -R MapStage/mapstage ~/.grok/skills/mapstage
+```powershell
+git clone https://github.com/hopechen067/MapStage.git
+Copy-Item -Recurse -Force .\MapStage\mapstage (Join-Path $env:USERPROFILE ".grok\skills\mapstage")
 ```
 
-### 3) Paste this to your agent
+Then tell your agent:
 
 ```text
 请使用 mapstage skill。
-在线调参：https://hopechen067.github.io/MapStage/
+官网与调参台：https://hopechen067.github.io/MapStage/
 仓库：https://github.com/hopechen067/MapStage
-我会在 demo 里调好风格后导出 JSON，请按 SKILL.md / references 应用到地图场景（jumpTo + idle，encoding terrarium）。
+我会在 Studio 里调好风格后导出 JSON，请按 SKILL.md / references 应用到地图场景。
 ```
 
-Style workflow: open the [live demo](https://hopechen067.github.io/MapStage/) → tune → **Copy JSON** → paste to your agent.
+Style workflow: open the [Studio](https://hopechen067.github.io/MapStage/studio/), tune, **Copy JSON**, paste to your agent.
 
-## Quick start (local tuner)
+## Run locally
 
-Only needed if you want to run the tuner offline on your machine (not required for the public demo).
+Only needed for offline work or development. Do not open pages as `file://`.
+
+```bash
+git clone https://github.com/hopechen067/MapStage.git
+cd MapStage
+node mapstage/site/serve.mjs      # http://127.0.0.1:8770/  (same layout as the live site)
+```
+
+Only the Studio:
 
 ```bash
 cd mapstage/tuner
-
-# Option A — Python 3
-python -m http.server 8765
-
-# Option B — Node
-npx --yes serve -l 8765
+python -m http.server 8765        # then open http://127.0.0.1:8765/
 ```
 
-Then open `http://127.0.0.1:8765/` on the **same machine**.  
-Public share link: [Live demo](#live-demo).
-
-Do **not** open `index.html` as `file://` — presets and optional local assets will fail.
-
-Optional check (Node on `PATH`):
+Static check (Node on `PATH`; expect `verify ok` at the end):
 
 ```bash
 cd mapstage/tuner
 node verify.mjs
 ```
 
-## Features
+Build the full static site into `out/_site`:
 
-- **Configurable raster basemap** — default [EOX Sentinel-2 cloudless](https://s2maps.eu). Override with `map-tiles.config.local.js` (gitignored) for any tile URL you are allowed to use.
-- **Terrarium hillshade + terrain** — `encoding: 'terrarium'` is required.
-- **Optional water overlay** — loader + paint UI kept; hydrography data is **not** redistributed (bring your own; see DATA-PROVENANCE.md).
-- **Antique CSS tuner** — sepia / warm tint / vignette / paint; export JSON presets.
-- **City tiers** — capital / large / medium / small / pass / station / ordos via `HanCity3D`.
+```bash
+node mapstage/site/build.mjs
+```
 
-## Configure map tiles
+The build refuses to run if data of unconfirmed license is present (see [DATA-PROVENANCE.md](DATA-PROVENANCE.md)).
+
+## Map tiles
+
+Satellite, DEM and vector tiles are **not bundled**; they are fetched at runtime from configured URLs.
 
 1. Read [NOTICE.md](NOTICE.md).
-2. Defaults: `tuner/map-tiles.config.js` (EOX + Terrarium).
-3. Personal endpoints: `map-tiles.config.local.js` (gitignored). See `map-tiles.config.example.js`.
+2. Defaults are in `mapstage/tuner/map-tiles.config.js`.
+3. Personal endpoints go in `map-tiles.config.local.js` (gitignored); see `map-tiles.config.example.js`.
 
-EOX public tiles are typically non-commercial with attribution (~10 m). This project does **not** grant rights to any commercial map vendor.
-
-## Tiles are not bundled
-
-Satellite and DEM tiles are fetched at runtime from configured URLs only.
+EOX public tiles are typically non-commercial and need attribution. This project does **not** grant rights to any commercial map vendor.
 
 ## Attribution & compliance
 
-- Follow each basemap / DEM / CDN provider’s terms for your use case.
-- **Water data:** not shipped in this repo; any local pack you add stays under your license — [DATA-PROVENANCE.md](DATA-PROVENANCE.md), [LICENSE-EXCEPTIONS.md](LICENSE-EXCEPTIONS.md).
+- Follow each basemap / DEM / CDN provider's terms for your use case.
+- **Data:** the China outline is Natural Earth (public domain); OSM-derived shapes are ODbL. No separate hydrography pack is shipped. See [DATA-PROVENANCE.md](DATA-PROVENANCE.md) and [LICENSE-EXCEPTIONS.md](LICENSE-EXCEPTIONS.md).
+- **Maps shown to the public** may need a review number (审图号) depending on platform and use; judge this for your own release.
 - **MapLibre / Three.js:** keep their licenses when redistributing builds.
-- **Showcase images:** All Rights Reserved demo media unless noted otherwise ([LICENSE-EXCEPTIONS.md](LICENSE-EXCEPTIONS.md)).
-
-## Install as an agent skill
-
-1. Copy `mapstage` into your skills directory.
-2. Reload agent skills so `SKILL.md` is discovered.
-3. Ask the agent to apply the antique map stack, open the tuner, or migrate an exported preset.
-
-## Layout
-
-```
-.
-├── LICENSE
-├── LICENSE-EXCEPTIONS.md      # showcase / third-party / user geodata (not MIT)
-├── NOTICE.md
-├── DATA-PROVENANCE.md
-├── SECURITY.md
-├── README.md / README.zh-CN.md
-├── showcases/                 # README images & sample frames
-└── mapstage/
-    ├── SKILL.md
-    ├── agents/openai.yaml
-    ├── references/
-    ├── schemas/
-    ├── site/                  # official site, GitHub Pages root
-    └── tuner/                 # Studio, published to /studio/
-```
-
-## Contributing / security
-
-- Prefer small, documented changes.
-- Do not commit API keys or `map-tiles.config.local.js`.
-- See [SECURITY.md](SECURITY.md).
-
-## Next reads
-
-- [`mapstage/SKILL.md`](mapstage/SKILL.md)
-- [`mapstage/references/runtime-perf.md`](mapstage/references/runtime-perf.md)
-- [`mapstage/references/参数列表说明.md`](mapstage/references/参数列表说明.md)
-- [`mapstage/references/tuner-workflow.md`](mapstage/references/tuner-workflow.md)
-- [`mapstage/references/tested-config.md`](mapstage/references/tested-config.md)
+- **Showcase images and video:** All Rights Reserved demo media unless noted otherwise ([LICENSE-EXCEPTIONS.md](LICENSE-EXCEPTIONS.md)).
