@@ -18,6 +18,8 @@
 | `/examples/` | 示例库，按 Look / Story / Stage / Play 筛选，每个示例带源码 |
 | `/studio/` | Studio：调底图风格，复制 preset JSON |
 
+最近更新见 [CHANGELOG.md](CHANGELOG.md)。
+
 ## 它做什么
 
 三层：

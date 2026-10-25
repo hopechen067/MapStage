@@ -18,6 +18,8 @@ Home, docs, examples and the Studio tuner. Satellite imagery and terrain tiles a
 | `/examples/` | Example library, filtered by Look / Story / Stage / Play, each with source |
 | `/studio/` | Studio: tune the look, copy the preset JSON |
 
+Recent changes: [CHANGELOG.md](CHANGELOG.md).
+
 ## What it does
 
 Three layers:
