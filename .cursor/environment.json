@@ -1,0 +1,17 @@
+{
+  "name": "china-antique-maplibre",
+  "install": "node china-antique-maplibre/tuner/verify.mjs",
+  "terminals": [
+    {
+      "name": "tuner",
+      "command": "cd china-antique-maplibre/tuner && python3 -m http.server 8765",
+      "description": "Static HTTP server for the antique MapLibre tuner. Open http://localhost:8765/ to load the tuner UI (needs internet for MapLibre/Three CDNs and EOX/Terrarium tiles)."
+    }
+  ],
+  "ports": [
+    {
+      "name": "tuner",
+      "port": 8765
+    }
+  ]
+}
