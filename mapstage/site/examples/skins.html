@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>切换古卷皮肤 · MapStage 示例</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c8c2b4; font: 13px/1.4 system-ui, sans-serif; }
+    #stage { position: absolute; inset: 0; }
+    .ui { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+          max-width: calc(100% - 48px); padding: 8px 10px; background: rgba(251, 248, 241, 0.92); color: #241b14;
+          border: 1px solid #ddd2bf; border-radius: 8px; }
+    .ui button { font: inherit; padding: 5px 10px; border: 1px solid #ddd2bf; border-radius: 6px; background: #fff; color: inherit; cursor: pointer; }
+    .ui button[aria-pressed=true] { background: #241b14; color: #fbf8f1; border-color: #241b14; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="ui" id="skins"></div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script>
+    // 皮肤 = 矢量底图配色（paint）+ 画布调色（css）。story.look.skin 选一套，mount 时一起生效
+    const sites = [
+      { id: 'xian', name: '西安', lngLat: [108.94, 34.34], tier: 'capital' },
+      { id: 'xianyang', name: '咸阳', lngLat: [108.71, 34.33], tier: 'medium', label: { side: 'left' } },
+      { id: 'baoji', name: '宝鸡', lngLat: [107.24, 34.36], tier: 'medium' },
+      { id: 'hanzhong', name: '汉中', lngLat: [107.02, 33.07], tier: 'large' },
+    ];
+    const $ = (id) => document.getElementById(id);
+    let stage = null;
+
+    async function show(skinId) {
+      const view = stage && { center: stage.map.getCenter().toArray(), zoom: stage.map.getZoom(), pitch: stage.map.getPitch() };
+      if (stage) stage.destroy();
+      const story = {
+        version: 1, id: 'skins', duration: 1, sites,
+        look: { skin: skinId, terrain: 1.2 },
+      };
+      // preset.camera 给初始机位；interactive: true 让地图能拖
+      const preset = { camera: view || { center: [108.0, 33.8], zoom: 6.6, pitch: 30 } };
+      stage = await MapStage.mount($('stage'), { story, preset, interactive: true });
+      window.stage = stage;
+      $('skins').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.id === skinId)));
+    }
+
+    // AntiqueVectorPaint.SKINS：{ id, label, blurb, paint, css }
+    AntiqueVectorPaint.SKINS.forEach((skin) => {
+      const b = document.createElement('button');
+      b.textContent = skin.label;
+      b.title = skin.blurb;
+      b.dataset.id = skin.id;
+      b.onclick = () => show(skin.id);
+      $('skins').appendChild(b);
+    });
+    show('parchment');
+  </script>
+</body>
+</html>

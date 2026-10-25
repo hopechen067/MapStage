@@ -1,6 +1,0 @@
-{
-  "optional": true,
-  "enabled": false,
-  "src": "assets/water-data.js",
-  "note": "Hydrography is not redistributed in this repo. Set enabled=true and place a local water-data.js (gitignored) that assigns window.CHINA_WATER_DATA. See DATA-PROVENANCE.md and references/water-overlay.md."
-}

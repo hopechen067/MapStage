@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>地点层级 tier · MapStage 示例</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c8c2b4; font: 13px/1.4 system-ui, sans-serif; }
+    #stage { position: absolute; inset: 0; }
+    .ui { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center;
+          max-width: calc(100% - 48px); padding: 8px 10px; background: rgba(251, 248, 241, 0.92); color: #241b14;
+          border: 1px solid #ddd2bf; border-radius: 8px; }
+    .ui .tier { font: 12px ui-monospace, Consolas, monospace; color: #6a5a48; }
+    .ui .tier b { color: #241b14; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="ui" id="legend" aria-label="七种地点层级"></div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script>
+    // 七种 tier 各放一个地点，决定字号与图标；静态页，duration 1，不需要时间轴
+    const story = {
+      version: 1, id: 'labels-tiers', duration: 1,
+      sites: [
+        { id: 'xian', name: '西安', lngLat: [108.95, 34.27], tier: 'capital' },
+        { id: 'lanzhou', name: '兰州', lngLat: [103.83, 36.06], tier: 'large' },
+        { id: 'zhangye', name: '张掖', lngLat: [100.45, 38.93], tier: 'medium' },
+        { id: 'gaotai', name: '高台', lngLat: [99.82, 39.37], tier: 'small' },
+        { id: 'jiayuguan', name: '嘉峪关', lngLat: [98.29, 39.80], tier: 'pass' },
+        { id: 'anxi', name: '安西', lngLat: [95.77, 40.54], tier: 'station' },
+        { id: 'ordos', name: '鄂尔多斯', lngLat: [109.99, 39.61], tier: 'ordos' },
+      ],
+      // 静态：一个镜头框住全部地点，pitch 0 看清字号差别
+      shots: [{ t: 0, fit: ['xian', 'lanzhou', 'zhangye', 'gaotai', 'jiayuguan', 'anxi', 'ordos'], pitch: 0 }],
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    MapStage.mount($('stage'), { story }).then((stage) => {
+      window.stage = stage;
+      // 图例：每个 tier 对应的地点名，读的是 story 本身
+      $('legend').innerHTML = story.sites.map((s) =>
+        '<span class="tier"><b>' + s.name + '</b> ' + s.tier + '</span>'
+      ).join('');
+    });
+  </script>
+</body>
+</html>

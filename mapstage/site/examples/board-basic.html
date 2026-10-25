@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>游戏地图最小用法 · MapStage 示例</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c8c2b4; font: 13px/1.4 system-ui, sans-serif; }
+    #stage { position: absolute; inset: 0; }
+    .ui { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+          max-width: calc(100% - 48px); padding: 8px 10px; background: rgba(251, 248, 241, 0.92); color: #241b14;
+          border: 1px solid #ddd2bf; border-radius: 8px; }
+    .ui button { font: inherit; padding: 5px 10px; border: 1px solid #ddd2bf; border-radius: 6px; background: #fff; color: inherit; cursor: pointer; }
+    .ui button:disabled { opacity: 0.45; cursor: default; }
+    .ui output { font: 12px ui-monospace, Consolas, monospace; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="ui">
+    <output id="read">点一座城</output>
+    <button id="march" disabled>行军到邻城</button>
+    <button id="reset">清空</button>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script src="../studio/assets/mapstage-board.js"></script>
+  <script>
+    // 没有游戏规则：点一座城，颜色在三家之间轮换、计数加一。这就是 board 的全部用法
+    const sites = [
+      { id: 'changan', name: '长安', lngLat: [108.94, 34.27], tier: 'large' },
+      { id: 'luoyang', name: '洛阳', lngLat: [112.45, 34.62], tier: 'capital' },
+      { id: 'hanzhong', name: '汉中', lngLat: [107.03, 33.07], tier: 'medium' },
+      { id: 'chengdu', name: '成都', lngLat: [104.07, 30.67], tier: 'capital' },
+      { id: 'xiangyang', name: '襄阳', lngLat: [112.14, 32.04], tier: 'large' },
+      { id: 'jiangling', name: '江陵', lngLat: [112.19, 30.35], tier: 'medium' },
+      { id: 'jianye', name: '建业', lngLat: [118.78, 32.06], tier: 'capital' },
+    ];
+    const links = [
+      ['changan', 'luoyang'], ['changan', 'hanzhong'], ['hanzhong', 'chengdu'], ['luoyang', 'xiangyang'],
+      ['xiangyang', 'jiangling'], ['jiangling', 'chengdu'], ['xiangyang', 'jianye'],
+    ];
+    const COLORS = ['#b8432f', '#3f5f8a', '#2f7d5b'];
+    const clicks = {};
+    const $ = (id) => document.getElementById(id);
+    let sel = null;
+
+    MapStageBoard.create($('stage'), { sites, links }).then((board) => {
+      window.board = board;
+      board.setLinks(() => ({ width: 1.4 }));
+
+      // pick：id 为 null 表示点在空地
+      board.on('pick', ({ id, site }) => {
+        if (sel) board.setCities({ [sel]: { ring: null, label: 'normal' } });
+        sel = id;
+        $('march').disabled = !id;
+        if (!id) { $('read').textContent = '点一座城'; return; }
+        clicks[id] = (clicks[id] || 0) + 1;
+        board.setCities({ [id]: { color: COLORS[clicks[id] % 3], value: clicks[id] * 9, badge: clicks[id], ring: 'select', label: 'active' } });
+        $('read').textContent = site.name + ' · 第 ' + clicks[id] + ' 次';
+      });
+
+      $('march').onclick = async () => {
+        const to = board.neighbors(sel)[0];
+        await board.march(sel, to, { color: (board.getCity(sel) || {}).color });
+        board.focus(to);
+      };
+
+      // setCities 传 null 清掉一座城的样式
+      $('reset').onclick = () => {
+        board.setCities(Object.fromEntries(sites.map((s) => [s.id, null])));
+        Object.keys(clicks).forEach((k) => delete clicks[k]);
+        sel = null;
+        $('march').disabled = true;
+        $('read').textContent = '点一座城';
+        board.fit();
+      };
+    });
+  </script>
+</body>
+</html>

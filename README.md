@@ -2,63 +2,81 @@
 
 **English** | [中文](README.zh-CN.md)
 
-Open-source **MapStage tuner**: map and globe projection, satellite, hypsometric relief, 3D terrain, region isolate, and JSON presets.
+Open-source **antique parchment** MapLibre stack for China historical maps and short-form video (HyperFrames or any MapLibre host).
 
 ## Live demo
 
 **→ https://hopechen067.github.io/MapStage/**  
-Interactive tuner (EOX satellite + Mapterhorn DEM need internet. No install.)
+Interactive tuner (EOX satellite + Terrarium DEM need internet. No install.)
 
-## What's new
+### Demo video
 
-- **Map / Globe** projection, independent satellite and hypsometric relief, optional region isolate (terrain island).
-- Hillshade and 3D terrain use **Mapterhorn** DEM (was AWS Terrarium).
-- Water is built-in OpenFreeMap / OpenMapTiles vector layers.
-- CSS color grade can be toggled; copy JSON includes the live camera and resource switches.
-- Public repo renamed to **MapStage**.
+Example output of this stack in a real map-story episode (**河西走廊 · 河西四郡**). Low-res clip streamed from GitHub Pages:
+
+https://hopechen067.github.io/MapStage/studio/media/hexi-ep07-demo-480p.mp4
+
+<video
+  controls
+  playsinline
+  preload="metadata"
+  width="720"
+  src="https://hopechen067.github.io/MapStage/studio/media/hexi-ep07-demo-480p.mp4">
+</video>
+
+Longer clip (~36s): [showcases/hexi-ep07/hexi-ep07-map-clip.mp4](showcases/hexi-ep07/hexi-ep07-map-clip.mp4)
 
 ## Showcases
 
-Current tuner: national map, 3D terrain, globe, isolate.
+Still frames from the same open demo, plus live tuner captures.
 
 <table>
   <tr>
     <td align="center" width="50%">
-      <img src="showcases/preview-tuner-china.jpg" alt="Tuner national map view" />
-      <br /><sub>Tuner · national view (map)</sub>
+      <img src="showcases/hexi-ep07/still-01-open.jpg" alt="Wuwei oasis and Shiyang River" />
+      <br /><sub>武威 · oasis / Shiyang River</sub>
     </td>
     <td align="center" width="50%">
-      <img src="showcases/preview-tuner-hexi.jpg" alt="Tuner 3D terrain" />
-      <br /><sub>Tuner · 3D terrain</sub>
+      <img src="showcases/hexi-ep07/still-03-commanderies.jpg" alt="Jiuquan terrain and water" />
+      <br /><sub>酒泉 · terrain + water</sub>
     </td>
   </tr>
   <tr>
     <td align="center" width="50%">
-      <img src="showcases/preview-tuner-globe.jpg" alt="Tuner globe projection" />
-      <br /><sub>Tuner · globe</sub>
+      <img src="showcases/hexi-ep07/still-02-corridor.jpg" alt="Hexi corridor map shot" />
+      <br /><sub>Hexi corridor map shot</sub>
     </td>
     <td align="center" width="50%">
-      <img src="showcases/preview-tuner-isolate.jpg" alt="Tuner region isolate (China terrain island)" />
-      <br /><sub>Tuner · isolate (region display)</sub>
+      <img src="showcases/hexi-ep07/still-05-close.jpg" alt="Settlement close-up" />
+      <br /><sub>Settlement close-up</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="showcases/preview-eox-china.png" alt="Tuner national view" />
+      <br /><sub>Tuner · national view (EOX)</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="showcases/preview-eox-hexi.png" alt="Tuner Hexi view" />
+      <br /><sub>Tuner · Hexi / hillshade</sub>
     </td>
   </tr>
 </table>
 
+More files: [showcases/hexi-ep07/](showcases/hexi-ep07/)
+
 | Item | Value |
 |------|--------|
 | Skill folder | `mapstage` |
-| Runtime | MapStage |
+| Runtime | [MapLibre GL JS](https://maplibre.org/) |
 | Default basemap | **EOX Sentinel-2 cloudless** (public demo WMTS; check provider terms) |
-| Terrain / hillshade | **Mapterhorn** DEM (runtime fetch; Terrarium encoding) |
-| Water | OpenFreeMap / OpenMapTiles vector water |
-| Look | CSS color grade, map/globe, isolate island, `HanCity3D` settlements |
+| Terrain / hillshade | AWS Terrarium DEM (runtime fetch; `encoding: 'terrarium'`) |
+| Water | OpenFreeMap vector tiles (OpenMapTiles water / waterway); no data file in the repo, see [DATA-PROVENANCE.md](DATA-PROVENANCE.md) |
+| Region isolate | Optional parchment mask (`ui.showRegionIsolate`); Natural Earth China-POV outline (incl. Zangnan / islands) + OSM silhouettes — [DATA-PROVENANCE.md](DATA-PROVENANCE.md) |
+| Look | Antique CSS tuner + tiered settlement extrusions (`HanCity3D`) |
 | License | [MIT](LICENSE) for code/docs; showcase media & third-party terms in [LICENSE-EXCEPTIONS.md](LICENSE-EXCEPTIONS.md) / [NOTICE.md](NOTICE.md) |
-| Hosted demo | [Live demo](https://hopechen067.github.io/MapStage/) — Pages publishes `mapstage/tuner` to the site root |
+| Hosted demo | [Live demo](https://hopechen067.github.io/MapStage/) — Pages publishes `mapstage/site` at the root and `mapstage/tuner` at `/studio/` |
 
 ## Quick pull (install)
-
-**`git clone` pulls the whole repository, not a standalone skill.**  
-You get README, showcases, the tuner, and the `mapstage/` skill folder. Agents do not auto-discover that folder from a clone. Copy `mapstage/` into your skills directory (step 2) if you want the agent skill.
 
 ### 1) Clone the repo
 
@@ -74,30 +92,47 @@ cd MapStage
 git pull
 ```
 
-### 2) Install as an agent skill
+### 2) Install as an agent skill (copy folder)
 
-Skill folder (browse, not a second clone): [`mapstage/`](https://github.com/hopechen067/MapStage/tree/master/mapstage)
+The skill lives in `mapstage/`. Copy that folder into your agent skills directory, then reload skills.
 
-**One command** — installs only that folder:
+**Windows (PowerShell)** — pick the path your host uses:
 
-```bash
-npx skills add hopechen067/MapStage --skill mapstage -g
+```powershell
+# Grok / common user skills dir
+$src = ".\mapstage"
+$dst = Join-Path $env:USERPROFILE ".grok\skills\mapstage"
+New-Item -ItemType Directory -Force -Path (Split-Path $dst) | Out-Null
+Copy-Item -Recurse -Force $src $dst
 ```
 
-GitHub CLI 2.90+:
-
-```bash
-gh skill install hopechen067/MapStage mapstage --scope user
+```powershell
+# Codex user skills (if you use Codex)
+$src = ".\mapstage"
+$dst = Join-Path $env:USERPROFILE ".codex\skills\mapstage"
+New-Item -ItemType Directory -Force -Path (Split-Path $dst) | Out-Null
+Copy-Item -Recurse -Force $src $dst
 ```
 
-Then reload skills. On Windows, add `--copy` to the `npx` command if symlink creation fails.
+**macOS / Linux:**
 
-**Or** after a full clone, copy `mapstage/` into your agent's skills directory.
+```bash
+git clone https://github.com/hopechen067/MapStage.git
+cp -R MapStage/mapstage ~/.grok/skills/mapstage
+# or: ~/.codex/skills/mapstage
+```
+
+One-shot clone + install (Unix):
+
+```bash
+git clone --depth 1 https://github.com/hopechen067/MapStage.git \
+  && cp -R MapStage/mapstage ~/.grok/skills/mapstage
+```
 
 ### 3) Paste this to your agent
 
 ```text
-请使用 MapStage skill。
+请使用 mapstage skill。
 在线调参：https://hopechen067.github.io/MapStage/
 仓库：https://github.com/hopechen067/MapStage
 我会在 demo 里调好风格后导出 JSON，请按 SKILL.md / references 应用到地图场景（jumpTo + idle，encoding terrarium）。
@@ -107,19 +142,22 @@ Style workflow: open the [live demo](https://hopechen067.github.io/MapStage/) �
 
 ## Quick start (local tuner)
 
-The [live demo](#live-demo) already runs on GitHub Pages. **You do not start a server on your computer** to use it.
-
-Only if you want to edit files or preview offline do you start the tuner locally. Run the command on your machine; when it is up, open the local URL printed in the terminal (do not use `file://`).
+Only needed if you want to run the tuner offline on your machine (not required for the public demo).
 
 ```bash
 cd mapstage/tuner
 
 # Option A — Python 3
-python -m http.server
+python -m http.server 8765
 
 # Option B — Node
-npx --yes serve
+npx --yes serve -l 8765
 ```
+
+Then open `http://127.0.0.1:8765/` on the **same machine**.  
+Public share link: [Live demo](#live-demo).
+
+Do **not** open `index.html` as `file://` — presets and optional local assets will fail.
 
 Optional check (Node on `PATH`):
 
@@ -131,15 +169,15 @@ node verify.mjs
 ## Features
 
 - **Configurable raster basemap** — default [EOX Sentinel-2 cloudless](https://s2maps.eu). Override with `map-tiles.config.local.js` (gitignored) for any tile URL you are allowed to use.
-- **Mapterhorn hillshade + 3D terrain** — Terrarium encoding; map/globe projection; optional region isolate.
-- **Vector water** — OpenFreeMap / OpenMapTiles (built-in).
-- **CSS color grade** — sepia / warm tint / vignette / paint; filter can be toggled; export JSON presets.
+- **Terrarium hillshade + terrain** — `encoding: 'terrarium'` is required.
+- **Optional water overlay** — loader + paint UI kept; hydrography data is **not** redistributed (bring your own; see DATA-PROVENANCE.md).
+- **Antique CSS tuner** — sepia / warm tint / vignette / paint; export JSON presets.
 - **City tiers** — capital / large / medium / small / pass / station / ordos via `HanCity3D`.
 
 ## Configure map tiles
 
 1. Read [NOTICE.md](NOTICE.md).
-2. Defaults: `tuner/map-tiles.config.js` (EOX + Mapterhorn).
+2. Defaults: `tuner/map-tiles.config.js` (EOX + Terrarium).
 3. Personal endpoints: `map-tiles.config.local.js` (gitignored). See `map-tiles.config.example.js`.
 
 EOX public tiles are typically non-commercial with attribution (~10 m). This project does **not** grant rights to any commercial map vendor.
@@ -151,17 +189,15 @@ Satellite and DEM tiles are fetched at runtime from configured URLs only.
 ## Attribution & compliance
 
 - Follow each basemap / DEM / CDN provider’s terms for your use case.
-- **OpenFreeMap / OSM** attribution for vector water.
-- **Third-party runtimes:** keep their licenses when redistributing builds — [NOTICE.md](NOTICE.md).
+- **Water data:** not shipped in this repo; any local pack you add stays under your license — [DATA-PROVENANCE.md](DATA-PROVENANCE.md), [LICENSE-EXCEPTIONS.md](LICENSE-EXCEPTIONS.md).
+- **MapLibre / Three.js:** keep their licenses when redistributing builds.
 - **Showcase images:** All Rights Reserved demo media unless noted otherwise ([LICENSE-EXCEPTIONS.md](LICENSE-EXCEPTIONS.md)).
 
 ## Install as an agent skill
 
-The GitHub repo is the full project. The skill is **only** [`mapstage/`](https://github.com/hopechen067/MapStage/tree/master/mapstage).
-
-1. Install with `npx skills add hopechen067/MapStage --skill mapstage -g`, or `gh skill install hopechen067/MapStage mapstage --scope user`, or copy `mapstage/` into your agent's skills directory.
+1. Copy `mapstage` into your skills directory.
 2. Reload agent skills so `SKILL.md` is discovered.
-3. Ask the agent to open the tuner, apply an exported JSON preset (version 3), or wire the same look into a MapStage scene.
+3. Ask the agent to apply the antique map stack, open the tuner, or migrate an exported preset.
 
 ## Layout
 
@@ -179,7 +215,8 @@ The GitHub repo is the full project. The skill is **only** [`mapstage/`](https:/
     ├── agents/openai.yaml
     ├── references/
     ├── schemas/
-    └── tuner/                 # published to GitHub Pages site root
+    ├── site/                  # official site, GitHub Pages root
+    └── tuner/                 # Studio, published to /studio/
 ```
 
 ## Contributing / security
@@ -191,6 +228,7 @@ The GitHub repo is the full project. The skill is **only** [`mapstage/`](https:/
 ## Next reads
 
 - [`mapstage/SKILL.md`](mapstage/SKILL.md)
+- [`mapstage/references/runtime-perf.md`](mapstage/references/runtime-perf.md)
 - [`mapstage/references/参数列表说明.md`](mapstage/references/参数列表说明.md)
 - [`mapstage/references/tuner-workflow.md`](mapstage/references/tuner-workflow.md)
 - [`mapstage/references/tested-config.md`](mapstage/references/tested-config.md)

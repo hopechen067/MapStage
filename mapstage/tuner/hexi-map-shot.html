@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>汉图古卷 · 河西跳切（precache + jumpTo）</title>
+  <link rel="preconnect" href="https://unpkg.com" crossorigin />
+  <link rel="preconnect" href="https://tiles.maps.eox.at" crossorigin />
+  <link rel="preconnect" href="https://s3.amazonaws.com" crossorigin />
+  <link rel="preconnect" href="https://elevation-tiles-prod.s3.amazonaws.com" crossorigin />
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" />
+  <style>
+    html, body { margin: 0; background: #1a1612; }
+    [data-composition-id="hexi-map-shot"] {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      background: #000;
+    }
+    #map-wrap, #map { position: absolute; inset: 0; }
+    #warm-tint, #vignette {
+      position: absolute; inset: 0; pointer-events: none;
+    }
+    #vignette {
+      background: radial-gradient(ellipse at center, transparent 48%, rgba(12,10,8,0.72) 100%);
+    }
+    .hud {
+      position: absolute; left: 64px; bottom: 56px; z-index: 4;
+      color: #f4eee4; text-shadow: 0 2px 12px rgba(0,0,0,0.55);
+      font-family: "Songti SC", "STSong", SimSun, serif;
+    }
+    .hud .kicker {
+      font-family: "Microsoft YaHei", sans-serif;
+      letter-spacing: 0.28em; font-size: 18px; opacity: 0.82;
+    }
+    .hud h1 { margin: 8px 0 0; font-size: 64px; font-weight: 700; }
+    #fx-status {
+      position: absolute; left: 64px; top: 40px; z-index: 4;
+      color: #f4eee4; font: 14px/1.4 "Microsoft YaHei", sans-serif;
+      text-shadow: 0 1px 8px #000;
+    }
+  </style>
+</head>
+<body>
+  <div
+    id="comp-hexi-map-shot"
+    data-composition-id="hexi-map-shot"
+    data-start="0"
+    data-duration="18"
+    data-width="1920"
+    data-height="1080"
+  >
+    <div id="map-wrap">
+      <div id="map"></div>
+      <div id="warm-tint"></div>
+      <div id="vignette"></div>
+    </div>
+    <div id="fx-status">loading…</div>
+    <div class="hud">
+      <div class="kicker">HAN MAP · JUMPTO + IDLE</div>
+      <h1 id="shot-title">河西走廊</h1>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js" crossorigin="anonymous" integrity="sha384-GfxBM9x46BaAFxtCq39Fxir8fNZ4VDnwgfi6Kzi5/F1tAFsm0amuuV8kd+Pxzuf/"></script>
+  <script src="https://unpkg.com/gsap@3.12.5/dist/gsap.min.js" crossorigin="anonymous" integrity="sha384-g4NTh/Iv5PPU4xPyhEWqPcwtNXOvdaDI8LLnyYfyNZOjKJeYQyjzQ9X5275eBjpt"></script>
+  <script src="assets/map-fx.js?v=20260822-perf"></script>
+  <script src="map-tiles.config.js"></script>
+  <script src="map-tiles.config.local.js" onerror="/* optional */"></script>
+  <script src="assets/han-city-3d.js"></script>
+  <script>
+    (function () {
+      var fx = window.AntiqueMapFx;
+      var statusEl = document.getElementById('fx-status');
+      var titleEl = document.getElementById('shot-title');
+      var PRESET_URL = 'preset-antique-default.json';
+      var SHOTS = [
+        { title: '河西走廊', center: [100.55, 38.55], zoom: 6.8, pitch: 58, bearing: 172 },
+        { title: '武威', center: [102.64, 37.58], zoom: 9.4, pitch: 64, bearing: 175 },
+        { title: '张掖', center: [100.45, 38.38], zoom: 9.6, pitch: 66, bearing: 178 },
+        { title: '酒泉', center: [98.50, 39.38], zoom: 9.4, pitch: 64, bearing: 170 },
+        { title: '敦煌', center: [94.66, 39.88], zoom: 9.6, pitch: 64, bearing: 165 },
+      ];
+      var SITES = [
+        { id: 'wuwei', name: '武威', lng: 102.63797, lat: 37.9282, tier: 'medium' },
+        { id: 'zhangye', name: '张掖', lng: 100.44981, lat: 38.92592, tier: 'medium' },
+        { id: 'jiuquan', name: '酒泉', lng: 98.49432, lat: 39.73342, tier: 'medium' },
+        { id: 'dunhuang', name: '敦煌', lng: 94.66197, lat: 40.14213, tier: 'medium' },
+      ];
+
+      function setStatus(t) { statusEl.textContent = t; }
+
+      function cssFilter(css) {
+        return (
+          'sepia(' + css.sepia + ') saturate(' + css.saturate + ') contrast(' +
+          css.contrast + ') brightness(' + css.brightness + ') hue-rotate(' +
+          css.hueRotate + 'deg)'
+        );
+      }
+
+      function buildStyle(tileCfg, preset) {
+        var m = preset.mapstage || preset.maplibre;
+        var sources = {};
+        var layers = [
+          { id: 'background', type: 'background', paint: { 'background-color': m.backgroundColor } },
+        ];
+        if (tileCfg.terrain && tileCfg.terrain.enabled) {
+          var demSpec = {
+            type: 'raster-dem',
+            tiles: tileCfg.terrain.tiles,
+            tileSize: tileCfg.terrain.tileSize,
+            maxzoom: tileCfg.terrain.maxzoom,
+            encoding: 'terrarium',
+            attribution: tileCfg.terrain.attribution,
+          };
+          var demId = tileCfg.terrain.sourceId;
+          // MapLibre 5.x:terrain + hillshade 共用一个 DEM 源,每张 DEM 瓦片只下载一次。
+          // 旧版需要第二个 source id;如需回退,在瓦片配置 terrain.dualSource = true。
+          sources[demId] = demSpec;
+          if (tileCfg.terrain.dualSource === true) {
+            sources[demId + '-hillshade'] = Object.assign({}, demSpec);
+          }
+        }
+        if (tileCfg.satellite && tileCfg.satellite.enabled && tileCfg.satellite.tiles.length) {
+          sources[tileCfg.satellite.sourceId] = {
+            type: 'raster',
+            tiles: tileCfg.satellite.tiles,
+            tileSize: tileCfg.satellite.tileSize,
+            maxzoom: tileCfg.satellite.maxzoom,
+            attribution: tileCfg.satellite.attribution,
+          };
+          layers.push({
+            id: 'satellite',
+            type: 'raster',
+            source: tileCfg.satellite.sourceId,
+            paint: {
+              'raster-opacity': m.satellite.opacity,
+              'raster-saturation': m.satellite.saturation,
+              'raster-contrast': m.satellite.contrast,
+              'raster-brightness-min': m.satellite.brightnessMin,
+              'raster-brightness-max': m.satellite.brightnessMax,
+              'raster-hue-rotate': m.satellite.hueRotate,
+              'raster-fade-duration': 0,
+            },
+          });
+        }
+        if (tileCfg.terrain && tileCfg.terrain.enabled) {
+          layers.push({
+            id: 'hillshade',
+            type: 'hillshade',
+            source:
+              tileCfg.terrain.dualSource === true
+                ? tileCfg.terrain.sourceId + '-hillshade'
+                : tileCfg.terrain.sourceId,
+            paint: {
+              'hillshade-exaggeration': m.hillshade.exaggeration,
+              'hillshade-illumination-direction': m.hillshade.illuminationDirection,
+              'hillshade-shadow-color': m.hillshade.shadowColor,
+              'hillshade-highlight-color': m.hillshade.highlightColor,
+              'hillshade-accent-color': m.hillshade.accentColor,
+            },
+          });
+        }
+        return { version: 8, sources: sources, layers: layers };
+      }
+
+      function resolveTiles() {
+        var cfg = window.MAP_TILE_CONFIG || {};
+        var sat = cfg.satellite || {};
+        var ter = cfg.terrain || {};
+        var satTiles = (sat.tiles || []).filter(Boolean);
+        var terTiles = (ter.tiles || []).filter(Boolean);
+        return {
+          satellite: {
+            enabled: sat.enabled === true && satTiles.length > 0,
+            tiles: satTiles,
+            tileSize: sat.tileSize || 256,
+            maxzoom: sat.maxzoom || 14,
+            attribution: sat.attribution || '',
+            sourceId: sat.sourceId || 'basemapRaster',
+          },
+          terrain: {
+            enabled: ter.enabled !== false && terTiles.length > 0,
+            tiles: terTiles,
+            tileSize: ter.tileSize || 256,
+            maxzoom: ter.maxzoom || 15,
+            sourceId: ter.sourceId || 'terrain',
+            attribution: ter.attribution || '',
+          },
+        };
+      }
+
+      async function main() {
+        var preset = await fetch(PRESET_URL).then(function (r) { return r.json(); });
+        var css = preset.css;
+        document.getElementById('map-wrap').style.filter = cssFilter(css);
+        document.getElementById('warm-tint').style.background =
+          'rgba(154,136,104,' + css.warmTintAlpha + ')';
+        document.getElementById('vignette').style.opacity = String(Math.min(1, css.vignetteStrength * 4));
+
+        var tileCfg = resolveTiles();
+        var cam0 = SHOTS[0];
+        var map = fx.createMap(maplibregl, {
+          container: 'map',
+          style: buildStyle(tileCfg, preset),
+          camera: cam0,
+          mode: 'record',
+          maxPitch: 85,
+          terrain: tileCfg.terrain.enabled
+            ? {
+                sourceId: tileCfg.terrain.sourceId || 'terrain',
+                exaggeration: (preset.mapstage || preset.maplibre).terrainExaggeration,
+              }
+            : null,
+          mapOptions: { interactive: false, attributionControl: true },
+        });
+
+        map.on('load', function () {
+          var sourceId = tileCfg.terrain.sourceId || 'terrain';
+          if (tileCfg.terrain.enabled) {
+            fx.setTerrainEx(map, sourceId, (preset.mapstage || preset.maplibre).terrainExaggeration, { budget: false });
+            if (typeof map.setSky === 'function') {
+              try { map.setSky(fx.antiqueSky()); } catch (e) { /* ignore */ }
+            }
+          }
+          if (window.HanCity3D && typeof window.HanCity3D.addExtrusionCities === 'function') {
+            window.HanCity3D.addExtrusionCities(map, maplibregl, {
+              cities: SITES,
+              halfKm: 18,
+              visible: true,
+            });
+          }
+
+          setStatus('precache ' + SHOTS.length + ' shots…');
+          fx.precacheViewports(map, SHOTS, { timeoutMs: 20000 }).then(function () {
+            setStatus('terrain rise…');
+            if (!tileCfg.terrain.enabled) return { skipped: true };
+            return fx.terrainRise(map, {
+              sourceId: sourceId,
+              from: 0.4,
+              to: (preset.mapstage || preset.maplibre).terrainExaggeration,
+              durationMs: 1800,
+              waitIdle: false,
+              budget: false,
+            });
+          }).then(function () {
+            fx.jumpTo(map, cam0);
+            titleEl.textContent = cam0.title;
+            setStatus('setTerrain ×' + (map.__antiqueSetTerrainCount || 0) + ' · ready');
+            var tl = gsap.timeline({ paused: true });
+            SHOTS.forEach(function (shot, i) {
+              tl.call(function () {
+                titleEl.textContent = shot.title;
+                fx.jumpTo(map, shot);
+              }, null, i * 3.6);
+            });
+            window.__timelines = window.__timelines || {};
+            window.__timelines['hexi-map-shot'] = tl;
+            window.__antiqueMap = map;
+            window.__hexiShots = SHOTS;
+            var paused = /[?&]paused=1/.test(location.search || '');
+            if (!window.__hyperframes && !paused) tl.play();
+          }).catch(function (err) {
+            console.error(err);
+            setStatus('fx failed');
+          });
+        });
+      }
+
+      main().catch(function (err) {
+        console.error(err);
+        titleEl.textContent = '模板加载失败，请用 HTTP 打开 tuner/';
+      });
+    })();
+  </script>
+</body>
+</html>

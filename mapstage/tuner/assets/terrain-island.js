@@ -1,5 +1,5 @@
 /**
- * Independent terrain island: clip MapStage terrain to a polygon and
+ * Independent terrain island: clip MapLibre terrain to a polygon and
  * extrude a side wall along the silhouette. Requires the patched
  * maplibre-gl build (__ANTIQUE_TERRAIN_CLIP_PATCH).
  */
@@ -8,6 +8,8 @@
 
   var CLIP_MAX = 2048;
   var CLIP_MIN = 512;
+  // Extra window kept ahead of the view (fraction of view span, per side).
+  var CLIP_LEAD = 0.22;
   var WALL_MAX_POINTS = 1600;
   var RIM_STEP_PX = 2;
   var RIM_MAX_FLAT_PX = 4;
@@ -22,8 +24,8 @@
   var VOID = '#14110e';
   var PAPER = VOID;
   var WALL_COLOR = '#6d4a36';
-  var WALL_COLOR_TOP = '#6d4a36';
-  var WALL_COLOR_BOT = '#6d4a36';
+  var WALL_COLOR_TOP = '#8a5c42';
+  var WALL_COLOR_BOT = '#1c120c';
 
   function lngLatToMercator(lng, lat) {
     var x = (Number(lng) + 180) / 360;
@@ -78,15 +80,50 @@
     var x0 = id.x / scale;
     var y0 = id.y / scale;
     var s = 1 / scale;
-    var n = 6;
-    var i;
-    var j;
-    for (j = 0; j <= n; j++) {
-      for (i = 0; i <= n; i++) {
-        if (sampleClipAtMerc(x0 + (i / n) * s, y0 + (j / n) * s) >= 0.45) return true;
+    var merc = clip.merc;
+    var img = clip._image;
+    if (!merc || !img) return true;
+    var sat = clipSat(clip);
+    var w = img.width;
+    var h = img.height;
+    var sx = merc.x1 - merc.x0;
+    var sy = merc.y1 - merc.y0;
+    if (!sat || !(sx > 0) || !(sy > 0)) return true;
+    // Exact test: any inside texel under the tile footprint keeps the tile.
+    // A 7x7 point sample dropped tiles that only hold a thin coastal strip,
+    // which blinked land and wall out as the camera moved between DEM LODs.
+    var px0 = Math.max(0, Math.floor(((x0 - merc.x0) / sx) * w) - 1);
+    var py0 = Math.max(0, Math.floor(((y0 - merc.y0) / sy) * h) - 1);
+    var px1 = Math.min(w, Math.ceil(((x0 + s - merc.x0) / sx) * w) + 1);
+    var py1 = Math.min(h, Math.ceil(((y0 + s - merc.y0) / sy) * h) + 1);
+    if (px1 <= px0 || py1 <= py0) return false;
+    var W1 = w + 1;
+    var inside = sat[py1 * W1 + px1] - sat[py0 * W1 + px1] - sat[py1 * W1 + px0] + sat[py0 * W1 + px0];
+    return inside > 0;
+  }
+
+  // Summed-area table of inside texels (red >= 128), built once per clip image.
+  function clipSat(clip) {
+    var img = clip && clip._image;
+    if (!img || !img.data) return null;
+    if (clip._sat && clip._satFor === img) return clip._sat;
+    var w = img.width;
+    var h = img.height;
+    var W1 = w + 1;
+    var sat = new Uint32Array(W1 * (h + 1));
+    var d = img.data;
+    for (var y = 0; y < h; y++) {
+      var run = 0;
+      var row = (y + 1) * W1;
+      var prev = y * W1;
+      for (var x = 0; x < w; x++) {
+        if (d[(y * w + x) * 4] >= 128) run++;
+        sat[row + x + 1] = sat[prev + x + 1] + run;
       }
     }
-    return false;
+    clip._sat = sat;
+    clip._satFor = img;
+    return sat;
   }
 
   function filterTiles(tiles) {
@@ -157,11 +194,15 @@
       }
     }
     if (mercs.length < 4) return null;
+    // Far-field rays at high pitch land hundreds of tiles away. Cap how far
+    // the window reaches from the centre, but by what one clip texture can
+    // hold at ~0.7 texel/px, never by a percentile of the sample spread:
+    // that cut the far side of the land off as a straight edge.
     var lim = minLim > 0 ? minLim : 0.05;
     if (dists.length) {
-      dists.sort(function (a, b) { return a - b; });
-      var p = dists[Math.min(dists.length - 1, Math.floor(dists.length * 0.62))];
-      lim = Math.max(p * 1.8, minLim > 0 ? minLim : 0.00008);
+      var zNow = typeof map.getZoom === 'function' ? Number(map.getZoom()) : 0;
+      var reach = (CLIP_MAX * 0.75) / (512 * Math.pow(2, Math.max(0, isFinite(zNow) ? zNow : 0)));
+      lim = Math.max(reach, minLim > 0 ? minLim : 0.00008);
     }
     var x0 = 1;
     var y0 = 1;
@@ -185,7 +226,23 @@
     return { x0: x0 - pad, y0: y0 - pad, x1: x1 + pad, y1: y1 + pad };
   }
 
+  // narrativeFeature allocates a fresh geometry per call; callers (setClip and
+  // the per-move signature) must see the same feature, so remember the last pair.
+  var nfIn = null;
+  var nfOut = null;
+  function narrativeCached(feature) {
+    if (!feature) return null;
+    if (feature === nfOut) return feature;
+    if (feature === nfIn) return nfOut;
+    var api = root.REGION_ISOLATE;
+    var out = api && api.narrativeFeature ? api.narrativeFeature(feature) : feature;
+    nfIn = feature;
+    nfOut = out;
+    return out;
+  }
+
   function clipMercatorBbox(map, feature) {
+    feature = narrativeCached(feature);
     var full = mercatorBbox(feature);
     if (!full) return null;
     if (!map) return full;
@@ -238,25 +295,68 @@
     var x1 = Math.min(full.x1, view.x1);
     var y1 = Math.min(full.y1, view.y1);
     if (x1 - x0 < 1e-8 || y1 - y0 < 1e-8) return full;
+    var need = { x0: x0, y0: y0, x1: x1, y1: y1 };
+
+    // Whole land fits one texture: never window it, panning cannot expose an edge.
+    if (featureFitsClipTexture(map, feature)) return full;
+
     var zSnap = typeof map.getZoom === 'function' ? map.getZoom() : 4;
     var q = Math.pow(0.5, Math.floor(zSnap) + 5);
-    function snap(v) {
-      return Math.round(v / q) * q;
+    var world = 512 * Math.pow(2, Math.max(0, isFinite(zSnap) ? zSnap : 0));
+    var padX = (need.x1 - need.x0) * CLIP_LEAD;
+    var padY = (need.y1 - need.y0) * CLIP_LEAD;
+    var cand = {
+      x0: Math.max(full.x0, Math.floor((need.x0 - padX) / q) * q),
+      y0: Math.max(full.y0, Math.floor((need.y0 - padY) / q) * q),
+      x1: Math.min(full.x1, Math.ceil((need.x1 + padX) / q) * q),
+      y1: Math.min(full.y1, Math.ceil((need.y1 + padY) / q) * q),
+    };
+
+    // Hysteresis: keep the live window while it still covers the view and is
+    // not much looser than a fresh one. Rebuilding (raster + upload) on every
+    // pan step froze the main thread and left the lead edge unrasterized.
+    var clip = root.__antiqueTerrainClip;
+    var cur = clip && clip.enabled && clip.merc && clip._fullKey === mercKey(full) ? clip.merc : null;
+    if (cur) {
+      var eps = 1e-9;
+      var covers =
+        cur.x0 <= need.x0 + eps &&
+        cur.y0 <= need.y0 + eps &&
+        cur.x1 >= need.x1 - eps &&
+        cur.y1 >= need.y1 - eps;
+      // Texel density (texels per screen px, capped at 1): rebuild only when a
+      // fresh window would be clearly sharper than the live one.
+      var curSpan = Math.max(cur.x1 - cur.x0, cur.y1 - cur.y0);
+      var candSpan = Math.max(cand.x1 - cand.x0, cand.y1 - cand.y0);
+      var curRes = Math.min(1, CLIP_MAX / (curSpan * world));
+      var candRes = Math.min(1, CLIP_MAX / (candSpan * world));
+      if (covers && candRes <= curRes * 1.25) {
+        return { x0: cur.x0, y0: cur.y0, x1: cur.x1, y1: cur.y1 };
+      }
     }
-    return { x0: snap(x0), y0: snap(y0), x1: snap(x1), y1: snap(y1) };
+    return cand;
+  }
+
+  function mercKey(m) {
+    return (
+      m.x0.toFixed(6) + ',' + m.y0.toFixed(6) + ',' + m.x1.toFixed(6) + ',' + m.y1.toFixed(6)
+    );
   }
 
   var CHINA_SEAS = [
     { lng0: 117.0, lng1: 132.0, lat0: 21.2, lat1: 41.3 },
     { lng0: 105.5, lng1: 122.0, lat0: 3.0, lat1: 23.8 },
   ];
-  var STRATA_LINE = [109 / 255, 74 / 255, 54 / 255];
-  var STRATA_BROWN = [109 / 255, 74 / 255, 54 / 255];
+  var STRATA_LINE = [26 / 255, 20 / 255, 16 / 255];
   var STRATA_WATER = [
-    { t: 1, rgb: STRATA_BROWN.slice() },
+    { t: 0.15, rgb: [61 / 255, 83 / 255, 72 / 255] },
+    { t: 0.4, rgb: [166 / 255, 124 / 255, 82 / 255] },
+    { t: 1, rgb: [58 / 255, 46 / 255, 36 / 255] },
   ];
   var STRATA_LAND = [
-    { t: 1, rgb: STRATA_BROWN.slice() },
+    { t: 0.1, rgb: [196 / 255, 160 / 255, 106 / 255] },
+    { t: 0.3, rgb: [139 / 255, 115 / 255, 85 / 255] },
+    { t: 1, rgb: [58 / 255, 46 / 255, 36 / 255] },
   ];
 
   function inChinaSeas(lng, lat) {
@@ -298,10 +398,26 @@
   }
 
   function strataRgb(uv, water, opts) {
-    void uv;
-    void water;
-    void opts;
-    return STRATA_BROWN.slice();
+    opts = opts || {};
+    uv = Number(uv) + (opts.tilt || 0) + (opts.noise || 0);
+    if (uv < 0) uv = 0;
+    if (uv > 1) uv = 1;
+    var layers = water ? STRATA_WATER : STRATA_LAND;
+    var rgb = layers[layers.length - 1].rgb;
+    var i;
+    for (i = 0; i < layers.length; i++) {
+      if (uv < layers[i].t || i === layers.length - 1) {
+        rgb = layers[i].rgb;
+        break;
+      }
+    }
+    var lineW = opts.lineWidth || 0;
+    if (lineW > 0) {
+      for (i = 0; i < layers.length - 1; i++) {
+        if (Math.abs(uv - layers[i].t) <= lineW) return STRATA_LINE.slice();
+      }
+    }
+    return rgb.slice();
   }
 
   function isBlueGrayRgb(r, g, b) {
@@ -409,10 +525,29 @@
     }
   }
 
+  function seaBoxesTouchMerc(merc) {
+    var i;
+    for (i = 0; i < CHINA_SEAS.length; i++) {
+      var b = CHINA_SEAS[i];
+      var a = lngLatToMercator(b.lng0, b.lat1);
+      var c = lngLatToMercator(b.lng1, b.lat0);
+      if (!(c[0] < merc.x0 || a[0] > merc.x1 || c[1] < merc.y0 || a[1] > merc.y1)) return true;
+    }
+    return false;
+  }
+
   function paintClipWater(image, merc) {
     if (!image || !merc || !image.data) return image;
     var w = image.width;
     var h = image.height;
+    var data = image.data;
+    var n = w * h;
+    var i;
+    // Window clear of every sea box: nothing to mark, skip the land raster.
+    if (!seaBoxesTouchMerc(merc)) {
+      for (i = 0; i < n; i++) data[i * 4 + 1] = 0;
+      return image;
+    }
     var land = null;
     try {
       var china = chinaLandFeature();
@@ -420,7 +555,7 @@
         var canvas = document.createElement('canvas');
         canvas.width = w;
         canvas.height = h;
-        var ctx = canvas.getContext('2d', { alpha: false });
+        var ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: true });
         fillFeatureMask(ctx, china, merc, w, h);
         land = ctx.getImageData(0, 0, w, h);
       }
@@ -429,18 +564,21 @@
     }
     var spanX = merc.x1 - merc.x0;
     var spanY = merc.y1 - merc.y0;
-    var data = image.data;
     var landData = land && land.data;
-    var n = w * h;
-    var i;
-    for (i = 0; i < n; i++) {
-      var x = i % w;
-      var y = (i / w) | 0;
-      var mx = merc.x0 + ((x + 0.5) / w) * spanX;
-      var my = merc.y0 + ((y + 0.5) / h) * spanY;
-      var ll = mercatorToLngLat(mx, my);
-      var onLand = landData ? landData[i * 4] >= 128 : false;
-      data[i * 4 + 1] = !onLand && inChinaSeas(ll[0], ll[1]) ? 255 : 0;
+    // Longitude depends on the column only, latitude on the row only.
+    var lngs = new Float64Array(w);
+    var lats = new Float64Array(h);
+    var x;
+    var y;
+    for (x = 0; x < w; x++) lngs[x] = (merc.x0 + ((x + 0.5) / w) * spanX) * 360 - 180;
+    for (y = 0; y < h; y++) lats[y] = mercatorToLngLat(0, merc.y0 + ((y + 0.5) / h) * spanY)[1];
+    i = 0;
+    for (y = 0; y < h; y++) {
+      var lat = lats[y];
+      for (x = 0; x < w; x++, i++) {
+        var onLand = landData ? landData[i * 4] >= 128 : false;
+        data[i * 4 + 1] = !onLand && inChinaSeas(lngs[x], lat) ? 255 : 0;
+      }
     }
     return image;
   }
@@ -452,22 +590,14 @@
     var spanY = merc.y1 - merc.y0;
     if (spanX > spanY) h = Math.max(CLIP_MIN, Math.round(CLIP_MAX * (spanY / spanX)));
     else w = Math.max(CLIP_MIN, Math.round(CLIP_MAX * (spanX / spanY)));
-    var aa = 4;
-    var rw = w * aa;
-    var rh = h * aa;
+    // Canvas path fill is already anti-aliased; the old 4x supersample cost an
+    // 8192^2 canvas (~270 MB) per rebuild for no visible gain at the 0.5 cut.
     var canvas = document.createElement('canvas');
-    canvas.width = rw;
-    canvas.height = rh;
-    var ctx = canvas.getContext('2d', { alpha: false });
-    fillFeatureMask(ctx, feature, merc, rw, rh);
-    var out = document.createElement('canvas');
-    out.width = w;
-    out.height = h;
-    var octx = out.getContext('2d', { alpha: false });
-    octx.imageSmoothingEnabled = true;
-    if ('imageSmoothingQuality' in octx) octx.imageSmoothingQuality = 'high';
-    octx.drawImage(canvas, 0, 0, w, h);
-    var image = octx.getImageData(0, 0, w, h);
+    canvas.width = w;
+    canvas.height = h;
+    var ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: true });
+    fillFeatureMask(ctx, feature, merc, w, h);
+    var image = ctx.getImageData(0, 0, w, h);
     paintClipWater(image, merc);
     return image;
   }
@@ -1612,7 +1742,7 @@
   // Custom-layer mercator Z can be opposite the terrain mesh (ele - drop).
   // +1 → bottom = alt + drop (when alt-drop projects toward +ndcY / sky).
   // -1 → bottom = alt - drop (same meter direction as the mesh).
-  // Live MapStage mainMatrix matches the mesh, so the default is -1. A/B on
+  // Live MapLibre mainMatrix matches the mesh, so the default is -1. A/B on
   // 拆出·北京: forcing +1 put bedrock in the sky and removed the near skirt.
   function overlayDropSignFromMatrix(mat, maplibregl, lng, lat, alt, drop) {
     if (!mat || !maplibregl || !maplibregl.MercatorCoordinate || !(drop > 0)) return -1;
@@ -1928,7 +2058,7 @@
   function extractMatrix(args) {
     if (!args) return null;
     // Same path as han-city-3d: custom layers supply mercator [0..1]
-    // verts and MapStage v5 scales mainMatrix by EXTENT to match.
+    // verts and MapLibre v5 scales mainMatrix by EXTENT to match.
     if (args.defaultProjectionData) {
       var scaled =
         asFlat16(args.defaultProjectionData.mainMatrix) ||
@@ -1955,7 +2085,8 @@
       count: 0,
       loc: null,
     };
-    var strataBody = 'vec3 c=vec3(109.0,74.0,54.0)/255.0;';
+    var strataBody =
+      'vec2 cuf=v_mercator;float uv=clamp(v_shade_w/max(v_clip_w,1.0e-12),0.0,1.0);float n=fract(sin(dot(cuf,vec2(127.1,311.7)))*43758.5453);uv=clamp(uv+0.044*(cuf.x+cuf.y*0.35-0.7)+0.02*(n-0.5),0.0,1.0);vec3 rock=vec3(58.0,46.0,36.0)/255.0;vec3 c;float b0;float b1;if(v_water>0.5){b0=0.15;b1=0.40;c=uv<b0?vec3(61.0,83.0,72.0)/255.0:uv<b1?vec3(166.0,124.0,82.0)/255.0:rock;}else{b0=0.10;b1=0.30;c=uv<b0?vec3(196.0,160.0,106.0)/255.0:uv<b1?vec3(139.0,115.0,85.0)/255.0:rock;}float fw=max(fwidth(uv),1.0e-6);float line=max(1.0-smoothstep(0.0,fw,abs(uv-b0)),1.0-smoothstep(0.0,fw,abs(uv-b1)));c=mix(c,vec3(26.0,20.0,16.0)/255.0,line);';
 
     return {
       id: WALL_LAYER_ID,
@@ -2141,14 +2272,14 @@
       clip.enabled = false;
       return { ok: false, reason: patched ? 'no-map' : 'unpatched-maplibre' };
     }
-    var api = root.REGION_ISOLATE;
-    var feat = feature && api && api.narrativeFeature ? api.narrativeFeature(feature) : feature;
+    var feat = narrativeCached(feature);
     if (!feat) {
       clip.enabled = false;
       destroyTexture(map, clip.texture);
       clip.texture = null;
       clip.merc = null;
       clip._key = '';
+      clip._fullKey = '';
       clip._size = null;
       clip._image = null;
       syncIslandMesh(map, false);
@@ -2190,6 +2321,8 @@
     clip.size = [merc.x1 - merc.x0, merc.y1 - merc.y0];
     clip.merc = merc;
     clip._key = key;
+    var fullBox = mercatorBbox(feat);
+    clip._fullKey = fullBox ? mercKey(fullBox) : '';
     clip._size = [image.width, image.height];
     clip._image = image;
     clip.drop = drop;

@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "id": "sanguo-221",
+  "title": "三分天下 · 221 年",
+  "preset": "../studio/presets/antique-default.json",
+  "startYear": 221,
+  "player": "shu",
+  "factions": [
+    { "id": "wei", "name": "魏", "color": "#3f5f8a", "capital": "luoyang" },
+    { "id": "shu", "name": "蜀", "color": "#b8432f", "capital": "chengdu" },
+    { "id": "wu", "name": "吴", "color": "#2f7d5b", "capital": "jianye" }
+  ],
+  "sites": [
+    { "id": "luoyang", "name": "洛阳", "lngLat": [112.45, 34.62], "tier": "capital", "confidence": "B", "source": "今地估算" },
+    { "id": "xuchang", "name": "许昌", "lngLat": [113.82, 34.03], "tier": "large", "confidence": "B", "source": "今地估算" },
+    { "id": "ye", "name": "邺", "lngLat": [114.32, 36.33], "tier": "large", "confidence": "B", "source": "今临漳一带" },
+    { "id": "changan", "name": "长安", "lngLat": [108.94, 34.27], "tier": "large", "confidence": "B", "label": { "side": "left" }, "source": "今地估算" },
+    { "id": "wan", "name": "宛", "lngLat": [112.53, 33.0], "tier": "medium", "confidence": "B", "source": "今南阳一带" },
+    { "id": "xiangyang", "name": "襄阳", "lngLat": [112.14, 32.04], "tier": "medium", "confidence": "B", "label": { "side": "left" }, "source": "今地估算" },
+    { "id": "shouchun", "name": "寿春", "lngLat": [116.78, 32.57], "tier": "medium", "confidence": "B", "source": "今寿县一带" },
+    { "id": "hefei", "name": "合肥", "lngLat": [117.23, 31.82], "tier": "medium", "confidence": "B", "source": "今地估算" },
+    { "id": "chengdu", "name": "成都", "lngLat": [104.07, 30.67], "tier": "capital", "confidence": "B", "label": { "side": "left" }, "source": "今地估算" },
+    { "id": "hanzhong", "name": "汉中", "lngLat": [107.03, 33.07], "tier": "medium", "confidence": "B", "source": "今地估算" },
+    { "id": "jiangzhou", "name": "江州", "lngLat": [106.55, 29.56], "tier": "medium", "confidence": "B", "source": "今重庆一带" },
+    { "id": "yongan", "name": "永安", "lngLat": [109.46, 31.04], "tier": "pass", "confidence": "B", "source": "今奉节一带" },
+    { "id": "jianye", "name": "建业", "lngLat": [118.78, 32.06], "tier": "capital", "confidence": "B", "source": "今南京一带" },
+    { "id": "wuchang", "name": "武昌", "lngLat": [114.89, 30.39], "tier": "medium", "confidence": "B", "source": "今鄂州一带" },
+    { "id": "jiangling", "name": "江陵", "lngLat": [112.19, 30.35], "tier": "large", "confidence": "B", "label": { "side": "left" }, "source": "今荆州一带" },
+    { "id": "changsha", "name": "长沙", "lngLat": [112.94, 28.23], "tier": "medium", "confidence": "B", "source": "今地估算" },
+    { "id": "chaisang", "name": "柴桑", "lngLat": [115.99, 29.71], "tier": "medium", "confidence": "B", "source": "今九江一带" }
+  ],
+  "cities": {
+    "luoyang": { "owner": "wei", "troops": 30 },
+    "xuchang": { "owner": "wei", "troops": 20 },
+    "ye": { "owner": "wei", "troops": 18 },
+    "changan": { "owner": "wei", "troops": 22 },
+    "wan": { "owner": "wei", "troops": 14 },
+    "xiangyang": { "owner": "wei", "troops": 16 },
+    "shouchun": { "owner": "wei", "troops": 14 },
+    "hefei": { "owner": "wei", "troops": 16 },
+    "chengdu": { "owner": "shu", "troops": 28 },
+    "hanzhong": { "owner": "shu", "troops": 18 },
+    "jiangzhou": { "owner": "shu", "troops": 12 },
+    "yongan": { "owner": "shu", "troops": 14 },
+    "jianye": { "owner": "wu", "troops": 26 },
+    "wuchang": { "owner": "wu", "troops": 16 },
+    "jiangling": { "owner": "wu", "troops": 18 },
+    "changsha": { "owner": "wu", "troops": 10 },
+    "chaisang": { "owner": "wu", "troops": 12 }
+  },
+  "links": [
+    ["changan", "luoyang"], ["changan", "hanzhong"], ["hanzhong", "chengdu"], ["chengdu", "jiangzhou"],
+    ["jiangzhou", "yongan"], ["yongan", "jiangling"], ["luoyang", "xuchang"], ["luoyang", "wan"],
+    ["luoyang", "ye"], ["ye", "xuchang"], ["wan", "xuchang"], ["wan", "xiangyang"], ["xuchang", "shouchun"],
+    ["shouchun", "hefei"], ["xiangyang", "jiangling"], ["jiangling", "changsha"], ["jiangling", "wuchang"],
+    ["changsha", "wuchang"], ["wuchang", "chaisang"], ["chaisang", "jianye"], ["hefei", "jianye"]
+  ]
+}

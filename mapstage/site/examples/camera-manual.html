@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>手写机位 · MapStage 示例</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c8c2b4; font: 13px/1.4 system-ui, sans-serif; }
+    #stage { position: absolute; inset: 0; }
+    .ui { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+          max-width: calc(100% - 48px); padding: 8px 10px; background: rgba(251, 248, 241, 0.92); color: #241b14;
+          border: 1px solid #ddd2bf; border-radius: 8px; }
+    .ui button { font: inherit; padding: 5px 10px; border: 1px solid #ddd2bf; border-radius: 6px; background: #fff; color: inherit; cursor: pointer; }
+    .ui input[type=range] { width: 200px; accent-color: #b3332a; }
+    .ui output { font: 12px ui-monospace, Consolas, monospace; min-width: 52px; }
+    .ui pre { flex-basis: 100%; margin: 0; padding: 6px 8px; background: #fff; border: 1px solid #ddd2bf; border-radius: 6px;
+              font: 12px/1.45 ui-monospace, Consolas, monospace; white-space: pre; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="ui">
+    <button id="play">播放</button>
+    <input id="t" type="range" min="0" step="0.04" value="0" aria-label="时间">
+    <output id="read">0.0 s</output>
+    <button id="grab">读当前机位</button>
+    <pre id="view" hidden></pre>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script>
+    // 镜头可以混用：center / zoom / pitch / bearing 直接给的是手写机位，fit 给的是按地点算出的机位
+    const story = {
+      version: 1, id: 'camera-manual', duration: 16,
+      sites: [
+        { id: 'xian', name: '西安', lngLat: [108.94, 34.34], tier: 'capital' },
+        { id: 'lanzhou', name: '兰州', lngLat: [103.83, 36.06], tier: 'capital' },
+        { id: 'wuwei', name: '武威', lngLat: [102.64, 37.93], tier: 'large' },
+        { id: 'zhangye', name: '张掖', lngLat: [100.45, 38.93], tier: 'large' },
+        { id: 'dunhuang', name: '敦煌', lngLat: [94.66, 40.14], tier: 'large' },
+      ],
+      routes: [],
+      shots: [
+        { t: 0,  center: [104.5, 36.0], zoom: 4.2, pitch: 0, bearing: 0 },                       // 手写：全国视角
+        { t: 4,  fit: ['xian', 'lanzhou'], pitch: 20, move: 2.2 },                            // fit：按两点取景
+        { t: 10, center: [100.5, 38.9], zoom: 6.2, pitch: 35, bearing: -20, move: 2.2 },       // 手写：近景斜视
+        { t: 14, fit: ['wuwei', 'dunhuang'], pitch: 20, move: 2.2 },                           // fit：河西走廊全景
+      ],
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    MapStage.mount($('stage'), { story, interactive: true }).then((stage) => {
+      window.stage = stage;   // 可以先拖动地图，再点「读当前机位」
+      $('t').max = stage.duration;
+      const show = (t) => {
+        stage.render(t);
+        $('t').value = t;
+        $('read').textContent = t.toFixed(1) + ' s';
+      };
+      $('t').oninput = () => show(Number($('t').value));
+
+      // 读出的 JSON 直接是一个 shot，可以粘进 story.shots 里
+      $('grab').onclick = () => {
+        const v = AntiqueMapFx.readView(stage.map);
+        const shot = {
+          t: Number(Number($('t').value).toFixed(1)),
+          center: [Number(v.center[0].toFixed(4)), Number(v.center[1].toFixed(4))],
+          zoom: Number(v.zoom.toFixed(2)),
+          pitch: Math.round(v.pitch),
+          bearing: Math.round(v.bearing),
+        };
+        $('view').hidden = false;
+        $('view').textContent = JSON.stringify(shot, null, 2);
+      };
+
+      let raf = null;
+      $('play').onclick = () => {
+        if (raf) { cancelAnimationFrame(raf); raf = null; $('play').textContent = '播放'; return; }
+        const t0 = performance.now() - Number($('t').value) * 1000;
+        const tick = (now) => { show(((now - t0) / 1000) % stage.duration); raf = requestAnimationFrame(tick); };
+        $('play').textContent = '暂停';
+        raf = requestAnimationFrame(tick);
+      };
+      show(7);   // 停在 fit 镜头到位、下一个手写镜头还没开始移动的时刻
+    });
+  </script>
+</body>
+</html>

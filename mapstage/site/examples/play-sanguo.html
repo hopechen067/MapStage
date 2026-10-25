@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>三分天下 · MapStage 示例</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c8c2b4; font: 14px/1.5 system-ui, sans-serif; color: #241b14; }
+    #stage { position: absolute; inset: 0; }
+    /* 左上角的回合信息 */
+    .hud { position: absolute; left: 12px; top: 12px; z-index: 6; display: flex; gap: 8px; align-items: center;
+           background: rgba(251, 248, 241, 0.92); border: 1px solid #ddd2bf; border-radius: 8px; padding: 6px 12px;
+           font: 600 15px/1.4 "Noto Serif SC", "Songti SC", serif; color: #241b14; }
+    .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
+    /* 右侧面板：规则与战报 */
+    .panel { position: absolute; top: 12px; right: 12px; bottom: 12px; z-index: 6; width: 300px; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+    .box { background: rgba(251, 248, 241, 0.94); border: 1px solid #ddd2bf; border-radius: 10px; padding: 12px 14px; }
+    .box h3 { margin: 0 0 6px; font: 700 17px/1.3 "Noto Serif SC", "Songti SC", serif; }
+    .box p { margin: 0; color: #5a4a3c; font-size: 14px; line-height: 1.6; }
+    .box.grow { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+    .row button { font: 600 14px/1 system-ui, sans-serif; padding: 8px 12px; border-radius: 6px; border: 1px solid #ddd2bf; background: #fff; color: #241b14; cursor: pointer; }
+    .row button.primary { background: #b3332a; border-color: #b3332a; color: #fbf8f1; }
+    .row button:disabled { opacity: 0.45; cursor: default; }
+    .row input[type='range'] { flex: 1; min-width: 120px; accent-color: #b3332a; }
+    .row .num { font: 13px/1 ui-monospace, Consolas, monospace; color: #7d6f5d; min-width: 48px; }
+    .tags { display: flex; gap: 10px; flex-wrap: wrap; font-size: 13px; color: #5a4a3c; }
+    .tags span { display: inline-flex; gap: 5px; align-items: center; }
+    .log { flex: 1; min-height: 120px; margin: 0; padding: 0; list-style: none; overflow: auto; font-size: 13px; line-height: 1.7; color: #5a4a3c; }
+    .log li b { color: #241b14; font-weight: 600; }
+    .log li.turn { margin-top: 6px; color: #7d6f5d; border-top: 1px dashed #ddd2bf; padding-top: 4px; }
+    /* 一方亡国 / 一统时的遮罩 */
+    .over { position: absolute; inset: 0; z-index: 30; display: none; place-items: center; background: rgba(36, 27, 20, 0.45); }
+    .over[data-on] { display: grid; }
+    .over div { background: #fbf8f1; border: 2px solid #241b14; padding: 18px 28px; text-align: center; font: 700 26px/1.5 "Noto Serif SC", "Songti SC", serif; color: #241b14; }
+    /* 非法操作的提示，放在左下角；没有错误时不占位 */
+    .err { position: absolute; left: 12px; bottom: 12px; z-index: 6; max-width: calc(100% - 336px); margin: 0; padding: 10px 12px;
+           background: #fbf8f1; border: 1px solid #b3332a; border-radius: 8px; color: #b3332a; font: 13px/1.6 ui-monospace, Consolas, monospace; white-space: pre-wrap; }
+    .err:empty { display: none; }
+    @media (max-width: 760px) {
+      .panel { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; max-height: 46%; }
+      .hud { top: 8px; left: 8px; }
+      .err { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="hud" id="hud" aria-live="polite">载入中…</div>
+  <div class="over" id="over"><div id="overText"></div></div>
+  <div class="panel">
+    <div class="box" id="info">
+      <h3>点一座己方城池</h3>
+      <p>每座城每回合只能做一件事：征兵，或向相邻城出兵（己方城是调兵，他方城是攻城）。</p>
+    </div>
+    <div class="box">
+      <div class="tags" id="tags"></div>
+      <div class="row">
+        <button type="button" class="primary" id="end">结束回合</button>
+        <button type="button" id="restart">新开一局</button>
+      </div>
+    </div>
+    <div class="box grow">
+      <h3>战报</h3>
+      <ul class="log" id="log" aria-live="polite"></ul>
+    </div>
+  </div>
+  <div class="err" id="bad" role="status" aria-live="polite"></div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script src="../studio/assets/mapstage-board.js"></script>
+  <script src="../studio/assets/mapstage-play.js"></script>
+  <script id="example-src">
+    // 地图：MapStageBoard（底图、地名、城池圈、连线、点选、行军动画）
+    // 规则：MapStagePlay（示例用的回合制规则，换成你自己的也行）
+    const $ = (id) => document.getElementById(id);
+    const P = window.MapStagePlay;
+    const SAVE_KEY = 'mapstage-play-sanguo';
+    let sc, board, game, view, save, sel = null, target = null, busy = false;
+    const site = {}, faction = {};
+
+    async function boot() {
+      const scUrl = new URL('./play-sanguo.json', location.href);
+      sc = await (await fetch(scUrl)).json();
+      P.validateScenario(sc);
+      sc.sites.forEach((s) => { site[s.id] = s; });
+      sc.factions.forEach((f) => { faction[f.id] = f; });
+      const preset = await (await fetch(new URL(sc.preset, scUrl))).json();
+      board = await MapStageBoard.create($('stage'), { preset, sites: sc.sites, links: sc.links, preserve: true });
+      window.board = board;
+      board.on('pick', onPick);
+      $('end').onclick = endTurn;
+      $('restart').onclick = () => newGame(Math.floor(Math.random() * 1e9));
+      const saved = load();
+      if (saved) newGame(saved.seed, saved.actions);
+      else newGame(42);
+    }
+
+    // ── 存档：seed + 操作序列，重放即恢复 ──
+    function load() { try { return JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { return null; } }
+    function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* 隐私模式等 */ } }
+
+    function newGame(seed, actions) {
+      save = { seed, actions: [] };
+      game = P.createGame(sc, { seed });
+      $('log').innerHTML = '';
+      logTurn();
+      (actions || []).forEach((a) => {
+        try { const r = P.apply(game, sc, a); game = r.state; save.actions.push(a); r.events.forEach(logEvent); } catch (e) { /* 旧存档不兼容就停在这里 */ }
+      });
+      view = JSON.parse(JSON.stringify(game));
+      persist();
+      sel = target = null;
+      draw();
+    }
+
+    function legalTargets() {
+      if (!sel) return [];
+      return P.actionsFor(game, sc, sel).filter((a) => a.type === 'march').map((a) => a.to);
+    }
+
+    // ── 状态 → 地图：整张图只靠这两个调用 ──
+    function draw() {
+      const targets = legalTargets();
+      const cities = {};
+      sc.sites.forEach((s) => {
+        const c = view.cities[s.id];
+        cities[s.id] = {
+          color: faction[c.owner].color,
+          value: c.troops,
+          badge: c.troops,
+          ring: s.id === sel ? 'select' : targets.includes(s.id) ? 'target' : null,
+          label: s.id === sel ? 'active' : c.owner === game.player && game.acted[s.id] ? 'dim' : 'normal',
+        };
+      });
+      board.setCities(cities);
+      board.setLinks((a, b) => {
+        const oa = view.cities[a].owner, ob = view.cities[b].owner;
+        const hot = sel && ((a === sel && targets.includes(b)) || (b === sel && targets.includes(a)));
+        return { color: oa === ob ? faction[oa].color : null, width: hot ? 3.5 : 1.6 };
+      });
+      drawPanel();
+    }
+
+    function drawPanel() {
+      const me = faction[game.player];
+      $('hud').innerHTML = '<span class="dot" style="background:' + me.color + '"></span>' + me.name + ' · ' + P.dateLabel(game) + ' · 第 ' + game.turn + ' 回合';
+      $('tags').innerHTML = sc.factions.map((f) => '<span><i class="dot" style="background:' + f.color + ';width:9px;height:9px;border-radius:50%;display:inline-block"></i>' +
+        f.name + ' ' + P.citiesOf(view, f.id).length + ' 城 / ' + P.citiesOf(view, f.id).reduce((n, id) => n + view.cities[id].troops, 0) + ' 千</span>').join('');
+      $('end').disabled = busy || !!game.winner;
+      drawInfo();
+      if (game.winner) {
+        $('over').setAttribute('data-on', '');
+        $('overText').textContent = game.winner === game.player ? '天下归' + me.name + '！' : (game.winner === 'none' ? '国破' : faction[game.winner].name + '一统天下') + ' · 再来一局？';
+      } else $('over').removeAttribute('data-on');
+    }
+
+    function drawInfo() {
+      const box = $('info');
+      if (!sel) {
+        box.innerHTML = '<h3>点一座己方城池</h3><p>每座城每回合只能做一件事：征兵，或向相邻城出兵（己方城是调兵，他方城是攻城）。</p>';
+        return;
+      }
+      const c = game.cities[sel];
+      const R = P.rulesOf(sc);
+      const acts = P.actionsFor(game, sc, sel);
+      let html = '<h3>' + site[sel].name + ' · ' + faction[c.owner].name + '</h3><p>守军 ' + c.troops + ' 千（上限 ' + R.cap + '）。' +
+        (c.owner !== game.player ? '' : game.acted[sel] ? '本回合已行动。' : '点相邻城池出兵。') + '</p>';
+      if (c.owner === game.player && !game.acted[sel]) {
+        html += '<div class="row"><button type="button" id="recruit"' + (acts.some((a) => a.type === 'recruit') ? '' : ' disabled') + '>征兵 +' + R.recruit + '</button></div>';
+        if (target) {
+          const t = game.cities[target];
+          const attack = t.owner !== game.player;
+          const def = attack ? '，守军约 ' + t.troops + ' 千 × 城防 ' + R.defense : '';
+          html += '<p style="margin-top:10px">' + (attack ? '攻打 ' : '调兵到 ') + site[target].name + def + '</p>' +
+            '<div class="row"><input type="range" id="n" min="1" max="' + (c.troops - 1) + '" value="' + (c.troops - 1) + '" aria-label="出兵数">' +
+            '<span class="num" id="nv">' + (c.troops - 1) + ' 千</span></div>' +
+            '<div class="row"><button type="button" class="primary" id="go">' + (attack ? '出兵' : '调兵') + '</button><button type="button" id="cancel">取消</button></div>';
+        }
+      }
+      box.innerHTML = html;
+      if ($('recruit')) $('recruit').onclick = () => act({ type: 'recruit', city: sel });
+      if ($('n')) $('n').oninput = () => { $('nv').textContent = $('n').value + ' 千'; };
+      if ($('go')) $('go').onclick = () => act({ type: 'march', from: sel, to: target, troops: Number($('n').value) });
+      if ($('cancel')) $('cancel').onclick = () => { target = null; draw(); };
+    }
+
+    // ── 点选：board 告诉你点了哪座城（id 为 null = 点在空地） ──
+    function onPick({ id }) {
+      if (busy || game.winner) return;
+      if (sel && id && legalTargets().includes(id)) target = id;
+      else { sel = id; target = null; }
+      draw();
+    }
+
+    // ── 操作与动画 ──
+    async function act(action) {
+      if (busy) return;
+      let r;
+      try { r = P.apply(game, sc, action); } catch (err) { $('bad').textContent = err.message; return; }
+      $('bad').textContent = '';
+      save.actions.push(action);
+      persist();
+      game = r.state;
+      if (action.type !== 'end') { sel = action.type === 'recruit' ? action.city : action.from; target = null; }
+      busy = true;
+      for (const ev of r.events) {
+        if (ev.type === 'march' || ev.type === 'battle') await board.march(ev.from, ev.to, { color: faction[ev.attacker || ev.faction].color });
+        applyView(ev);
+        logEvent(ev);
+        draw();
+      }
+      busy = false;
+      view = JSON.parse(JSON.stringify(game));
+      draw();
+    }
+
+    function endTurn() { sel = target = null; act({ type: 'end' }); }
+
+    // 事件逐条改 view，地图跟着战报一步步变；最后再以 game 为准
+    function applyView(ev) {
+      const c = view.cities;
+      if (ev.type === 'recruit') c[ev.city].troops += ev.n;
+      else if (ev.type === 'march') { c[ev.from].troops -= ev.n; c[ev.to].troops += ev.n; }
+      else if (ev.type === 'battle') {
+        c[ev.from].troops -= ev.n - (ev.back || 0);
+        if (ev.win) c[ev.to].owner = ev.attacker;
+        c[ev.to].troops = ev.left;
+      }
+    }
+
+    // ── 战报 ──
+    function logTurn() { addLog('<li class="turn">' + P.dateLabel(game) + '</li>'); }
+    function addLog(html) { const log = $('log'); log.insertAdjacentHTML('beforeend', html); log.scrollTop = log.scrollHeight; }
+    const fname = (id) => '<b style="color:' + faction[id].color + '">' + faction[id].name + '</b>';
+    function logEvent(ev) {
+      if (ev.type === 'recruit') addLog('<li>' + fname(ev.faction) + ' ' + site[ev.city].name + ' 征兵 +' + ev.n + '</li>');
+      else if (ev.type === 'march') addLog('<li>' + fname(ev.faction) + ' ' + site[ev.from].name + ' → ' + site[ev.to].name + ' 调兵 ' + ev.n + '</li>');
+      else if (ev.type === 'battle') addLog('<li>' + fname(ev.attacker) + ' ' + site[ev.from].name + ' 攻 ' + site[ev.to].name + '（' + ev.n + ' 对 ' + ev.d + '）：' +
+        (ev.win ? '<b>克城</b>，余 ' + ev.left : '败退，回 ' + ev.back) + '</li>');
+      else if (ev.type === 'eliminated') addLog('<li><b>' + faction[ev.faction].name + '亡</b></li>');
+      else if (ev.type === 'turn') logTurn();
+    }
+
+    boot().catch((e) => { $('bad').textContent = String(e && e.message || e); });
+  </script>
+</body>
+</html>

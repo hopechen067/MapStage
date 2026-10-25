@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>四方配色 · MapStage 示例</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c8c2b4; font: 13px/1.4 system-ui, sans-serif; }
+    #stage { position: absolute; inset: 0; }
+    .ui { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+          max-width: calc(100% - 48px); padding: 8px 10px; background: rgba(251, 248, 241, 0.92); color: #241b14;
+          border: 1px solid #ddd2bf; border-radius: 8px; }
+    .ui button { font: inherit; padding: 5px 10px; border: 1px solid #ddd2bf; border-radius: 6px; background: #fff; color: inherit; cursor: pointer; }
+    .ui input[type=range] { width: 200px; accent-color: #b3332a; }
+    .ui output { font: 12px ui-monospace, Consolas, monospace; min-width: 52px; }
+    .legend { display: flex; gap: 10px; align-items: center; }
+    .legend span { display: inline-flex; align-items: center; gap: 4px; }
+    .legend i { display: inline-block; width: 14px; height: 14px; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="ui">
+    <button id="play">播放</button>
+    <input id="t" type="range" min="0" step="0.04" value="0" aria-label="时间">
+    <output id="read">0.0 s</output>
+    <div class="legend" id="legend" aria-label="阵营配色图例"></div>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script>
+    // 颜色表示「谁的行动」：红军 / 国民党军 / 友军 / 中立 四色固定，线型与角色另算
+    const story = {
+      version: 1, id: 'route-sides', duration: 12,
+      sites: [
+        { id: 'wuwei', name: '武威', lngLat: [102.64, 37.93], tier: 'large' },
+        { id: 'zhangye', name: '张掖', lngLat: [100.45, 38.93], tier: 'large' },
+        { id: 'jiuquan', name: '酒泉', lngLat: [98.49, 39.73], tier: 'large' },
+        { id: 'dunhuang', name: '敦煌', lngLat: [94.66, 40.14], tier: 'large' },
+      ],
+      routes: [
+        // red：主线，同屏 primary 只能 1 条
+        { id: 'red-main', side: 'red', role: 'primary', via: ['wuwei', 'zhangye', 'jiuquan', 'dunhuang'],
+          curve: 'none', draw: [0.5, 11], hold: 12 },
+        // enemy：国民党军 / 马家军，静态背景线
+        { id: 'enemy-wall', side: 'enemy', role: 'background', coords: [[101.4, 36.6], [100.2, 38.4], [99.2, 39.6]],
+          curve: 'none', draw: [0, 12] },
+        // ally：友军，压力带（reaction 同屏最多 2 条）
+        { id: 'ally-push', side: 'ally', role: 'reaction', coords: [[102.0, 40.4], [99.8, 40.9], [96.6, 40.8]],
+          curve: 'none', draw: [4, 11], hold: 12 },
+        // neutral：中立，已走过的残影
+        { id: 'neutral-past', side: 'neutral', role: 'residual', coords: [[104.1, 35.7], [102.64, 37.93]],
+          curve: 'auto', draw: [0, 2] },
+      ],
+      shots: [{ t: 0, center: [100.6, 38.6], zoom: 5.6, pitch: 20 }],
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    // 图例直接读运行时的 SIDE_COLORS，页面上不写死颜色
+    const SIDE_NAMES = { red: '红军', enemy: '国民党军 / 马家军', ally: '友军', neutral: '中立' };
+    Object.keys(MapStage.SIDE_COLORS).forEach((side) => {
+      const item = document.createElement('span');
+      item.innerHTML = '<i></i>' + SIDE_NAMES[side] + ' ' + side;
+      item.querySelector('i').style.background = MapStage.SIDE_COLORS[side];
+      $('legend').appendChild(item);
+    });
+
+    MapStage.mount($('stage'), { story }).then((stage) => {
+      window.stage = stage;
+      $('t').max = stage.duration;
+      const show = (t) => {
+        stage.render(t);
+        $('t').value = t;
+        $('read').textContent = t.toFixed(1) + ' s';
+      };
+      $('t').oninput = () => show(Number($('t').value));
+
+      let raf = null;
+      $('play').onclick = () => {
+        if (raf) { cancelAnimationFrame(raf); raf = null; $('play').textContent = '播放'; return; }
+        const t0 = performance.now() - Number($('t').value) * 1000;
+        const tick = (now) => {
+          show(((now - t0) / 1000) % stage.duration);
+          raf = requestAnimationFrame(tick);
+        };
+        $('play').textContent = '暂停';
+        raf = requestAnimationFrame(tick);
+      };
+      show(10);   // 四条线都在画面里的时刻
+    });
+  </script>
+</body>
+</html>

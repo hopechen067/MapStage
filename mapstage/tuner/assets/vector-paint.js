@@ -16,6 +16,8 @@
 
   var TILEJSON_URL = 'https://tiles.openfreemap.org/planet';
   var SOURCE_ID = 'openmaptiles';
+  var OPENFREEMAP_ATTRIBUTION =
+    '<a href="https://openfreemap.org">OpenFreeMap</a> © <a href="https://openmaptiles.org">OpenMapTiles</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
   /** Protomaps Daylight landcover exists from z0; OMT wood/grass/farmland only from z7. */
   var SOURCE_FAR_ID = 'landcoverFar';
   var SOURCE_POLAR_ID = 'polarIce';
@@ -37,11 +39,11 @@
   var TERRAIN_MESH_MINZOOM = 6;
   /** Same as tuner/preset-antique-default.json maplibre.terrainExaggeration (dramatic) */
   var TERRAIN_EXAGGERATION = 1.6;
-  /** Terrarium metres 1:1 — MapStage exaggeration 1.0 */
+  /** Terrarium metres 1:1 — MapLibre exaggeration 1.0 */
   var TERRAIN_REAL_EXAGGERATION = 1;
   /** Qilian front: zoom/pitch where the terrain mesh is actually visible. */
   var VIEW_RELIEF = { center: [100.42, 38.48], zoom: 10.6, pitch: 70, bearing: 180 };
-  /** MapStage three.js-on-terrain example camera (Innsbruck). */
+  /** MapLibre three.js-on-terrain example camera (Innsbruck). */
   var VIEW_ALPS = { center: [11.5257, 47.668], zoom: 16.27, pitch: 60, bearing: -28.5 };
   /** Same as tuner/preset-antique-default.json maplibre.hillshade */
   var HILLSHADE_PAINT = {
@@ -54,7 +56,7 @@
   var CONTOUR_SOURCE_ID = 'contours';
   var CONTOUR_LAYER = 'contours';
   var GLYPHS_URL = 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf';
-  /** zoom: [minor m, major m] — MapStage contour protocol (meters, not feet). */
+  /** zoom: [minor m, major m] — MapLibre contour protocol (meters, not feet). */
   var CONTOUR_THRESHOLDS = {
     3: [1000, 2000],
     5: [500, 1000],
@@ -178,6 +180,110 @@
       css: {
         sepia: 0.08, saturate: 0.98, contrast: 1.03, brightness: 1.0, hueRotate: -1,
         warmTintColor: '#9a8868', warmTintAlpha: 0.04, vignetteStrength: 0.1,
+      },
+    },
+    {
+      id: 'aged',
+      label: '陈旧羊皮',
+      blurb: '更黄更旧 · 深褐道路',
+      paint: withLayerSplits({
+        background: '#c9b892',
+        wood: '#8f8a58',
+        grass: '#a89e66',
+        farmland: '#c2a878',
+        rock: '#a08a68',
+        urban: '#b09468',
+        water: '#3a6e7e',
+        waterway: '#35686f',
+        highway: '#96482a',
+        major: '#86603c',
+        minor: '#77604a',
+        path: '#6a5a48',
+        rail: '#4a4034',
+        building: '#8a6c4c',
+        boundary: '#963322',
+      }),
+      css: {
+        sepia: 0.28, saturate: 0.85, contrast: 1.08, brightness: 0.96, hueRotate: 4,
+        warmTintColor: '#a08050', warmTintAlpha: 0.1, vignetteStrength: 0.22,
+      },
+    },
+    {
+      id: 'ink',
+      label: '墨色山水',
+      blurb: '水墨淡彩 · 低饱和',
+      paint: withLayerSplits({
+        background: '#d8d5cc',
+        wood: '#7a7f72',
+        grass: '#9a9c8e',
+        farmland: '#b3ac98',
+        rock: '#8e887c',
+        urban: '#a29a8a',
+        water: '#4a5f66',
+        waterway: '#43565e',
+        highway: '#3a3630',
+        major: '#4a463e',
+        minor: '#5c564c',
+        path: '#6a645a',
+        rail: '#2e2a26',
+        building: '#6e675c',
+        boundary: '#5a2e26',
+      }),
+      css: {
+        sepia: 0.04, saturate: 0.35, contrast: 1.12, brightness: 0.92, hueRotate: 0,
+        warmTintColor: '#888888', warmTintAlpha: 0.02, vignetteStrength: 0.14,
+      },
+    },
+    {
+      id: 'silk',
+      label: '绢本重彩',
+      blurb: '暖绢底 · 朱红干道',
+      paint: withLayerSplits({
+        background: '#d3c2a0',
+        wood: '#7d8a52',
+        grass: '#a3a05e',
+        farmland: '#c8ab6e',
+        rock: '#a8906e',
+        urban: '#bd9c72',
+        water: '#2e6e80',
+        waterway: '#2a6472',
+        highway: '#b04024',
+        major: '#96562e',
+        minor: '#7d6448',
+        path: '#6e5c48',
+        rail: '#463c30',
+        building: '#8f6f4a',
+        boundary: '#b03020',
+      }),
+      css: {
+        sepia: 0.16, saturate: 1.05, contrast: 1.0, brightness: 1.04, hueRotate: 8,
+        warmTintColor: '#c09858', warmTintAlpha: 0.08, vignetteStrength: 0.14,
+      },
+    },
+    {
+      id: 'night',
+      label: '暗夜星图',
+      blurb: '旧版暗色 · 金色路网',
+      paint: withLayerSplits({
+        background: '#3d3428',
+        wood: '#5c6a48',
+        grass: '#7a8458',
+        farmland: '#a89068',
+        rock: '#7a7064',
+        urban: '#6e6256',
+        water: '#3d6474',
+        waterway: '#4a7080',
+        highway: '#c9a06a',
+        major: '#b08a58',
+        minor: '#8a7860',
+        path: '#6e6254',
+        rail: '#5a5048',
+        building: '#5c5044',
+        boundary: '#c9a06a',
+      }),
+      css: {
+        sepia: 0, saturate: 1, contrast: 1, brightness: 1, hueRotate: 0,
+        warmTintColor: '#9a8868', warmTintAlpha: 0, vignetteStrength: 0.18,
       },
     },
   ];
@@ -790,21 +896,30 @@
   }
 
   /**
-   * 真实地图海拔设色（对照中国地势图）：
-   * 东部平原绿、黄土/高原黄褐、高山棕、雪线以上才发白。
-   * DEM 海面多为 0 m，海色靠矢量海洋层，不靠 0 m 设色。
+   * 默认海拔设色：按高德卫星（style=6）中国 z5 取样。东海近黑、东部暗橄榄、
+   * 黄土灰卡其、河西/塔里木浅沙、祁连深褐、青藏中暗、雪线仍约 5800 m。
    */
   var DEFAULT_ELEVATION_STOPS = [
-    { h: -500, color: '#1a4f66', label: '海' },
-    { h: 5, color: '#3f8f4a', label: '平原' },
-    { h: 200, color: '#7aaa52', label: '低丘' },
-    { h: 600, color: '#c4b45c', label: '丘陵' },
-    { h: 1200, color: '#d2b46a', label: '黄土' },
-    { h: 2000, color: '#c49a58', label: '高原' },
-    { h: 3200, color: '#a07a48', label: '高山' },
-    { h: 4200, color: '#8a7358', label: '高原面' },
-    { h: 5200, color: '#9a948c', label: '极高' },
-    { h: 6000, color: '#e6e4dc', label: '雪' },
+    { h: -500, color: '#0e1730', label: '-500 m 海底' },
+    { h: -80, color: '#1c3d52', label: '-80 m 浅海' },
+    { h: 0, color: '#8a926c', label: '0 m 潮滩' },
+    { h: 30, color: '#6a7052', label: '30 m 滨海' },
+    { h: 80, color: '#5f6348', label: '80 m 低原' },
+    { h: 200, color: '#576542', label: '200 m 平原' },
+    { h: 350, color: '#4a5a36', label: '350 m 岗地' },
+    { h: 500, color: '#3f4f2c', label: '500 m 低丘' },
+    { h: 800, color: '#646b4c', label: '800 m 丘陵' },
+    { h: 1200, color: '#8a8470', label: '1200 m 黄土' },
+    { h: 1600, color: '#a19481', label: '1600 m 高原' },
+    { h: 2200, color: '#b5a48f', label: '2200 m 前山' },
+    { h: 3000, color: '#645f4d', label: '3000 m 高山' },
+    { h: 3400, color: '#726d49', label: '3400 m 高寒草原' },
+    { h: 3800, color: '#7a7458', label: '3800 m 高原面' },
+    { h: 4300, color: '#6e6858', label: '4300 m 高寒荒漠' },
+    { h: 4800, color: '#5c5850', label: '4800 m 岩屑' },
+    { h: 5200, color: '#555350', label: '5200 m 极高山' },
+    { h: 5800, color: '#c8ccc8', label: '5800 m 雪线' },
+    { h: 6500, color: '#eef0ee', label: '6500 m 雪峰' },
   ];
 
   function cloneStops(stops) {
@@ -1024,8 +1139,7 @@
       openmaptiles: {
         type: 'vector',
         url: TILEJSON_URL,
-        attribution:
-          '<a href="https://openfreemap.org">OpenFreeMap</a> © <a href="https://openmaptiles.org">OpenMapTiles</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        attribution: OPENFREEMAP_ATTRIBUTION,
       },
       landcoverFar: farSource,
       polarIce: {
@@ -1057,9 +1171,118 @@
     return style;
   }
 
+  /**
+   * 叠加用的矢量水系 / 道路：只取 OpenMapTiles 的 water、waterway（水系）和
+   * transportation（道路，含铁路 / 轮渡），不含标注、建筑、地表、境界。
+   * 图层 id 与 vector-layers 页一致（vl-…），applyVectorPaint / 皮肤配色可直接复用。
+   * 纯函数：不碰 map，返回 { sourceId, source, layers, ids }。
+   */
+  var OVERLAY_SOURCE_LAYERS = {
+    water: ['water', 'waterway'],
+    roads: ['transportation'],
+  };
+
+  function overlayDefs(group) {
+    var wanted = OVERLAY_SOURCE_LAYERS[group] || [];
+    return LAYER_DEFS.filter(function (def) {
+      return def.source === SOURCE_ID && wanted.indexOf(def['source-layer']) >= 0;
+    });
+  }
+
+  /**
+   * 叠加层道路按缩放分层（只作用于 overlayParts，不改 vector-layers 页）：
+   * 全国视角只留高速 / 国道；省级视角加省道（primary）与铁路；
+   * 地市级加县道（secondary）；城市级再出三级路、次路；街区级才出服务路 / 小路。
+   */
+  var OVERLAY_ROAD_FAR_OPACITY = 0.4;
+
+  var OVERLAY_ROAD_MINZOOM = {
+    'vl-highway': 0,
+    'vl-trunk': 0,
+    'vl-major': 5.5,
+    'vl-rail': 5.5,
+    'vl-secondary': 7,
+    'vl-tertiary': 9,
+    'vl-minor': 10,
+    'vl-transit': 10,
+    'vl-ferry': 10,
+    'vl-service': 12,
+    'vl-path': 12,
+    'vl-track': 12,
+  };
+
+  /** zoom 插值线宽的相对系数：叠加层要从全国到街区都可读，定宽在 z12 以上太细 */
+  var OVERLAY_WIDTH_STOPS = [[3, 0.5], [8, 1], [12, 1.6], [16, 2.6]];
+
+  function overlayLineWidth(base, mult) {
+    var m = typeof mult === 'number' && isFinite(mult) && mult > 0 ? mult : 1;
+    var expr = ['interpolate', ['linear'], ['zoom']];
+    OVERLAY_WIDTH_STOPS.forEach(function (s) {
+      expr.push(s[0], Math.round(base * s[1] * m * 1000) / 1000);
+    });
+    return expr;
+  }
+
+  /** 叠加层里某个线图层的 zoom 插值线宽：VP 定宽 × mult；非线图层返回 null */
+  function overlayLineWidthFor(layerId, mult) {
+    var def = LAYER_DEFS.filter(function (d) { return d.id === layerId; })[0];
+    var base = def && def.paintFrom && def.paintFrom['line-width'];
+    if (typeof base !== 'number') return null;
+    return overlayLineWidth(base, mult);
+  }
+
+  function overlayParts(opts) {
+    opts = opts || {};
+    var groups = Array.isArray(opts.groups) && opts.groups.length ? opts.groups : ['water', 'roads'];
+    var visible = opts.visible || {};
+    var colors = normalizePaint(opts.paint);
+    var layers = [];
+    var ids = {};
+    groups.forEach(function (group) {
+      if (!OVERLAY_SOURCE_LAYERS[group]) return;
+      ids[group] = [];
+      overlayDefs(group).forEach(function (def) {
+        var layer = layerFromDef(def, colors);
+        layer.layout = clone(layer.layout || {});
+        layer.layout.visibility = visible[group] === false ? 'none' : 'visible';
+        if (group === 'roads' && OVERLAY_ROAD_MINZOOM[def.id] != null) {
+          var mz = Math.max(def.minzoom || 0, OVERLAY_ROAD_MINZOOM[def.id]);
+          if (mz > 0) layer.minzoom = mz;
+          else delete layer.minzoom;
+          // 全国视角路网（国内高速本身就很密）先淡后实，z7 起恢复原透明度
+          var op = layer.paint && layer.paint['line-opacity'];
+          if (typeof op === 'number') {
+            layer.paint['line-opacity'] = [
+              'interpolate', ['linear'], ['zoom'],
+              4, Math.round(op * OVERLAY_ROAD_FAR_OPACITY * 1000) / 1000,
+              7, op,
+            ];
+          }
+        }
+        if (def.type === 'line') {
+          layer.layout['line-cap'] = 'round';
+          layer.layout['line-join'] = 'round';
+          layer.paint['line-width'] = overlayLineWidth(def.paintFrom['line-width'], 1);
+        }
+        layers.push(layer);
+        ids[group].push(layer.id);
+      });
+    });
+    return {
+      sourceId: SOURCE_ID,
+      source: {
+        type: 'vector',
+        url: TILEJSON_URL,
+        attribution: OPENFREEMAP_ATTRIBUTION,
+      },
+      layers: layers,
+      ids: ids,
+    };
+  }
+
   function applyVectorPaint(map, paint, keys) {
     if (!map || typeof map.setPaintProperty !== 'function') {
-      throw new Error('applyVectorPaint needs a MapStage map');
+      throw new Error('applyVectorPaint needs a MapLibre map');
     }
     var colors = normalizePaint(paint);
     var allowed = null;
@@ -1207,6 +1430,9 @@
     withDemPreset: withDemPreset,
     replaceTerrainSources: replaceTerrainSources,
     buildStyle: buildStyle,
+    overlayParts: overlayParts,
+    overlayLineWidthFor: overlayLineWidthFor,
+    OPENFREEMAP_ATTRIBUTION: OPENFREEMAP_ATTRIBUTION,
     applyVectorPaint: applyVectorPaint,
     setBuildingExtrusion: setBuildingExtrusion,
     setHillshade: setHillshade,

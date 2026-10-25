@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>速查表 table · MapStage 示例</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c8c2b4; font: 13px/1.4 system-ui, sans-serif; }
+    #stage { position: absolute; inset: 0; }
+    .ui { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+          max-width: calc(100% - 48px); padding: 8px 10px; background: rgba(251, 248, 241, 0.92); color: #241b14;
+          border: 1px solid #ddd2bf; border-radius: 8px; }
+    .ui button { font: inherit; padding: 5px 10px; border: 1px solid #ddd2bf; border-radius: 6px; background: #fff; color: inherit; cursor: pointer; }
+    .ui input[type=range] { width: 200px; accent-color: #b3332a; }
+    .ui output { font: 12px ui-monospace, Consolas, monospace; min-width: 52px; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="ui">
+    <button id="play">播放</button>
+    <input id="t" type="range" min="0" step="0.04" value="0" aria-label="时间">
+    <output id="read">0.0 s</output>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script>
+    // 一张速查表：表头一开始就亮，格子在 t0 到 t0 + 70% 时长之间逐格点亮，之后整表定格。
+    // 内容是通行的古今地名对照，不是史料原文
+    const story = {
+      version: 1, id: 'cards-table', duration: 12,
+      sites: [
+        { id: 'wuwei', name: '武威', lngLat: [102.64, 37.93], tier: 'large' },
+        { id: 'zhangye', name: '张掖', lngLat: [100.45, 38.93], tier: 'large' },
+        { id: 'jiuquan', name: '酒泉', lngLat: [98.49, 39.73], tier: 'large' },
+        { id: 'dunhuang', name: '敦煌', lngLat: [94.66, 40.14], tier: 'large' },
+      ],
+      routes: [],
+      shots: [{ t: 0, fit: ['wuwei', 'zhangye', 'jiuquan', 'dunhuang'], pitch: 0 }],
+      cards: [
+        {
+          t0: 2, t1: 10, kind: 'table', text: '河西地名古今对照',
+          header: ['古称', '今名'],
+          rows: [['凉州', '武威'], ['甘州', '张掖'], ['肃州', '酒泉'], ['沙州', '敦煌']],
+        },
+      ],
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    MapStage.mount($('stage'), { story }).then((stage) => {
+      window.stage = stage;
+      $('t').max = stage.duration;
+      const show = (t) => {
+        stage.render(t);
+        $('t').value = t;
+        $('read').textContent = t.toFixed(1) + ' s';
+      };
+      $('t').oninput = () => show(Number($('t').value));
+
+      let raf = null;
+      $('play').onclick = () => {
+        if (raf) { cancelAnimationFrame(raf); raf = null; $('play').textContent = '播放'; return; }
+        const t0 = performance.now() - Number($('t').value) * 1000;
+        const tick = (now) => { show(((now - t0) / 1000) % stage.duration); raf = requestAnimationFrame(tick); };
+        $('play').textContent = '暂停';
+        raf = requestAnimationFrame(tick);
+      };
+      show(6);   // 表格逐格点亮到一半
+    });
+  </script>
+</body>
+</html>

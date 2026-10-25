@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>按路线取景与 maxSpan · MapStage 示例</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c8c2b4; font: 13px/1.4 system-ui, sans-serif; }
+    #stage { position: absolute; inset: 0; }
+    .ui { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+          max-width: calc(100% - 48px); padding: 8px 10px; background: rgba(251, 248, 241, 0.92); color: #241b14;
+          border: 1px solid #ddd2bf; border-radius: 8px; }
+    .ui button { font: inherit; padding: 5px 10px; border: 1px solid #ddd2bf; border-radius: 6px; background: #fff; color: inherit; cursor: pointer; }
+    .ui input[type=range] { width: 200px; accent-color: #b3332a; }
+    .ui output { font: 12px ui-monospace, Consolas, monospace; min-width: 52px; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="ui">
+    <button id="play">播放</button>
+    <input id="t" type="range" min="0" step="0.04" value="0" aria-label="时间">
+    <output id="read">0.0 s</output>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script>
+    // 四段镜头依次 fit 一段地点，最后 fit 整条路线。镜头到位在 shot.t，move 之内提前滑过去
+    const story = {
+      version: 1, id: 'camera-route', duration: 16,
+      sites: [
+        { id: 'xian', name: '西安', lngLat: [108.94, 34.34], tier: 'capital' },
+        { id: 'tianshui', name: '天水', lngLat: [105.72, 34.58], tier: 'medium' },
+        { id: 'lanzhou', name: '兰州', lngLat: [103.83, 36.06], tier: 'capital' },
+        { id: 'wuwei', name: '武威', lngLat: [102.64, 37.93], tier: 'large' },
+        { id: 'zhangye', name: '张掖', lngLat: [100.45, 38.93], tier: 'large' },
+        { id: 'jiuquan', name: '酒泉', lngLat: [98.49, 39.73], tier: 'large' },
+        { id: 'dunhuang', name: '敦煌', lngLat: [94.66, 40.14], tier: 'large' },
+      ],
+      routes: [
+        { id: 'silk', side: 'neutral', role: 'primary',
+          via: ['xian', 'tianshui', 'lanzhou', 'wuwei', 'zhangye', 'jiuquan', 'dunhuang'],
+          curve: 'auto', draw: [1, 12], hold: 13, ghost: true },
+      ],
+      // 相邻两个镜头的间隔要 ≥ 后一个的 move（2.2 s）。maxSpan 是画面横向上限（km）：
+      // 这条线约 1 300 km 宽，2000 不会顶住；线更长时，它会阻止镜头拉得太远
+      shots: [
+        { t: 0,  fit: ['xian', 'tianshui'], pitch: 20 },
+        { t: 4,  fit: ['lanzhou', 'wuwei'], pitch: 20, move: 2.2 },
+        { t: 8,  fit: ['zhangye', 'jiuquan', 'dunhuang'], pitch: 20, move: 2.2 },
+        { t: 12, fit: 'route:silk', pitch: 20, move: 2.2, maxSpan: 2000 },
+      ],
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    MapStage.mount($('stage'), { story }).then((stage) => {
+      window.stage = stage;
+      $('t').max = stage.duration;
+      const show = (t) => {
+        stage.render(t);
+        $('t').value = t;
+        $('read').textContent = t.toFixed(1) + ' s';
+      };
+      $('t').oninput = () => show(Number($('t').value));
+
+      let raf = null;
+      $('play').onclick = () => {
+        if (raf) { cancelAnimationFrame(raf); raf = null; $('play').textContent = '播放'; return; }
+        const t0 = performance.now() - Number($('t').value) * 1000;
+        const tick = (now) => { show(((now - t0) / 1000) % stage.duration); raf = requestAnimationFrame(tick); };
+        $('play').textContent = '暂停';
+        raf = requestAnimationFrame(tick);
+      };
+      show(9);   // 停在第三段镜头已到位、路线走到一半的时刻
+    });
+  </script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 /**
- * Antique MapStage runtime FX — terrain rise, tile idle/precache, camera.
+ * Antique MapLibre runtime FX — terrain rise, tile idle/precache, camera.
  * Tuner and HyperFrames production pages share this file.
  *
  * Browser: window.AntiqueMapFx
@@ -69,7 +69,7 @@
   var PARALLEL_IMAGE_REQUESTS = 32;
   var LOD_LABELS_CLASS = 'antique-lod-labels';
 
-  function configureMapStage(maplibregl, opts) {
+  function configureMapLibre(maplibregl, opts) {
     if (!maplibregl) return;
     opts = opts || {};
     var requestedImages = Number(opts.maxParallelImageRequests);
@@ -134,15 +134,13 @@
   }
 
   function antiqueSky() {
-    // Soft parchment sky — pure black sky/fog made pitched views look like a
-    // dead black viewport while DEM/satellite tiles were still fetching.
     return {
-      'sky-color': '#1a1612',
-      'horizon-color': '#2a241c',
-      'fog-color': '#18140f',
-      'sky-horizon-blend': 0.7,
-      'horizon-fog-blend': 0.55,
-      'fog-ground-blend': 0.2,
+      'sky-color': '#000000',
+      'horizon-color': '#000000',
+      'fog-color': '#000000',
+      'sky-horizon-blend': 0.85,
+      'horizon-fog-blend': 0.9,
+      'fog-ground-blend': 0.45,
     };
   }
 
@@ -182,7 +180,7 @@
       maxPitch: opts.maxPitch != null ? opts.maxPitch : 85,
       attributionControl: opts.attributionControl !== false,
     };
-    configureMapStage(maplibregl, opts.runtimeOptions);
+    configureMapLibre(maplibregl, opts.runtimeOptions);
     var map = new maplibregl.Map(
       Object.assign(base, mapOptions(mode), opts.mapOptions || {})
     );
@@ -207,7 +205,7 @@
   }
 
   /**
-   * Write exact exaggeration (already quantized). Skip MapStage setTerrain if unchanged.
+   * Write exact exaggeration (already quantized). Skip MapLibre setTerrain if unchanged.
    */
   function applyTerrainExact(map, sourceId, exactEx) {
     var ex = quantizeTerrain(exactEx);
@@ -402,7 +400,7 @@
   }
 
   /**
-   * Pace terrainRise on a clock. Do not wait for MapStage `render`:
+   * Pace terrainRise on a clock. Do not wait for MapLibre `render`:
    * a slow DEM tile paint would freeze exaggeration at ~0.1 while the user stares at a plane.
    */
   function waitPaint(map, ms) {
@@ -586,7 +584,7 @@
     quantizeTerrain: quantizeTerrain,
     budgetTerrainEx: budgetTerrainEx,
     mapOptions: mapOptions,
-    configureMapStage: configureMapStage,
+    configureMapLibre: configureMapLibre,
     applyRasterFadeDuration: applyRasterFadeDuration,
     createMap: createMap,
     createAntiqueMap: createMap,

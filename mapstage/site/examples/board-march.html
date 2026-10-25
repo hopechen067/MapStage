@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>行军动画与镜头 · MapStage 示例</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c8c2b4; font: 13px/1.4 system-ui, sans-serif; }
+    #stage { position: absolute; inset: 0; }
+    .ui { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+          max-width: calc(100% - 48px); padding: 8px 10px; background: rgba(251, 248, 241, 0.92); color: #241b14;
+          border: 1px solid #ddd2bf; border-radius: 8px; }
+    .ui button { font: inherit; padding: 5px 10px; border: 1px solid #ddd2bf; border-radius: 6px; background: #fff; color: inherit; cursor: pointer; }
+    .ui button:disabled { opacity: 0.45; cursor: default; }
+    .ui output { font: 12px/1.5 system-ui, sans-serif; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="ui">
+    <button id="march">行军：长安 → 建业</button>
+    <button id="fit">回全局</button>
+    <output id="read">点行军，兵沿线推进，镜头跟到每座城</output>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script src="../studio/assets/mapstage-board.js"></script>
+  <script>
+    // 行军路线：相邻两城依次 march，每到一城 focus 推镜头过去
+    const sites = [
+      { id: 'changan', name: '长安', lngLat: [108.94, 34.27], tier: 'large' },
+      { id: 'luoyang', name: '洛阳', lngLat: [112.45, 34.62], tier: 'capital' },
+      { id: 'hanzhong', name: '汉中', lngLat: [107.03, 33.07], tier: 'medium' },
+      { id: 'chengdu', name: '成都', lngLat: [104.07, 30.67], tier: 'capital' },
+      { id: 'xiangyang', name: '襄阳', lngLat: [112.14, 32.04], tier: 'large' },
+      { id: 'jiangling', name: '江陵', lngLat: [112.19, 30.35], tier: 'medium' },
+      { id: 'jianye', name: '建业', lngLat: [118.78, 32.06], tier: 'capital' },
+    ];
+    const links = [
+      ['changan', 'luoyang'], ['changan', 'hanzhong'], ['hanzhong', 'chengdu'], ['luoyang', 'xiangyang'],
+      ['xiangyang', 'jiangling'], ['jiangling', 'chengdu'], ['xiangyang', 'jianye'],
+    ];
+    const ROUTE = ['changan', 'luoyang', 'xiangyang', 'jianye'];
+    const COLOR = '#b8432f';
+    const $ = (id) => document.getElementById(id);
+    const name = (id) => sites.find((s) => s.id === id).name;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    let board;
+
+    async function run() {
+      $('march').disabled = true;
+      $('fit').disabled = true;
+      for (let i = 1; i < ROUTE.length; i++) {
+        const from = ROUTE[i - 1], to = ROUTE[i];
+        $('read').textContent = name(from) + ' → ' + name(to);
+        // march 结束后线收起，城池保持；focus 把镜头推到终点
+        await board.march(from, to, { color: COLOR });
+        board.focus(to);
+        await wait(700);
+      }
+      $('read').textContent = '已到 ' + name(ROUTE[ROUTE.length - 1]) + '，按「回全局」看整张图';
+      $('march').disabled = false;
+      $('fit').disabled = false;
+    }
+
+    MapStageBoard.create($('stage'), { sites, links }).then((b) => {
+      board = b;
+      window.board = board;   // 控制台里可以试：board.march('changan', 'luoyang')
+      // 起点城先标出来，地图一打开就知道从哪儿出发
+      board.setCities({ changan: { color: COLOR, value: 16, ring: 'select', label: 'active' } });
+      $('march').onclick = run;
+      $('fit').onclick = () => { board.fit(); $('read').textContent = '全局视角'; };
+    });
+  </script>
+</body>
+</html>

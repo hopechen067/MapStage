@@ -1,26 +1,38 @@
-# Water · public tuner vs optional overlay
+# Water overlay
 
-## Public tuner (what GitHub Pages ships)
+水系和道路来自 OpenFreeMap 矢量瓦片（OpenMapTiles 的 `water` / `waterway` / `transportation`），不依赖仓库内的任何数据文件。调参台、`vector-paint.js` 与 skill 都读同一套 `vl-*` 图层。
 
-Demo water is **OpenFreeMap / OpenMapTiles** vector layers:
+之前的「分级水系包」（`water-data.js` + `water-pack.json`，含高亮水系、河湖名标注、省内水系裁剪）已移除：数据不可再分发，且用得很少。
 
-- source: `https://tiles.openfreemap.org/planet`
-- `omt-ocean` / `omt-water` (`source-layer: water`)
-- `omt-waterway` (`source-layer: waterway`)
+## 图层
 
-These layers are always on. They are **not** driven by `mapstage.water.*` paint keys. Keep OpenFreeMap / OSM attribution.
+| 图层 id | source-layer | 用途 |
+|---------|--------------|------|
+| `vl-water` / `vl-water-river` / `vl-water-pond` | `water` | 湖、河面、池塘（填充） |
+| `vl-water-ocean` | `water` | 海洋，沿用皮肤色 |
+| `vl-waterway` | `waterway` | 一级河（river） |
+| `vl-waterway-canal` | `waterway` | 二级（canal） |
+| `vl-waterway-stream` / `vl-waterway-drain` | `waterway` | 三级（stream / drain） |
+| `vl-highway` / `vl-rail` / `vl-minor` … | `transportation` | 道路与铁路 |
 
-This repository does **not** ship a China hydrography GeoJSON pack. GitHub Pages must not publish `water-data.js` / `water-manifest.json`. `tuner/assets/water-pack.json` stays `"enabled": false`.
+叠层只带水系和道路，不带注记、建筑、省界国界。
 
-## Optional local overlay (not in the public demo)
+## 参数
 
-The tuner still understands `window.CHINA_WATER_DATA` if you supply a local pack under a license you control. The homepage has **no** overlay UI; export forces `ui.showWater` / `ui.showHighlight` to `false`.
+预设 `maplibre.water`：
 
-If you enable it locally:
+- 湖与河面：`lakeFill`
+- 河线颜色：`riverLevel1` / `riverLevel2` / `riverLevel3`
+- 河线宽：`riverL1Width` / `riverL2Width` / `riverL3Width`（相对默认值缩放 `vl-*` 的基准线宽）
 
-1. Place gitignored `tuner/assets/water-data.js` assigning `window.CHINA_WATER_DATA`.
-2. Set `"enabled": true` in `tuner/assets/water-pack.json` (do not commit that for the public tree).
-3. FeatureCollections: `riverLevel1` / `riverLevel2` / `riverLevel3` / `chinaLakes` / `highlightWaterSystems`.
-4. Paint keys live under `mapstage.water` (see [`参数列表说明.md`](参数列表说明.md)).
+可见性：`ui.showWater`（水系）、`ui.showRoads`（道路）。
 
-**License:** this project does not ship or MIT-license a water pack. See root [`DATA-PROVENANCE.md`](../../DATA-PROVENANCE.md).
+旧预设里的 `lakeOutline`、`highlightRiver`、`highlightWidth`、`qilianRiver`、`qilianWidth`、`ui.showHighlight`、`ui.showQilian`、`ui.showRiverLabels` 在读入时直接丢弃。
+
+## 皮肤
+
+`vector-paint.js` 的 `SKINS` 通过 `paint.water` / `waterway*` 给上面的图层上色；切皮肤会把 `lakeFill` 与 `riverLevel1/2/3` 写回水系面板（保留原 alpha）。
+
+## 想要自己的水系数据
+
+用你有权使用的 GeoJSON 自己加 source 和 layer 即可，仓库不再提供加载器。参见根目录 `DATA-PROVENANCE.md`。

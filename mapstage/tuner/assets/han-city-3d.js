@@ -1,6 +1,6 @@
 /**
  * han-city-3d.js
- * 汉代墨线方城 · MapStage custom layer + Three.js 程序化模型
+ * 汉代墨线方城 · MapLibre custom layer + Three.js 程序化模型
  *
  * 导出：
  *   window.HanCity3D = {
@@ -290,7 +290,7 @@
 
   function extractMatrix(args) {
     if (!args) return null;
-    // MapStage v5：render(gl, args) 中 args.defaultProjectionData.mainMatrix
+    // MapLibre v5：render(gl, args) 中 args.defaultProjectionData.mainMatrix
     if (args.defaultProjectionData) {
       var a =
         asFlat16(args.defaultProjectionData.mainMatrix) ||
@@ -324,7 +324,7 @@
 
   /**
    * 将米制 Y-up 模型放到 Mercator 坐标
-   * MapStage：X 东、Y 南、Z 上；Three 默认 Y 上 → 绕 X 转 90°，并 scale(s,-s,s)
+   * MapLibre：X 东、Y 南、Z 上；Three 默认 Y 上 → 绕 X 转 90°，并 scale(s,-s,s)
    */
   function placeCityInstance(THREE, maplibregl, map, model, city) {
     var lng = city.lng;
@@ -352,7 +352,7 @@
   }
 
   /**
-   * 创建 MapStage custom layer
+   * 创建 MapLibre custom layer
    * options:
    *   id, cities, visible, palette, altitudeBoost, visualScale
    * visualScale: 叙事放大倍数，默认 28（~30km 足迹，广域视图可读）
@@ -374,16 +374,18 @@
       cityGroups: [],
       markers: [],
       visible: options.visible !== false,
+      keepFn: null,
       model: null,
       visualScale: visualScale,
       matrixWarned: false,
+      continuousRepaint: false,
     };
 
     function applyPlacement(g, lng, lat, alt) {
       var mc = maplibregl.MercatorCoordinate.fromLngLat([lng, lat], alt);
       var s = mc.meterInMercatorCoordinateUnits() * state.visualScale;
       g.position.set(mc.x, mc.y, mc.z);
-      // MapStage mercator: scale Y 取负以配合 rotationX
+      // MapLibre mercator: scale Y 取负以配合 rotationX
       g.scale.set(s, -s, s);
       g.rotation.set(Math.PI / 2, 0, 0);
     }
@@ -401,6 +403,7 @@
       if (!show || !map) return;
       for (var j = 0; j < cities.length; j++) {
         var c = cities[j];
+        if (state.keepFn && !state.keepFn(c.lng, c.lat)) continue;
         var el = document.createElement('div');
         el.className = 'han-city-label';
         el.textContent = c.name || c.id;
@@ -521,7 +524,7 @@
           }
         }
 
-        // 与 MapStage 共享 context：清深度并关掉深度测，避免城池被地形深度遮住
+        // 与 MapLibre 共享 context：清深度并关掉深度测，避免城池被地形深度遮住
         state.renderer.resetState();
         try {
           gl.disable(gl.DEPTH_TEST);
@@ -534,19 +537,44 @@
         }
         state.renderer.render(state.scene, state.camera);
         state.renderer.resetState();
-        if (state.map) state.map.triggerRepaint();
+        if (state.continuousRepaint && state.map) state.map.triggerRepaint();
       },
 
       /** 外部开关 */
       setVisible: function (v) {
         state.visible = !!v;
         if (state.citiesRoot) state.citiesRoot.visible = state.visible;
+        if (state.cityGroups) {
+          for (var i = 0; i < state.cityGroups.length; i++) {
+            var g = state.cityGroups[i];
+            var ud = g && g.userData ? g.userData : {};
+            g.visible = state.visible && (!state.keepFn || state.keepFn(ud.lng, ud.lat));
+          }
+        }
+        syncLabelMarkers(state.map, state.visible);
+        if (state.map) state.map.triggerRepaint();
+      },
+
+      setKeepPoint: function (fn) {
+        state.keepFn = typeof fn === 'function' ? fn : null;
+        if (state.cityGroups) {
+          for (var i = 0; i < state.cityGroups.length; i++) {
+            var g = state.cityGroups[i];
+            var ud = g && g.userData ? g.userData : {};
+            g.visible = state.visible && (!state.keepFn || state.keepFn(ud.lng, ud.lat));
+          }
+        }
         syncLabelMarkers(state.map, state.visible);
         if (state.map) state.map.triggerRepaint();
       },
 
       getVisible: function () {
         return state.visible;
+      },
+
+      setContinuousRepaint: function (on) {
+        state.continuousRepaint = !!on;
+        if (state.map) state.map.triggerRepaint();
       },
 
       getCityGroups: function () {
@@ -1084,8 +1112,19 @@
     var sourceId = options.sourceId || 'han-city-extrude-src';
     var layerId = options.layerId || 'han-city-extrude';
     var visible = options.visible !== false;
+    var keepFn = null;
     var fc = buildExtrusionFeatures(cities, halfKm);
     var markers = [];
+
+    function filteredCities() {
+      if (!keepFn) return cities;
+      var out = [];
+      for (var i = 0; i < cities.length; i++) {
+        var c = cities[i];
+        if (keepFn(c.lng, c.lat)) out.push(c);
+      }
+      return out;
+    }
 
     if (map.getSource(sourceId)) {
       map.getSource(sourceId).setData(fc);
@@ -1132,8 +1171,9 @@
     function syncMarkers(show) {
       clearMarkers();
       if (!show) return;
-      for (var j = 0; j < cities.length; j++) {
-        var c = cities[j];
+      var list = filteredCities();
+      for (var j = 0; j < list.length; j++) {
+        var c = list[j];
         if (c.label === false) continue;
         var el = document.createElement('div');
         el.className = 'han-city-label tier-' + (c.tier || 'medium');
@@ -1154,13 +1194,21 @@
     return {
       type: 'extrusion',
       setVisible: function (v) {
-        var vis = v ? 'visible' : 'none';
+        visible = !!v;
+        var vis = visible ? 'visible' : 'none';
         for (var i = 0; i < layerIds.length; i++) {
           if (map.getLayer(layerIds[i])) {
             map.setLayoutProperty(layerIds[i], 'visibility', vis);
           }
         }
-        syncMarkers(!!v);
+        syncMarkers(visible);
+      },
+      setKeepPoint: function (fn) {
+        keepFn = typeof fn === 'function' ? fn : null;
+        if (map.getSource(sourceId)) {
+          map.getSource(sourceId).setData(buildExtrusionFeatures(filteredCities(), halfKm));
+        }
+        if (visible) syncMarkers(true);
       },
       getVisible: function () {
         return visible;

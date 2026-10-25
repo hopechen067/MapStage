@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>MapStage · HyperFrames composition（烘焙地图层）</title>
+  <!-- HyperFrames 的确定性渲染契约不允许实时地图（实测：活 MapLibre 在 HF 里出黑底，lint 报 live_map_detected）。
+       所以地图不在 HF 里跑，而是先烘成视频，HF 只负责合成：
+         1. node runtime/render.mjs preview <story> --out <dir>   → <dir>/preview.mp4（960×540，先看）
+            node runtime/render.mjs approve <dir>
+            node runtime/render.mjs final <dir>                   → <dir>/final.mp4（1920×1080@30）
+         2. 把 final.mp4 复制到本目录改名 map.mp4；把下面 data-duration 改成 story.duration，data-fps 与烘焙一致。
+         3. 在 .overlay 里加 HF 自己的标题、字幕、转场（class="clip" + data-start/data-duration）。
+         4. npx hyperframes lint / render
+       只想要无字卡的底图：render.mjs --layers map，HUD 层另行叠加。 -->
+  <style>
+    html, body { margin: 0; background: #000; }
+    #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
+    #map { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .overlay { position: absolute; left: 80px; bottom: 80px; color: #fff; font: 700 56px serif; text-shadow: 0 2px 8px rgba(0, 0, 0, .6); }
+  </style>
+</head>
+<body>
+  <div id="root" data-composition-id="mapstage-baked" data-start="0" data-duration="16" data-width="1920" data-height="1080">
+    <video id="map" class="clip" data-start="0" data-duration="16" data-track-index="0" src="map.mp4" muted playsinline></video>
+    <div class="overlay clip" data-start="1" data-duration="6" data-track-index="1">标题示例</div>
+  </div>
+
+  <script>
+    // 视频和 DOM 都由 HyperFrames 按时间轴驱动；没有自己的动画，注册一个空时间线即可。id 与 data-composition-id 一致。
+    window.__timelines = window.__timelines || {};
+    window.__timelines['mapstage-baked'] = { paused: true, duration: 16, seek: function () {} };
+  </script>
+</body>
+</html>

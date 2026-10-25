@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="MapStage">
+  <!-- 山河 M：一笔山脊写出 M，尾巴收成路线，朱红圆点是终点 -->
+  <path d="M7 52L19 15l13 24 12-20 7 18c1.6 4.4 3.6 7 7 8" fill="none" stroke="#241b14" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="58" cy="45" r="4.6" fill="#b3332a"/>
+</svg>

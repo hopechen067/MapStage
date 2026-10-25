@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>逐帧时间契约 · MapStage 示例</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c8c2b4; font: 13px/1.4 system-ui, sans-serif; }
+    /* 逐像素比较按 16:9 画布做：舞台锁定 16:9 */
+    #stage { position: absolute; inset: 0; margin: auto; aspect-ratio: 16 / 9; max-width: 100%; max-height: 100%; }
+    .ui { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+          max-width: calc(100% - 48px); padding: 8px 10px; background: rgba(251, 248, 241, 0.92); color: #241b14;
+          border: 1px solid #ddd2bf; border-radius: 8px; }
+    .ui button { font: inherit; padding: 5px 10px; border: 1px solid #ddd2bf; border-radius: 6px; background: #fff; color: inherit; cursor: pointer; }
+    .ui button:disabled { opacity: 0.45; cursor: default; }
+    .ui output { font: 12px ui-monospace, Consolas, monospace; }
+    /* 联系表：没拼之前不占位，拼完横向排列 */
+    .sheet { position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 10; display: flex; gap: 8px; overflow-x: auto;
+             padding: 8px; background: rgba(251, 248, 241, 0.92); border: 1px solid #ddd2bf; border-radius: 8px; }
+    .sheet:empty { display: none; }
+    .sheet figure { margin: 0; flex: 0 0 auto; color: #241b14; font: 12px ui-monospace, Consolas, monospace; }
+    .sheet canvas { display: block; width: 240px; height: auto; border: 1px solid #ddd2bf; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="ui">
+    <button id="sheet">拼联系表</button>
+    <output id="read">0.0 s</output>
+  </div>
+  <div class="sheet" id="panel"></div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script>
+    // 同一个 t 永远是同一帧：seek(t) 等地图 idle、等字体，之后 toDataURL 拿到的就是定好的那一帧
+    const story = {
+      version: 1, id: 'seek-contract', duration: 12, fps: 30,
+      sites: [
+        { id: 'wuwei', name: '武威', lngLat: [102.64, 37.93], tier: 'large' },
+        { id: 'zhangye', name: '张掖', lngLat: [100.45, 38.93], tier: 'large' },
+        { id: 'jiuquan', name: '酒泉', lngLat: [98.49, 39.73], tier: 'large' },
+        { id: 'dunhuang', name: '敦煌', lngLat: [94.66, 40.14], tier: 'large' },
+      ],
+      routes: [
+        { id: 'hexi', side: 'red', role: 'primary', via: ['wuwei', 'zhangye', 'jiuquan', 'dunhuang'],
+          curve: 'none', draw: [1, 11], hold: 12, ghost: true },
+      ],
+      shots: [
+        { t: 0, fit: 'route:hexi', pitch: 20 },
+        { t: 6, fit: ['jiuquan', 'dunhuang'], move: 2.2, push: 0.06 },
+      ],
+    };
+    const TIMES = [0, 2, 4, 6, 8, 10, 12];
+
+    const $ = (id) => document.getElementById(id);
+
+    // 地图整帧 → 240 宽的小图，逐张排进面板
+    async function grab(stage, t) {
+      await stage.seek(t);
+      const full = stage.map.getCanvas().toDataURL('image/jpeg', 0.85);
+      const img = new Image();
+      img.src = full;
+      await img.decode();
+      const c = document.createElement('canvas');
+      c.width = 240;
+      c.height = Math.round(240 * img.height / img.width);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      return c;
+    }
+
+    // preserve: true 让 canvas 在 seek 之后仍可 toDataURL
+    MapStage.mount($('stage'), { story, preserve: true }).then((stage) => {
+      window.stage = stage;   // 控制台里可以试：await stage.seek(5)
+      stage.render(6);
+      $('read').textContent = '6.0 s';
+
+      $('sheet').onclick = async () => {
+        const btn = $('sheet');
+        btn.disabled = true;
+        $('panel').innerHTML = '';
+        for (const t of TIMES) {
+          $('read').textContent = '拼帧 ' + t.toFixed(1) + ' s';
+          const fig = document.createElement('figure');
+          fig.appendChild(await grab(stage, t));
+          fig.appendChild(document.createTextNode(t.toFixed(1) + ' s'));
+          $('panel').appendChild(fig);
+        }
+        $('read').textContent = '已拼 ' + TIMES.length + ' 帧';
+        btn.disabled = false;
+      };
+    });
+  </script>
+</body>
+</html>

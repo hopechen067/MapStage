@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>加载古卷底图 · MapStage 示例</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c8c2b4; font: 13px/1.4 system-ui, sans-serif; }
+    #stage { position: absolute; inset: 0; }
+    .ui { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+          max-width: calc(100% - 48px); padding: 8px 10px; background: rgba(251, 248, 241, 0.92); color: #241b14;
+          border: 1px solid #ddd2bf; border-radius: 8px; }
+    .ui code { font: 12px ui-monospace, Consolas, monospace; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="ui"><code>MapStage.buildStyle({ skin: 'parchment', terrain: 1.2 })</code> 交给 <code>maplibregl.Map</code></div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script>
+    // 不用 story、不挂 stage：buildStyle 只负责产出合规样式（删境界线、无雾、带地形），地图本身是普通 MapLibre
+    const map = new maplibregl.Map({
+      container: 'stage',
+      style: MapStage.buildStyle({ skin: 'parchment', terrain: 1.2 }),
+      center: [104, 35.5], zoom: 4.2, pitch: 28,
+    });
+    map.addControl(new maplibregl.NavigationControl(), 'top-right');
+    window.map = map;   // 控制台里可以 map.jumpTo(...)
+  </script>
+</body>
+</html>

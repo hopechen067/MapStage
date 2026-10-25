@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>底图样式与夜景 · MapStage 示例</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0d12; font: 13px/1.4 system-ui, sans-serif; }
+    #stage { position: absolute; inset: 0; }
+    .ui { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+          max-width: calc(100% - 48px); padding: 8px 10px; background: rgba(251, 248, 241, 0.92); color: #241b14;
+          border: 1px solid #ddd2bf; border-radius: 8px; }
+    .ui button { font: inherit; padding: 5px 10px; border: 1px solid #ddd2bf; border-radius: 6px; background: #fff; color: inherit; cursor: pointer; }
+    .ui button[aria-pressed=true] { background: #241b14; color: #fbf8f1; border-color: #241b14; }
+    .ui input { width: 140px; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="ui"><span id="basemaps"></span><input id="t" type="range" min="0" max="8" step="0.1" value="0" aria-label="时间"><span id="tv">0.0 s</span></div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <!-- 底图样式表（BASEMAP_STYLES）在 tuner-vector.js；不写这行 mount 也会按需自动加载 -->
+  <script src="../studio/assets/tuner-vector.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script>
+    // story.look.basemap = 调参台「底图样式」的 id。夜景 = 近黑地形 + 矢量灯光 + GeoNames 模拟夜光图
+    const story = {
+      version: 1, id: 'look-basemap', duration: 8,
+      sites: [
+        { id: 'nanjing', name: '南京', lngLat: [118.78, 32.06], tier: 'capital' },
+        { id: 'yangzhou', name: '扬州', lngLat: [119.41, 32.39], tier: 'large' },
+        { id: 'suzhou', name: '苏州', lngLat: [120.62, 31.3], tier: 'large' },
+        { id: 'hangzhou', name: '杭州', lngLat: [120.16, 30.27], tier: 'large', label: { side: 'left' } },
+      ],
+      routes: [{ id: 'canal', side: 'red', via: ['nanjing', 'yangzhou', 'suzhou', 'hangzhou'], draw: [3.5, 7.5], hold: 8 }],
+      beats: [{ t: 3.5, active: ['nanjing'] }, { t: 6, active: ['hangzhou'] }],
+      // 开场全图（含台湾、海南、南海），再推到江南
+      shots: [
+        { t: 0, center: [113, 23.5], zoom: 3.35, pitch: 0 },
+        { t: 3.5, fit: ['nanjing', 'yangzhou', 'suzhou', 'hangzhou'], pitch: 35, move: 3, maxZoom: 7.5 },
+      ],
+      compliance: { full: [[0, 0.4]] },
+      look: { basemap: 'nightlights', terrain: 1.2 },
+    };
+    const $ = (id) => document.getElementById(id);
+    const q = new URLSearchParams(location.search);
+    let stage = null;
+    // ?skin=parchment：换掉底图配套皮肤（look.skin），十段线深浅仍按实际海面判断
+    if (q.get('skin')) story.look.skin = q.get('skin');
+
+    async function show(id) {
+      const t = Number($('t').value);
+      if (stage) stage.destroy();
+      story.look.basemap = id;
+      stage = await MapStage.mount($('stage'), { story, preserve: true });
+      window.stage = stage;
+      await stage.seek(t);
+      $('basemaps').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.id === id)));
+    }
+
+    // AntiqueTunerVector.BASEMAP_STYLES：{ id, label, blurb, stops, hillshade, skinId, lights? }；卫星在叙事运行时里不可用
+    AntiqueTunerVector.BASEMAP_STYLES.filter((s) => !s.satellite).forEach((s) => {
+      const b = document.createElement('button');
+      b.textContent = s.label;
+      b.title = s.blurb;
+      b.dataset.id = s.id;
+      b.onclick = () => show(s.id);
+      $('basemaps').appendChild(b);
+    });
+    $('t').oninput = () => { $('tv').textContent = Number($('t').value).toFixed(1) + ' s'; if (stage) stage.seek(Number($('t').value)); };
+    show(q.get('basemap') || 'nightlights');
+  </script>
+</body>
+</html>

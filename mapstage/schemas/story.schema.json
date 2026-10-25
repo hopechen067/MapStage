@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skills.local/mapstage/schemas/story.schema.json",
+  "title": "MapStage story.json v1",
+  "description": "Story layer: sites / routes / beats / shots / cards / compliance. Cross-field rules (references, confidence C => approx, on-screen limits, hold, one-move-per-sentence) are enforced by MapStage.validateStory, not by this schema.",
+  "type": "object",
+  "required": ["version", "duration", "sites"],
+  "additionalProperties": true,
+  "properties": {
+    "version": { "const": 1 },
+    "id": { "type": "string" },
+    "duration": { "type": "number", "exclusiveMinimum": 0 },
+    "fps": { "type": "number", "exclusiveMinimum": 0 },
+    "preset": { "type": "string" },
+    "sites": { "type": "array", "items": { "$ref": "#/$defs/site" } },
+    "routes": { "type": "array", "items": { "$ref": "#/$defs/route" } },
+    "beats": { "type": "array", "items": { "$ref": "#/$defs/beat" } },
+    "shots": { "type": "array", "items": { "$ref": "#/$defs/shot" } },
+    "cards": { "type": "array", "items": { "$ref": "#/$defs/card" } },
+    "compliance": { "$ref": "#/$defs/compliance" },
+    "look": {
+      "type": "object",
+      "description": "Look overrides. basemap = a Studio basemap style id (tuner-vector.js BASEMAP_STYLES, satellite excluded); it wins over preset.ui.basemapId.",
+      "properties": {
+        "basemap": { "enum": ["natural", "atlas", "paper", "ink", "qinglv", "nightlights", "dusk"] },
+        "skin": { "type": "string" },
+        "terrain": { "oneOf": [{ "type": "number" }, { "const": false }] },
+        "nightLights": { "type": "object", "description": "Night-lights source, same shape as map-tiles.config nightLights (image + bounds | image | tiles)." }
+      }
+    }
+  },
+  "$defs": {
+    "lngLat": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+    "timeWindow": { "type": "array", "items": { "type": "number", "minimum": 0 }, "minItems": 2, "maxItems": 2 },
+    "site": {
+      "type": "object",
+      "required": ["id", "name", "lngLat"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "lngLat": { "$ref": "#/$defs/lngLat" },
+        "tier": { "enum": ["capital", "large", "medium", "small", "pass", "station", "ordos"] },
+        "approx": { "type": "boolean" },
+        "confidence": { "enum": ["A", "B", "C"] },
+        "label": { "type": "object", "properties": { "side": { "enum": ["left", "right"] } } },
+        "source": { "type": "string" }
+      }
+    },
+    "route": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string" },
+        "side": { "enum": ["red", "enemy", "ally", "neutral"] },
+        "role": { "enum": ["primary", "reaction", "background", "residual", "callout"] },
+        "via": { "type": "array", "items": { "type": "string" }, "minItems": 2 },
+        "coords": { "type": "array", "items": { "$ref": "#/$defs/lngLat" }, "minItems": 2 },
+        "curve": { "enum": ["auto", "none"] },
+        "draw": { "$ref": "#/$defs/timeWindow" },
+        "hold": { "type": "number", "minimum": 0 },
+        "ghost": { "type": "boolean" },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "label": {
+          "type": "object",
+          "properties": { "text": { "type": "string" }, "mode": { "enum": ["visible", "calloutOnly", "hidden"] } }
+        },
+        "confidence": { "enum": ["A", "B", "C"] }
+      }
+    },
+    "beat": {
+      "type": "object",
+      "required": ["t"],
+      "properties": {
+        "t": { "type": "number", "minimum": 0 },
+        "active": { "type": "array", "items": { "type": "string" } },
+        "dim": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "shot": {
+      "type": "object",
+      "required": ["t"],
+      "properties": {
+        "t": { "type": "number", "minimum": 0 },
+        "fit": {
+          "oneOf": [
+            { "type": "string", "pattern": "^route:.+" },
+            { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+          ]
+        },
+        "center": { "$ref": "#/$defs/lngLat" },
+        "zoom": { "type": "number" },
+        "pitch": { "type": "number", "minimum": 0, "maximum": 85 },
+        "bearing": { "type": "number" },
+        "move": { "type": "number", "exclusiveMinimum": 0 },
+        "push": { "type": "number" },
+        "tilt": { "type": "number" },
+        "maxSpan": { "type": "number", "exclusiveMinimum": 0 },
+        "maxZoom": { "type": "number" }
+      }
+    },
+    "card": {
+      "type": "object",
+      "required": ["t0", "t1", "kind", "text"],
+      "properties": {
+        "t0": { "type": "number", "minimum": 0 },
+        "t1": { "type": "number", "minimum": 0 },
+        "kind": { "enum": ["place", "name", "stamp", "pair", "table", "photo", "telegram", "doc"] },
+        "text": { "type": "string" },
+        "sub": { "type": "string" },
+        "source": { "type": "string" },
+        "src": { "type": "string", "description": "photo：照片地址（相对页面）。必填；没有可靠照片就用 name 名牌" },
+        "rows": { "type": "array", "description": "table：行数组，每行是字符串数组，列数一致", "items": { "type": "array", "items": { "type": "string" } } },
+        "header": { "type": "array", "description": "table：表头，列数与 rows 一致", "items": { "type": "string" } },
+        "lines": { "type": "array", "description": "doc：正文行", "items": { "type": "string" } },
+        "seal": { "type": "string", "description": "doc：印章字，默认「印」" }
+      }
+    },
+    "compliance": {
+      "type": "object",
+      "properties": {
+        "profile": { "type": "string" },
+        "full": { "type": "array", "items": { "$ref": "#/$defs/timeWindow" } },
+        "tenDash": { "type": "boolean", "description": "全图时段画南海十段线，默认 true；写 false 需自担审核风险" }
+      }
+    }
+  }
+}

@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>文档 · MapStage</title>
+  <meta name="description" content="MapStage 文档：快速上手、安装 skill、Preset / Story 规范、镜头、合规、宿主与渲染、运行时 API、长征系列地图经验与路线图。">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <header data-site-header data-page="docs"></header>
+  <div class="docs">
+    <button class="btn docs-side-toggle" type="button" id="side-toggle" aria-controls="docs-side" aria-expanded="false">文档目录</button>
+    <aside class="docs-side" id="docs-side" aria-label="文档目录"></aside>
+    <article class="prose" id="doc" aria-live="polite"><p>加载中…</p></article>
+    <aside class="docs-toc" id="docs-toc" aria-label="本页目录"></aside>
+  </div>
+  <footer data-site-footer></footer>
+
+  <script src="../assets/site.js"></script>
+  <script src="../assets/md.js"></script>
+  <script src="../examples/examples.js"></script>
+  <script>
+    (function () {
+      'use strict';
+      // 文档内容 = skill 的 references/*.md（agent 与人读同一份）
+      var GROUPS = [
+        { title: '开始', pages: [
+          ['overview', '介绍', 'overview.md'],
+          ['quickstart', '快速上手', 'quickstart.md'],
+          ['install', '安装 skill', 'install.md'],
+        ] },
+        { title: '规范', pages: [
+          ['look', '底图 Look · Preset', 'look.md'],
+          ['story', '叙事 Story', 'story-spec.md'],
+          ['camera', '镜头 Camera', 'camera.md'],
+          ['compliance', '合规 Compliance', 'compliance.md'],
+          ['hosts', '宿主与渲染 Hosts', 'hosts.md'],
+          ['play', '游戏地图 Play', 'play.md'],
+        ] },
+        { title: 'API 参考', pages: [
+          ['api', 'API 总览', 'api.md'],
+          ['api-story', 'Story · MapStage', 'api-story.md'],
+          ['api-board', 'Board · MapStageBoard', 'api-board.md'],
+          ['api-look', '底图 · VectorPaint / MapFx', 'api-look.md'],
+        ] },
+        { title: '参考', pages: [
+          ['params', '参数列表', '参数列表说明.md'],
+          ['tested', '已验证配置', 'tested-config.md'],
+          ['perf', '运行时性能', 'runtime-perf.md'],
+          ['isolate', '区域拆出', 'region-isolate.md'],
+          ['water', '水系叠加', 'water-overlay.md'],
+          ['cities', '城池分级', 'city-tier-schema.md'],
+          ['studio-workflow', '调参台工作流', 'tuner-workflow.md'],
+        ] },
+        { title: '项目', pages: [
+          ['lessons', '长征系列地图经验', 'lessons-long-march.md'],
+          ['examples-guide', '示例约定', 'examples-guide.md'],
+          ['roadmap', '路线图', 'roadmap.md'],
+        ] },
+      ];
+      var PAGES = [];
+      GROUPS.forEach(function (g) { g.pages.forEach(function (p) { PAGES.push({ id: p[0], title: p[1], file: p[2] }); }); });
+      var BY_FILE = {};
+      PAGES.forEach(function (p) { BY_FILE[p.file] = p.id; });
+      var GH = window.MapStageSite.GH;
+      var REF = window.MapStageSite.url('references/');
+
+      function current() {
+        var id = new URLSearchParams(location.search).get('p') || 'overview';
+        return PAGES.filter(function (p) { return p.id === id; })[0] || PAGES[0];
+      }
+
+      // md 里的相对链接：同目录 .md → ?p=；其它相对路径 → GitHub；锚点原样
+      function link(href) {
+        if (/^(https?:|mailto:|#)/.test(href)) return href;
+        var parts = href.split('#');
+        var path = decodeURIComponent(parts[0]);
+        var hash = parts[1] ? '#' + parts[1] : '';
+        var file = path.replace(/^\.\//, '');
+        if (BY_FILE[file]) return '?p=' + BY_FILE[file] + hash;
+        if (/^\.\.\/site\/examples\/([\w-]+)\.html$/.test(path)) return RegExp.$1 === 'index' ? '../examples/' : '../examples/view.html?id=' + RegExp.$1;
+        var resolved = new URL(path, 'https://x/mapstage/references/').pathname.replace(/^\//, '');
+        return GH + '/blob/master/' + resolved + hash;
+      }
+
+      function renderSide(page) {
+        var side = document.getElementById('docs-side');
+        side.innerHTML = GROUPS.map(function (g) {
+          return '<h5>' + g.title + '</h5>' + g.pages.map(function (p) {
+            return '<a href="?p=' + p[0] + '"' + (p[0] === page.id ? ' aria-current="page"' : '') + '>' + p[1] + '</a>';
+          }).join('');
+        }).join('');
+      }
+
+      function renderToc(toc) {
+        var items = toc.filter(function (t) { return t.level === 2 || t.level === 3; });
+        var el = document.getElementById('docs-toc');
+        el.innerHTML = items.length ? '<h5>本页</h5>' + items.map(function (t) {
+          return '<a class="l' + t.level + '" href="#' + t.id + '">' + window.MapStageMd.esc(t.text) + '</a>';
+        }).join('') : '';
+      }
+
+      function pager(page) {
+        var i = PAGES.indexOf(page);
+        var prev = PAGES[i - 1];
+        var next = PAGES[i + 1];
+        return '<nav class="doc-pager" aria-label="翻页">' +
+          (prev ? '<a href="?p=' + prev.id + '"><small>上一篇</small>' + prev.title + '</a>' : '<span></span>') +
+          (next ? '<a class="next" href="?p=' + next.id + '"><small>下一篇</small>' + next.title + '</a>' : '') +
+          '</nav>';
+      }
+
+      // 每个标题下列出用到它的示例（examples.js 里的 api / spec 字段反查）
+      function exampleIndex(pageId) {
+        var E = window.MapStageExamples;
+        var idx = {};
+        function add(href, ex) {
+          var m = /^docs\/\?p=([^#]+)(?:#(.+))?$/.exec(href);
+          if (!m || m[1] !== pageId) return;
+          var k = m[2] || '';
+          idx[k] = idx[k] || [];
+          if (idx[k].indexOf(ex) < 0) idx[k].push(ex);
+        }
+        E.list.forEach(function (ex) {
+          (ex.api || []).forEach(function (name) { add(E.apiHref(name), ex); });
+          add(E.specHref(ex.spec), ex);
+        });
+        return idx;
+      }
+
+      function exampleLinks(list) {
+        var E = window.MapStageExamples;
+        return '<p class="doc-examples"><span>示例</span>' + list.map(function (ex) {
+          return '<a href="../examples/view.html?id=' + ex.id + '">' + E.esc(ex.title) + '</a>';
+        }).join('') + '</p>';
+      }
+
+      function injectExamples(doc, pageId) {
+        if (!window.MapStageExamples) return;
+        var idx = exampleIndex(pageId);
+        Object.keys(idx).forEach(function (anchor) {
+          var h = anchor ? document.getElementById(anchor) : doc.querySelector('h1');
+          if (!h || !doc.contains(h)) return;
+          // 小节标题下紧跟一行；页面级示例放在 h1 后的导语之后
+          var after = h;
+          if (!anchor) { while (after.nextElementSibling && after.nextElementSibling.tagName === 'P') after = after.nextElementSibling; }
+          after.insertAdjacentHTML('afterend', exampleLinks(idx[anchor]));
+        });
+      }
+
+      function load() {
+        var page = current();
+        renderSide(page);
+        document.title = page.title + ' · MapStage 文档';
+        var doc = document.getElementById('doc');
+        fetch(REF + encodeURIComponent(page.file), { cache: 'no-cache' })
+          .then(function (r) { if (!r.ok) throw new Error(r.status + ' ' + page.file); return r.text(); })
+          .then(function (text) {
+            var md = window.MapStageMd;
+            var out = md.render(md.frontMatter(text).body, { link: link });
+            doc.innerHTML = out.html +
+              '<div class="doc-meta"><span>源文件 references/' + md.esc(page.file) + '</span>' +
+              '<a href="' + GH + '/blob/master/mapstage/references/' + encodeURIComponent(page.file) + '" target="_blank" rel="noopener">在 GitHub 上编辑</a></div>' +
+              pager(page);
+            doc.querySelectorAll('pre').forEach(function (pre) {
+              var box = document.createElement('div');
+              box.className = 'code';
+              box.setAttribute('data-lang', pre.getAttribute('data-lang') || '');
+              pre.parentNode.insertBefore(box, pre);
+              var plain = document.createElement('pre');
+              plain.textContent = pre.textContent;
+              box.appendChild(plain);
+              pre.remove();
+            });
+            window.MapStageSite.enhanceCode(doc);
+            injectExamples(doc, page.id);
+            renderToc(out.toc);
+            if (location.hash) {
+              var target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+              if (target) target.scrollIntoView();
+            } else {
+              window.scrollTo(0, 0);
+            }
+          })
+          .catch(function (e) {
+            doc.innerHTML = '<h1>没找到这一页</h1><p>' + window.MapStageMd.esc(String(e.message || e)) + '</p><p><a href="?p=overview">回到介绍</a></p>';
+          });
+      }
+
+      var toggle = document.getElementById('side-toggle');
+      toggle.addEventListener('click', function () {
+        var open = document.getElementById('docs-side').classList.toggle('open');
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+
+      load();
+    })();
+  </script>
+</body>
+</html>
