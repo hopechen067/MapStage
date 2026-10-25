@@ -13,14 +13,14 @@
   <link rel="stylesheet" href="assets/site.css">
   <style>
     .hero { padding: 72px 0 88px; }
-    .hero .wrap { display: grid; grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr); gap: 56px; align-items: center; }
+    .hero .wrap { display: grid; grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr); gap: 56px; align-items: start; }
     .hero h1 { font: 900 clamp(36px, 5vw, 60px)/1.12 var(--serif); margin: 0 0 18px; letter-spacing: 0.01em; text-wrap: balance; }
     .hero h1 em { font-style: normal; color: var(--seal); }
     .hero .sub { font-size: 18px; color: var(--ink-2); margin: 0 0 8px; max-width: 520px; text-wrap: pretty; }
     .hero .en { font-size: 14px; color: var(--ink-3); margin: 0 0 30px; letter-spacing: 0.02em; }
     .hero .ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 28px; }
     .hero .install { max-width: 520px; }
-    .stage-frame { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid var(--rule); box-shadow: var(--shadow); background: #c8c2b4; }
+    .stage-frame { position: relative; margin-top: 30px; border-radius: 14px; overflow: hidden; border: 1px solid var(--rule); box-shadow: var(--shadow); background: #c8c2b4; }
     .stage-frame .viewport { position: relative; aspect-ratio: 16 / 9; }
     .stage-frame #hero-map { position: absolute; inset: 0; }
     .stage-frame .safe {
@@ -41,7 +41,7 @@
     .timeline input { flex: 1; accent-color: var(--seal); min-width: 0; }
     .timeline .tc { min-width: 118px; text-align: right; }
     .timeline label { display: flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; }
-    @media (max-width: 960px) { .hero .wrap { grid-template-columns: minmax(0, 1fr); gap: 40px; } .hero { padding-top: 40px; } }
+    @media (max-width: 960px) { .hero .wrap { grid-template-columns: minmax(0, 1fr); gap: 40px; } .hero { padding-top: 40px; } .stage-frame { margin-top: 0; } }
     @media (max-width: 520px) { .timeline label { display: none; } .timeline .tc { min-width: 0; } }
 
     .proof { padding: 30px 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); background: var(--card); }
@@ -82,7 +82,8 @@
     .band .btn { background: transparent; color: var(--paper); border-color: color-mix(in srgb, var(--paper) 35%, transparent); }
     .band .btn.primary { background: var(--seal); border-color: var(--seal); color: var(--seal-ink); }
     @media (max-width: 860px) { .band .wrap { grid-template-columns: minmax(0, 1fr); } }
-    .show-video { border-radius: 12px; overflow: hidden; border: 1px solid var(--rule); background: #000; }
+    .show-video { border-radius: 12px; overflow: hidden; border: 1px solid var(--rule); background: #000; box-shadow: var(--shadow); }
+    .show-video video { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
   </style>
 </head>
 <body>
@@ -267,9 +268,9 @@ await page.screenshot({ path });</pre></div>
       <div class="wrap">
         <p class="eyebrow">作品</p>
         <h2>用 MapStage 做的镜头</h2>
-        <p class="lead">河西走廊系列第 7 期的地图段：古卷底图 + 真实地形 + 分级城池，预缓存后 <code>jumpTo</code> 逐帧录制。这是合规规则定下来之前的早期作品，画面里的虚线是历史郡界；按现在的默认规则，新片不再画任何境界线。</p>
+        <p class="lead">长征系列第 14 期《西路军》的地图段：古卷底图 + 真实地形 + 路线箭头 + 分级城池，预缓存后 <code>jumpTo</code> 逐帧录制。画面里没有省界、国界，这是现在的默认规则。</p>
         <div class="show-video">
-          <video src="studio/media/hexi-ep07-demo-480p.mp4" controls muted playsinline preload="metadata"></video>
+          <video src="media/long-march-ep14-demo.mp4" poster="media/long-march-ep14-poster.jpg" controls muted playsinline preload="metadata"></video>
         </div>
       </div>
     </section>
