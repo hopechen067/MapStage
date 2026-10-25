@@ -34,58 +34,59 @@
 
 ### 演示视频
 
-本栈在真实地图叙事片中的效果示例（**河西走廊 · 河西四郡**），低分辨率短片：
+本栈在真实地图叙事片中的效果示例（**长征系列第 14 期《西路军》**），低分辨率短片：
 
-https://hopechen067.github.io/MapStage/studio/media/hexi-ep07-demo-480p.mp4
+https://hopechen067.github.io/MapStage/media/long-march-ep14-demo.mp4
 
 <video
   controls
   playsinline
   preload="metadata"
   width="720"
-  src="https://hopechen067.github.io/MapStage/studio/media/hexi-ep07-demo-480p.mp4">
+  poster="mapstage/site/media/long-march-ep14-poster.jpg"
+  src="https://hopechen067.github.io/MapStage/media/long-march-ep14-demo.mp4">
 </video>
 
-更长片段（约 36 秒）：[showcases/hexi-ep07/hexi-ep07-map-clip.mp4](showcases/hexi-ep07/hexi-ep07-map-clip.mp4)
+更长片段（约 36 秒）：[showcases/long-march-ep14/ep14-map-clip.mp4](showcases/long-march-ep14/ep14-map-clip.mp4)
 
 ## 效果展示
 
-同一演示的静帧，以及 Studio 截图。
+同一期的静帧。
 
 <table>
   <tr>
     <td align="center" width="50%">
-      <img src="showcases/hexi-ep07/still-01-open.jpg" alt="武威绿洲与石羊河" />
-      <br /><sub>武威 · 绿洲 / 石羊河</sub>
+      <img src="showcases/long-march-ep14/still-01-route.jpg" alt="路线与时间轴" />
+      <br /><sub>路线 + 时间轴卡片</sub>
     </td>
     <td align="center" width="50%">
-      <img src="showcases/hexi-ep07/still-03-commanderies.jpg" alt="酒泉地形与水系" />
-      <br /><sub>酒泉 · 地形 + 水系</sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" width="50%">
-      <img src="showcases/hexi-ep07/still-02-corridor.jpg" alt="河西走廊地图镜头" />
-      <br /><sub>河西走廊地图镜头</sub>
-    </td>
-    <td align="center" width="50%">
-      <img src="showcases/hexi-ep07/still-05-close.jpg" alt="聚落特写" />
-      <br /><sub>聚落特写</sub>
+      <img src="showcases/long-march-ep14/still-02-yellow-river.jpg" alt="渡过黄河" />
+      <br /><sub>渡河 · 日期卡</sub>
     </td>
   </tr>
   <tr>
     <td align="center" width="50%">
-      <img src="showcases/preview-eox-china.png" alt="Studio 全国视图" />
-      <br /><sub>Studio · 全国视图（EOX）</sub>
+      <img src="showcases/long-march-ep14/still-03-terrain.jpg" alt="地形与行军箭头" />
+      <br /><sub>地形 · 行军箭头</sub>
     </td>
     <td align="center" width="50%">
-      <img src="showcases/preview-eox-hexi.png" alt="Studio 河西视图" />
-      <br /><sub>Studio · 河西 / 山影</sub>
+      <img src="showcases/long-march-ep14/still-04-3d-city.jpg" alt="三维城池" />
+      <br /><sub>三维城池（高台）</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="showcases/long-march-ep14/still-05-campaign.jpg" alt="战区" />
+      <br /><sub>战区 · 分级地名</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="showcases/long-march-ep14/still-06-full-route.jpg" alt="长征全程" />
+      <br /><sub>长征全程</sub>
     </td>
   </tr>
 </table>
 
-更多文件：[showcases/hexi-ep07/](showcases/hexi-ep07/)
+更多文件：[showcases/long-march-ep14/](showcases/long-march-ep14/)
 
 | 项 | 内容 |
 |------|--------|
