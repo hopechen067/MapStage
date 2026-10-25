@@ -3,3512 +3,435 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MapStage</title>
-  <meta name="description" content="MapStage tuner — map/globe, EOX satellite, Mapterhorn DEM, isolate, JSON presets." />
-  <!--
-    Directory-safe asset base for GitHub project Pages.
-    `.../MapStage` (no trailing slash) + relative `assets/x`
-    otherwise resolves to `https://<user>.github.io/assets/x` (404).
-    Pages usually 301-redirects to the slash URL; we still normalize.
-  -->
+  <title>调参台 · MapStage Studio</title>
+  <meta name="description" content="MapStage Studio：调古卷底图的参数，实时预览，导出 preset JSON。" />
   <script>
+    /* 与官网共用明暗偏好，先于样式生效，避免闪白 */
     (function () {
-      var path = location.pathname || '/';
-      if (/\.[a-zA-Z0-9]+$/.test(path)) {
-        path = path.replace(/\/[^/]*$/, '/');
-      } else if (path.charAt(path.length - 1) !== '/') {
-        path += '/';
-      }
-      window.__TUNER_BASE__ = location.origin + path;
+      try {
+        var t = localStorage.getItem('mapstage-site-theme');
+        if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      } catch (e0) {}
     })();
   </script>
-  <link rel="preconnect" href="https://tiles.maps.eox.at" crossorigin />
-  <link rel="preconnect" href="https://tiles.mapterhorn.com" crossorigin />
-  <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin />
+  <script src="assets/site-nav.js?v=20260829-w2c"></script>
   <link rel="preconnect" href="https://unpkg.com" crossorigin />
+  <link rel="preconnect" href="https://tiles.maps.eox.at" crossorigin />
+  <link rel="preconnect" href="https://s3.amazonaws.com" crossorigin />
+  <link rel="preconnect" href="https://elevation-tiles-prod.s3.amazonaws.com" crossorigin />
+  <link rel="dns-prefetch" href="https://tiles.maps.eox.at" />
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" />
-  <script src="vendor/maplibre-gl.js?v=20260905-min"></script>
-  <script src="assets/han-city-3d.js"></script>
-  <script src="assets/vector-paint.js?v=20260905-relief-atlas"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;600&display=swap" rel="stylesheet" />
+  <script src="vendor/maplibre-gl.js?v=20260903-mesh-rim14"></script>
+  <script src="assets/map-fx.js?v=20260823-blackbg"></script>
+  <script src="assets/vector-paint.js?v=20260929-roadtiers"></script>
+  <!-- Three.js r160 · 3D 城池 custom layer 依赖 -->
+  <script src="https://unpkg.com/three@0.160.0/build/three.min.js" crossorigin="anonymous" integrity="sha384-qOkzR5Ke/XkQxuGVJ9hpFEpDlcoLtWwVYhnJf06cLIZa2vaIptSqaubivErzmD5O"></script>
+  <script src="assets/han-city-3d.js?v=20260829-isolate-cities"></script>
   <!-- Tile endpoints: public default has satellite OFF; optional local override is gitignored -->
-  <script src="map-tiles.config.js?v=20260905-mh"></script>
+  <script src="map-tiles.config.js"></script>
   <script src="map-tiles.config.local.js" onerror="/* optional local overrides */"></script>
-  <style>
-    :root {
-      --bg: #060b14;
-      --panel: rgba(4, 7, 13, 0.88);
-      --panel-2: rgba(6, 11, 20, 0.55);
-      --border: rgba(201, 160, 106, 0.35);
-      --text: #ece4d4;
-      --muted: #9a8468;
-      --accent: #c9a06a;
-      --accent-dim: #8a6a40;
-      --input-bg: #060b14;
-      --danger: #b85c40;
-      --ok: #6a8a5a;
-      --radius: 8px;
-      --panel-w: 280px;
-      --cy: #57c8c8;
-      --cy-dim: rgba(87, 200, 200, 0.55);
-      --font: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    html, body {
-      height: 100%;
-      overflow: hidden;
-      font-family: var(--font);
-      background: var(--bg);
-      color: var(--text);
-    }
-
-    #app {
-      display: block;
-      height: 100%;
-      width: 100%;
-      position: relative;
-    }
-
-    /* ========== 地图区 ========== */
-    #map-wrap {
-      position: absolute;
-      inset: 0;
-      min-width: 0;
-      background: #1a1612;
-    }
-
-    #map {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-    }
-
-    /* CSS 古卷滤镜作用在地图画布容器上 */
-    #map-canvas-filter {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 1;
-    }
-
-    #map-canvas-filter .maplibregl-map {
-      width: 100%;
-      height: 100%;
-    }
-
-    /* 暖色 soft-light 叠层 */
-    #warm-tint {
-      position: absolute;
-      inset: 0;
-      z-index: 2;
-      pointer-events: none;
-      mix-blend-mode: soft-light;
-      background: rgba(168, 128, 72, 0.14);
-    }
-
-    /* 暗角 vignette */
-    #vignette {
-      position: absolute;
-      inset: 0;
-      z-index: 3;
-      pointer-events: none;
-      mix-blend-mode: multiply;
-      background: radial-gradient(
-        ellipse at center,
-        transparent 42%,
-        rgba(46, 28, 16, 0.22) 100%
-      );
-    }
-
-    /* 参考图对比 */
-    #ref-compare {
-      position: absolute;
-      z-index: 10;
-      display: none;
-      border: 2px solid var(--accent-dim);
-      border-radius: 6px;
-      overflow: hidden;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
-      background: #000;
-    }
-
-    #ref-compare.visible { display: block; }
-
-    #ref-compare.pip {
-      right: 16px;
-      bottom: 48px;
-      width: min(360px, 40vw);
-      height: auto;
-      aspect-ratio: 1600 / 1087;
-    }
-
-    #ref-compare.split {
-      left: 0;
-      top: 0;
-      width: 50%;
-      height: 100%;
-      border: none;
-      border-right: 2px solid var(--accent);
-      border-radius: 0;
-      aspect-ratio: auto;
-    }
-
-    #ref-compare img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-
-    #ref-compare .ref-label {
-      position: absolute;
-      top: 8px;
-      left: 8px;
-      background: rgba(26, 20, 16, 0.78);
-      color: var(--accent);
-      font-size: 11px;
-      padding: 3px 8px;
-      border-radius: 4px;
-      letter-spacing: 0.04em;
-    }
-
-    /* 顶部状态条 — 地球页风格：不占顶栏 */
-    #status-bar {
-      display: none;
-      position: absolute;
-      left: 12px;
-      top: 12px;
-      z-index: 12;
-      background: rgba(26, 20, 16, 0.82);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 8px 12px;
-      font-size: 11px;
-      line-height: 1.5;
-      max-width: min(420px, 50vw);
-      color: var(--muted);
-      backdrop-filter: blur(6px);
-      pointer-events: none;
-    }
-
-    #status-bar strong { color: var(--accent); font-weight: 600; }
-    #status-bar code {
-      font-family: ui-monospace, Consolas, monospace;
-      font-size: 10px;
-      color: #d4c4a0;
-      word-break: break-all;
-    }
-
-    #water-warn {
-      display: none;
-      margin-top: 4px;
-      color: var(--muted);
-    }
-
-    #demo-banner {
-      display: none;
-      position: absolute;
-      top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 20;
-      max-width: min(720px, calc(100% - 24px));
-      padding: 6px 14px;
-      border-radius: 999px;
-      font-size: 12px;
-      line-height: 1.35;
-      color: #f5e6c8;
-      background: rgba(28, 18, 10, 0.82);
-      border: 1px solid rgba(212, 168, 75, 0.45);
-      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
-      text-align: center;
-      pointer-events: auto;
-    }
-    #demo-banner a {
-      color: #f0c96a;
-      text-decoration: underline;
-      text-underline-offset: 2px;
-    }
-    #demo-banner button {
-      margin-left: 8px;
-      border: 0;
-      background: transparent;
-      color: rgba(245, 230, 200, 0.65);
-      cursor: pointer;
-      font-size: 12px;
-    }
-
-    /* 河流名称：无底无框，字号略小于城池，不抢视线 */
-    .river-label {
-      font: 500 11px/1.15 "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
-      color: #9ec4d0;
-      padding: 0;
-      margin: 0;
-      border: none;
-      border-radius: 0;
-      background: transparent;
-      white-space: nowrap;
-      pointer-events: none;
-      letter-spacing: 0.04em;
-      /* 浅晕保证可读，避免黑底块 */
-      text-shadow:
-        0 0 3px rgba(232, 214, 176, 0.85),
-        0 0 6px rgba(232, 214, 176, 0.45),
-        0 1px 0 rgba(255, 248, 230, 0.35);
-      user-select: none;
-      opacity: 0.88;
-    }
-    .river-label.tier-main {
-      font-size: 11px;
-      font-weight: 500;
-      color: #a8cdd8;
-    }
-    .river-label.tier-side {
-      font-size: 10px;
-      color: #93b8c4;
-      opacity: 0.8;
-    }
-
-    /* 主湖名称：同样无底，略偏水色 */
-    .lake-label {
-      font: 500 11px/1.15 "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
-      color: #8ebfd0;
-      padding: 0;
-      margin: 0;
-      border: none;
-      border-radius: 0;
-      background: transparent;
-      white-space: nowrap;
-      pointer-events: none;
-      letter-spacing: 0.05em;
-      text-shadow:
-        0 0 3px rgba(232, 214, 176, 0.85),
-        0 0 6px rgba(232, 214, 176, 0.45),
-        0 1px 0 rgba(255, 248, 230, 0.35);
-      user-select: none;
-      opacity: 0.9;
-    }
-    .lake-label.tier-main {
-      font-size: 11px;
-      font-weight: 500;
-      color: #8ebfd0;
-    }
-    .lake-label.tier-side {
-      display: none; /* 仅主湖 */
-    }
-
-    .maplibregl-ctrl-attrib {
-      font-size: 10px !important;
-      background: rgba(26, 20, 16, 0.7) !important;
-      color: var(--muted) !important;
-    }
-
-    .maplibregl-ctrl-group {
-      background: rgba(36, 28, 22, 0.92) !important;
-      border: 1px solid var(--border) !important;
-    }
-
-    .maplibregl-ctrl-group button {
-      background-color: transparent !important;
-    }
-
-    .maplibregl-ctrl button .maplibregl-ctrl-icon {
-      filter: invert(0.85) sepia(0.4);
-    }
-
-    #viewmode-wrap {
-      flex-shrink: 0;
-      padding: 10px 10px 8px;
-      border-bottom: 1px solid var(--border);
-    }
-    #viewmode-wrap .group-label {
-      border-top: 0;
-      padding: 0 2px 8px;
-    }
-    #viewmode-seg {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-      margin: 0;
-      border: 0;
-      background: transparent;
-      overflow: visible;
-    }
-    #viewmode-seg button {
-      font-family: var(--font);
-      font-size: 14px;
-      font-weight: 600;
-      letter-spacing: 0.12em;
-      line-height: 1.2;
-      padding: 10px 8px;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      background: rgba(6, 11, 20, 0.65);
-      color: var(--muted);
-      cursor: pointer;
-    }
-    #viewmode-seg button:hover { color: var(--accent); border-color: var(--accent-dim); }
-    #viewmode-seg button.active {
-      background: rgba(201, 160, 106, 0.22);
-      color: var(--accent);
-      border-color: var(--accent);
-      box-shadow: none;
-    }
-    .toggle-row {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 6px 12px; font-size: 12px;
-    }
-    .sw {
-      width: 36px; height: 20px; border-radius: 999px; border: 1px solid var(--border);
-      background: var(--panel-2); position: relative; cursor: pointer; padding: 0;
-    }
-    .sw::after {
-      content: ""; position: absolute; width: 14px; height: 14px; border-radius: 50%;
-      background: var(--muted); top: 2px; left: 2px;
-    }
-    .sw.on { background: rgba(87, 200, 200, 0.18); border-color: var(--cy-dim); }
-    .sw.on::after { left: 18px; background: var(--cy); }
-    #vl-isolate-picker { position: relative; margin: 4px 12px 8px; }
-    #vl-isolate-region-search-wrap {
-      display: flex; align-items: stretch;
-      border: 1px solid var(--border); background: var(--panel-2);
-    }
-    #vl-isolate-region-search-wrap:focus-within { border-color: rgba(201, 160, 106, 0.55); }
-    #vl-isolate-region-search {
-      flex: 1; min-width: 0; margin: 0; border: 0; background: transparent;
-      color: var(--text); padding: 7px 8px; font-size: 12px; outline: none;
-    }
-    #vl-isolate-region-caret {
-      border: 0; border-left: 1px solid var(--border); background: transparent;
-      color: var(--muted); padding: 0 8px; cursor: pointer; font-size: 11px;
-    }
-    #vl-isolate-region-list {
-      display: none; position: absolute; left: 0; right: 0; top: calc(100% + 4px);
-      z-index: 50; max-height: 260px; overflow: auto;
-      border: 1px solid var(--border); background: rgba(20, 16, 12, 0.98);
-      box-shadow: 0 10px 28px rgba(0,0,0,0.45);
-    }
-    #vl-isolate-region-list[hidden] { display: none !important; }
-    #vl-isolate-picker.is-open #vl-isolate-region-list:not([hidden]) { display: block; }
-    #vl-isolate-region { display: none !important; }
-    .isolate-list-group { padding: 6px 8px 2px; font-size: 10px; color: var(--muted); letter-spacing: 0.08em; }
-    .isolate-list-item {
-      display: block; width: 100%; border: 0; background: transparent;
-      color: var(--text); text-align: left; padding: 7px 10px; font-size: 12px; cursor: pointer;
-    }
-    .isolate-list-item:hover, .isolate-list-item.active { color: var(--gold); background: rgba(201, 160, 106, 0.12); }
-    .isolate-list-item.is-child { padding-left: 18px; }
-    .isolate-list-empty { padding: 10px 8px; font-size: 12px; color: var(--muted); }
-    .group-label {
-      font-size: 10px; letter-spacing: 0.14em; color: var(--cy-dim);
-      padding: 10px 12px 4px; border-top: 1px solid rgba(201, 160, 106, 0.16);
-    }
-
-    /* ========== 控制面板（叠在地图上，地球页风格） ========== */
-    #panel {
-      position: absolute;
-      top: 16px;
-      right: 16px;
-      width: var(--panel-w);
-      max-height: calc(100% - 32px);
-      flex-shrink: 0;
-      background: var(--panel);
-      backdrop-filter: blur(10px);
-      border: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      height: auto;
-      z-index: 40;
-      overflow: hidden;
-      pointer-events: auto;
-      transition: width 0.2s ease, opacity 0.2s ease;
-    }
-
-    #panel.collapsed {
-      width: 0;
-      border: none;
-      overflow: hidden;
-    }
-
-    #panel-header { display: none; }
-
-    #panel-header h1 {
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--accent);
-      letter-spacing: 0.03em;
-      margin-bottom: 4px;
-    }
-
-    #panel-header p {
-      font-size: 11px;
-      color: var(--muted);
-      line-height: 1.4;
-    }
-
-    #panel-actions,
-    .toggle-row,
-    .group-label,
-    #vl-isolate-region {
-      flex-shrink: 0;
-    }
-
-    #panel-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-      background: var(--panel);
-    }
-
-    #panel-body {
-      flex: 1;
-      min-height: 0;
-      overflow-y: auto;
-      overflow-x: hidden;
-      padding: 8px 0 24px;
-      scrollbar-width: thin;
-      scrollbar-color: var(--border) transparent;
-    }
-
-    #panel-body::-webkit-scrollbar { width: 6px; }
-    #panel-body::-webkit-scrollbar-thumb {
-      background: var(--border);
-      border-radius: 3px;
-    }
-
-    /* 折叠分组 */
-    details.group {
-      border-bottom: 1px solid rgba(74, 58, 40, 0.5);
-    }
-
-    details.group > summary {
-      list-style: none;
-      cursor: pointer;
-      padding: 10px 16px;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--accent);
-      letter-spacing: 0.06em;
-      text-transform: none;
-      user-select: none;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: transparent;
-      transition: background 0.15s;
-    }
-
-    details.group > summary:hover { background: rgba(201, 160, 106, 0.06); }
-
-    details.group > summary::-webkit-details-marker { display: none; }
-
-    details.group > summary::before {
-      content: "▸";
-      font-size: 10px;
-      color: var(--muted);
-      transition: transform 0.15s;
-      display: inline-block;
-    }
-
-    details.group[open] > summary::before { transform: rotate(90deg); }
-
-    .group-body {
-      padding: 4px 14px 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    /* 控件行 */
-    .ctrl {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .ctrl-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .ctrl label {
-      font-size: 11px;
-      color: var(--muted);
-      flex: 1;
-      min-width: 0;
-    }
-
-    .ctrl .val {
-      font-size: 11px;
-      font-variant-numeric: tabular-nums;
-      color: var(--text);
-      min-width: 48px;
-      text-align: right;
-      font-family: ui-monospace, Consolas, monospace;
-    }
-
-    input[type="range"] {
-      width: 100%;
-      height: 4px;
-      -webkit-appearance: none;
-      appearance: none;
-      background: var(--border);
-      border-radius: 2px;
-      outline: none;
-      cursor: pointer;
-    }
-
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: var(--accent);
-      border: 2px solid #1a1410;
-      cursor: pointer;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
-    }
-
-    input[type="range"]::-moz-range-thumb {
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: var(--accent);
-      border: 2px solid #1a1410;
-      cursor: pointer;
-    }
-
-    .ctrl.terrain-ex .val {
-      color: var(--accent);
-      min-width: 40px;
-    }
-    .ctrl.terrain-ex input[type="range"] {
-      height: 6px;
-      background: #3a4450;
-      accent-color: var(--cy);
-    }
-    .ctrl.terrain-ex input[type="range"]::-webkit-slider-thumb {
-      background: var(--cy);
-      border: 2px solid #0c1218;
-      width: 16px;
-      height: 16px;
-    }
-    .ctrl.terrain-ex input[type="range"]::-moz-range-thumb {
-      background: var(--cy);
-      border: 2px solid #0c1218;
-      width: 16px;
-      height: 16px;
-    }
-
-    input[type="color"] {
-      width: 32px;
-      height: 24px;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 0;
-      background: transparent;
-      cursor: pointer;
-    }
-
-    input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
-    input[type="color"]::-webkit-color-swatch {
-      border: none;
-      border-radius: 2px;
-    }
-
-    input[type="text"].hex,
-    input[type="text"].num {
-      width: 78px;
-      background: var(--input-bg);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      color: var(--text);
-      font-size: 11px;
-      font-family: ui-monospace, Consolas, monospace;
-      padding: 3px 6px;
-      outline: none;
-    }
-
-    input[type="text"].hex:focus,
-    input[type="text"].num:focus {
-      border-color: var(--accent-dim);
-    }
-
-    .rgba-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-
-    .rgba-row .alpha-wrap {
-      flex: 1;
-      min-width: 100px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .rgba-row .alpha-wrap label {
-      font-size: 10px;
-      color: var(--muted);
-      white-space: nowrap;
-    }
-
-    /* 按钮 */
-    button.btn {
-      font-family: var(--font);
-      font-size: 11px;
-      padding: 6px 10px;
-      border-radius: 5px;
-      border: 1px solid var(--border);
-      background: var(--panel-2);
-      color: var(--text);
-      cursor: pointer;
-      transition: background 0.12s, border-color 0.12s;
-      white-space: nowrap;
-    }
-
-    button.btn:hover {
-      background: #3a2e22;
-      border-color: var(--accent-dim);
-    }
-
-    button.btn:active { transform: translateY(1px); }
-
-    button.btn.primary {
-      background: #3d3020;
-      border-color: var(--accent-dim);
-      color: var(--accent);
-    }
-
-    button.btn.primary:hover {
-      background: #4a3a28;
-    }
-
-    button.btn.danger {
-      color: #e0a090;
-      border-color: #5a3020;
-    }
-
-    button.btn.active {
-      background: #4a3a28;
-      border-color: var(--accent);
-      color: var(--accent);
-    }
-
-    .btn-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-
-    .hint {
-      font-size: 10px;
-      color: var(--muted);
-      line-height: 1.45;
-      opacity: 0.85;
-    }
-
-    .summary-box {
-      background: var(--input-bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 8px 10px;
-      font-size: 10px;
-      font-family: ui-monospace, Consolas, monospace;
-      color: #c8b898;
-      line-height: 1.55;
-      white-space: pre-wrap;
-      word-break: break-all;
-      max-height: 140px;
-      overflow-y: auto;
-    }
-
-    /* Toggle sits on the right edge of #map-wrap (flush with the panel).
-       Do NOT use right: var(--panel-w) — toggle is inside map-wrap only, so
-       that offset incorrectly floats the button mid-map. */
-    #panel-toggle {
-      position: absolute;
-      right: calc(var(--panel-w) + 16px);
-      top: 50%;
-      transform: translateY(-50%);
-      z-index: 25;
-      width: 28px;
-      height: 64px;
-      border: 1px solid var(--border);
-      border-right: none;
-      border-radius: 8px 0 0 8px;
-      background: var(--panel);
-      color: var(--accent);
-      cursor: pointer;
-      font-size: 14px;
-      line-height: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: -2px 0 10px rgba(0, 0, 0, 0.25);
-      transition: background 0.15s ease, color 0.15s ease;
-    }
-
-    #panel-toggle:hover {
-      background: var(--panel-2);
-      color: #f0c96a;
-    }
-
-    #panel-toggle.collapsed {
-      right: 0;
-      border-right: 1px solid var(--border);
-      border-radius: 8px 0 0 8px;
-    }
-
-    #toast {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%) translateY(20px);
-      background: rgba(36, 28, 22, 0.95);
-      border: 1px solid var(--accent-dim);
-      color: var(--accent);
-      padding: 8px 18px;
-      border-radius: 6px;
-      font-size: 12px;
-      z-index: 100;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.25s, transform 0.25s;
-    }
-
-    #toast.show {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
-    }
-
-    #attribution-note {
-      position: absolute;
-      left: 12px;
-      bottom: 28px;
-      z-index: 12;
-      font-size: 10px;
-      color: rgba(168, 144, 112, 0.75);
-      background: rgba(26, 20, 16, 0.55);
-      padding: 3px 8px;
-      border-radius: 4px;
-      pointer-events: none;
-    }
-
-    @media (max-width: 800px) {
-      #panel { width: min(360px, 92vw); position: absolute; right: 0; top: 0; bottom: 0; }
-      /* Still flush to map-wrap right edge (panel overlays map on small screens) */
-      #panel-toggle { right: 0; }
-      #status-bar { max-width: calc(100% - 48px); }
-      #demo-banner { top: auto; bottom: 12px; }
-    }
-  </style>
+  <link rel="stylesheet" href="assets/tuner.css?v=20261020-studio" />
 </head>
 <body>
   <div id="app">
-    <div id="map-wrap">
-      <div id="map-canvas-filter">
-        <div id="map"></div>
-      </div>
-      <div id="warm-tint"></div>
-      <div id="vignette"></div>
-
-      <div id="demo-banner" role="note">
-        在线预览 · Online demo（底图/山影需联网）·
-        <a href="https://github.com/hopechen067/MapStage" target="_blank" rel="noopener">GitHub</a>
-        <button type="button" id="demo-banner-close" title="关闭提示">✕</button>
-      </div>
-
-      <div id="ref-compare" class="pip">
-        <span class="ref-label" id="ref-label">参考图 · 手绘古地图</span>
-        <img id="ref-img" src="_ref_handdrawn_preview.jpg" alt="手绘古地图参考" onerror="this.style.display='none';var b=this.closest('#ref-compare');if(b)b.style.display='none';" />
-      </div>
-
-      <div id="status-bar">
-        <div><strong>预设</strong> <span id="st-preset">antique-default</span></div>
-        <div><strong>CSS</strong> <code id="st-css">—</code></div>
-        <div id="water-warn"></div>
-      </div>
-
-      <div id="attribution-note">底图：按 map-tiles.config 配置 · 地形 DEM：Mapterhorn</div>
-      <button id="panel-toggle" type="button" title="收起/展开面板" aria-label="收起或展开右侧参数面板">›</button>
-    </div>
-
-    <aside id="panel">
-      <div id="panel-header">
-        <h1>古地图色调调参器</h1>
-        <p>MapStage + Mapterhorn 山影 · EOX Sentinel-2 底图 · 仿手绘羊皮纸古卷<br />拖动滑杆实时预览，参数可导出 JSON。其他底图请改 map-tiles.config.local.js。</p>
-      </div>
-
-      <div id="viewmode-wrap">
-        <div class="group-label">投影</div>
+    <header id="chrome">
+      <a class="brand" href="../" aria-label="MapStage 首页">
+        <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M7 52L19 15l13 24 12-20 7 18c1.6 4.4 3.6 7 7 8" fill="none" stroke="var(--ink)" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/><circle cx="58" cy="45" r="5" fill="currentColor"/></svg>
+        <span>MapStage</span><small>Studio</small>
+      </a>
+      <nav id="chrome-nav" aria-label="主导航"></nav>
+      <div class="chrome-right">
         <div class="seg" id="viewmode-seg" role="group" aria-label="投影">
           <button type="button" data-mode="map" class="active">地图</button>
           <button type="button" data-mode="globe">地球</button>
         </div>
+        <button type="button" class="icon-btn" id="btn-theme" aria-label="切换明暗" title="切换明暗"></button>
+        <button type="button" class="btn primary" id="btn-chrome-copy" title="复制当前 preset JSON">导出</button>
+        <button type="button" class="btn active" id="btn-tuner" aria-controls="panel" title="显示 / 隐藏参数面板">面板</button>
       </div>
-      <div class="group-label">资源</div>
-      <div class="toggle-row">卫星图 <button type="button" class="sw on" id="sw-satellite" aria-pressed="true"></button></div>
-      <div class="toggle-row">海拔设色 <button type="button" class="sw" id="sw-relief" aria-pressed="false"></button></div>
-      <div class="group-label">地区显示</div>
-      <div class="toggle-row">地区显示 <button type="button" class="sw" id="sw-isolate" aria-label="地区显示" aria-pressed="false"></button></div>
-      <div id="vl-isolate-picker" class="isolate-picker">
-        <div id="vl-isolate-region-search-wrap">
-          <input type="search" id="vl-isolate-region-search" placeholder="搜索省 / 市…" autocomplete="off" spellcheck="false" aria-label="搜索地区" aria-autocomplete="list" aria-controls="vl-isolate-region-list" aria-expanded="false" />
-          <button type="button" id="vl-isolate-region-caret" aria-label="打开地区列表" tabindex="-1">▾</button>
+    </header>
+
+    <div id="workspace">
+      <div id="map-wrap">
+        <div id="map-canvas-filter">
+          <div id="map"></div>
         </div>
-        <div id="vl-isolate-region-list" role="listbox" aria-label="地区列表" hidden></div>
-        <select id="vl-isolate-region" aria-hidden="true" tabindex="-1" hidden></select>
+        <div id="warm-tint"></div>
+        <div id="vignette"></div>
+
+        <aside id="scene-rail" aria-label="场景">
+          <span class="rail-kicker">场景</span>
+          <div id="scene-list"></div>
+        </aside>
+
+        <div id="ref-compare" class="pip">
+          <span class="ref-label" id="ref-label">参考图</span>
+          <img id="ref-img" alt="参考图" onerror="this.style.display='none';var b=this.closest('#ref-compare');if(b)b.style.display='none';" />
+        </div>
+
+        <div id="map-status">
+          <span>投影 <b id="chrome-proj">MAP</b></span>
+          <span>DEM Terrarium</span>
+        </div>
       </div>
 
-      <div id="panel-actions">
-        <button class="btn primary" id="btn-reset" title="重置为 antique-default">重置预设</button>
-        <button class="btn" id="btn-copy">复制 JSON</button>
-        <button class="btn" id="btn-download">下载 JSON</button>
-        <button class="btn" id="btn-paste">粘贴 JSON</button>
-        <button class="btn" id="btn-ref">参考图</button>
-        <button class="btn" id="btn-cities">城池点位</button>
-        <button class="btn" id="btn-china">全国视角</button>
-      </div>
+      <aside id="panel" aria-label="参数面板">
+        <div id="panel-head">
+          <h1>调参</h1>
+          <span class="preset-pill" title="当前预设">预设 · <span id="st-preset">antique-default</span></span>
+        </div>
 
-      <div id="panel-body">
-        <!-- 1. 预设 / 对比 -->
-        <details class="group" open>
-          <summary>预设 / 对比</summary>
-          <div class="group-body">
-            <p class="hint">默认加载 <code>antique-default</code>（<code>preset-antique-default.json</code>）。修改后自动写入 localStorage（key: mapstage-tuner-v1）。</p>
+        <nav id="panel-tabs" aria-label="参数分区" role="tablist">
+          <a href="#sec-layers" class="active" role="tab">图层</a>
+          <a href="#sec-look" role="tab">风格</a>
+          <a href="#sec-camera" role="tab">镜头</a>
+          <a href="#sec-isolate" role="tab">拆出</a>
+          <a href="#sec-preset" role="tab">预设</a>
+        </nav>
+
+        <div id="panel-body">
+          <!-- 图层：只管开关 -->
+          <section class="sec active" id="sec-layers">
+            <div class="field-label">底图</div>
+            <div class="chip-grid" id="basemap-list" role="group" aria-label="底图样式"></div>
+            <div class="toggle-list">
+        <div class="toggle-row"><span>卫星底图</span><button type="button" class="tgl" id="sw-sat" aria-pressed="false" aria-label="卫星底图"></button></div>
+        <div class="toggle-row"><span>海拔设色</span><button type="button" class="tgl" id="btn-relief" aria-pressed="false" aria-label="海拔设色"></button></div>
+        <div class="toggle-row"><span>等高线</span><button type="button" class="tgl" id="btn-contour" aria-pressed="false" aria-label="等高线"></button></div>
+        <div class="toggle-row"><span>真实夜光</span><button type="button" class="tgl" id="btn-night-raster" aria-pressed="false" aria-label="真实夜光"></button></div>
+        <div class="toggle-row"><span>夜景灯光</span><button type="button" class="tgl" id="btn-lights" aria-pressed="false" aria-label="夜景灯光"></button></div>
+        <div class="toggle-row"><span>地表分类</span><button type="button" class="tgl" id="btn-landcover" aria-pressed="false" aria-label="地表分类"></button></div>
+            </div>
+            <p class="hint">底图样式一键切换：除「卫星」外都不加载卫星图，只靠海拔设色 + 山影 + 皮肤配色。设色盖在卫星之上：只看设色就关掉卫星底图。全国视角靠海拔设色，地表分类 z7 以上才出；地球投影下设色与等高线不画。</p>
+            <div class="field-label">叠加</div>
+            <div class="toggle-list">
+        <div class="toggle-row"><span>水系</span><button type="button" class="tgl" id="btn-water" aria-label="水系"></button></div>
+        <div class="toggle-row"><span>道路</span><button type="button" class="tgl" id="btn-roads" aria-label="道路"></button></div>
+        <div class="toggle-row"><span>城池点位</span><button type="button" class="tgl" id="btn-cities" aria-label="城池点位"></button></div>
+            </div>
+            <p class="hint">颜色、强度、滤镜都在「风格」里调。水系与道路来自 OpenFreeMap 矢量瓦片。</p>
+          </section>
+
+          <!-- 风格：皮肤 + 光照，其余精调折叠 -->
+          <section class="sec" id="sec-look">
+            <div class="look-block">
+              <div class="field-head"><span class="field-label">皮肤</span><button class="btn mini" id="btn-vector-reset" type="button" title="清掉自定义图层色 / 色阶，回到皮肤原色">恢复皮肤原色</button></div>
+              <div class="chip-grid themes" id="skin-list"></div>
+            </div>
+            <div class="look-block">
+              <div class="field-label">光照</div>
+              <div class="chip-grid" id="lighting-grid">
+                <button type="button" class="chip" data-light="dawn">晨</button>
+                <button type="button" class="chip" data-light="day">午</button>
+                <button type="button" class="chip" data-light="dusk">暮</button>
+                <button type="button" class="chip active" data-light="night">夜</button>
+              </div>
+            </div>
+
+            <details class="group" name="look-acc" open>
+              <summary>卫星 <small>Satellite</small></summary>
+              <div class="group-body">
+                        <div class="ctrl" data-key="satellite.opacity">
+                          <div class="ctrl-row"><label>不透明度 opacity</label><span class="val">0.42</span></div>
+                          <input type="range" min="0" max="1" step="0.01" />
+                        </div>
+                        <div class="ctrl" data-key="satellite.saturation">
+                          <div class="ctrl-row"><label>饱和度 saturation</label><span class="val">-0.55</span></div>
+                          <input type="range" min="-1" max="1" step="0.01" />
+                        </div>
+                        <div class="ctrl" data-key="satellite.contrast">
+                          <div class="ctrl-row"><label>对比度 contrast</label><span class="val">-0.08</span></div>
+                          <input type="range" min="-1" max="1" step="0.01" />
+                        </div>
+                        <div class="ctrl" data-key="satellite.brightnessMin">
+                          <div class="ctrl-row"><label>亮度下限 brightness-min</label><span class="val">0.14</span></div>
+                          <input type="range" min="0" max="1" step="0.01" />
+                        </div>
+                        <div class="ctrl" data-key="satellite.brightnessMax">
+                          <div class="ctrl-row"><label>亮度上限 brightness-max</label><span class="val">0.82</span></div>
+                          <input type="range" min="0" max="1" step="0.01" />
+                        </div>
+                        <div class="ctrl" data-key="satellite.hueRotate">
+                          <div class="ctrl-row"><label>色相旋转 hue-rotate (°)</label><span class="val">18</span></div>
+                          <input type="range" min="0" max="360" step="1" />
+                        </div>
+              </div>
+            </details>
+            <details class="group" name="look-acc">
+              <summary>山影与地形 <small>Hillshade · Terrain</small></summary>
+              <div class="group-body">
+                        <div class="ctrl" data-key="hillshade.exaggeration">
+                          <div class="ctrl-row"><label>山影强度 exaggeration</label><span class="val">0.48</span></div>
+                          <input type="range" min="0" max="1" step="0.01" />
+                        </div>
+                        <div class="ctrl" data-key="hillshade.illuminationDirection">
+                          <div class="ctrl-row"><label>光照方向 (°)</label><span class="val">315</span></div>
+                          <input type="range" min="0" max="359" step="1" />
+                        </div>
+                        <div class="ctrl" data-key="hillshade.shadowColor" data-type="color">
+                          <div class="ctrl-row">
+                            <label>阴影色 shadow</label>
+                            <input type="color" />
+                            <input type="text" class="hex" maxlength="7" />
+                          </div>
+                        </div>
+                        <div class="ctrl" data-key="hillshade.highlightColor" data-type="color">
+                          <div class="ctrl-row">
+                            <label>高光色 highlight</label>
+                            <input type="color" />
+                            <input type="text" class="hex" maxlength="7" />
+                          </div>
+                        </div>
+                        <div class="ctrl" data-key="hillshade.accentColor" data-type="color">
+                          <div class="ctrl-row">
+                            <label>强调色 accent</label>
+                            <input type="color" />
+                            <input type="text" class="hex" maxlength="7" />
+                          </div>
+                        </div>
+                        <div class="ctrl" data-key="backgroundColor" data-type="color">
+                          <div class="ctrl-row">
+                            <label>背景色 background</label>
+                            <input type="color" />
+                            <input type="text" class="hex" maxlength="7" />
+                          </div>
+                        </div>
+                        <div class="ctrl" data-key="terrainExaggeration">
+                          <div class="ctrl-row"><label>地形夸张 terrain</label><span class="val">0.22</span></div>
+                          <input type="range" min="0" max="3" step="0.01" />
+                        </div>
+              </div>
+            </details>
+            <details class="group" name="look-acc">
+              <summary>滤镜 <small>CSS</small></summary>
+              <div class="group-body">
+                <div class="look-block">
+              <div class="field-label">色调预设</div>
+              <div class="chip-grid themes" id="theme-grid">
+                <button type="button" class="chip active" data-theme="antique">古卷</button>
+                <button type="button" class="chip" data-theme="aged">陈旧</button>
+                <button type="button" class="chip" data-theme="ink">墨色</button>
+                <button type="button" class="chip" data-theme="cyan">青绿</button>
+                <button type="button" class="chip" data-theme="silk">暖绢</button>
+                <button type="button" class="chip" data-theme="hard">硬边</button>
+              </div>
+            </div>
+                        <div class="ctrl" data-key="css.sepia">
+                          <div class="ctrl-row"><label>sepia</label><span class="val">0.42</span></div>
+                          <input type="range" min="0" max="1" step="0.01" />
+                        </div>
+                        <div class="ctrl" data-key="css.saturate">
+                          <div class="ctrl-row"><label>saturate</label><span class="val">0.72</span></div>
+                          <input type="range" min="0" max="2" step="0.01" />
+                        </div>
+                        <div class="ctrl" data-key="css.contrast">
+                          <div class="ctrl-row"><label>contrast</label><span class="val">1.06</span></div>
+                          <input type="range" min="0.5" max="2" step="0.01" />
+                        </div>
+                        <div class="ctrl" data-key="css.brightness">
+                          <div class="ctrl-row"><label>brightness</label><span class="val">0.97</span></div>
+                          <input type="range" min="0.5" max="1.5" step="0.01" />
+                        </div>
+                        <div class="ctrl" data-key="css.hueRotate">
+                          <div class="ctrl-row"><label>hue-rotate (°)</label><span class="val">-6</span></div>
+                          <input type="range" min="-30" max="30" step="1" />
+                        </div>
+                        <div class="ctrl" data-key="css.warmTintColor" data-type="color">
+                          <div class="ctrl-row">
+                            <label>暖色叠层色</label>
+                            <input type="color" />
+                            <input type="text" class="hex" maxlength="7" />
+                          </div>
+                        </div>
+                        <div class="ctrl" data-key="css.warmTintAlpha">
+                          <div class="ctrl-row"><label>暖色叠层 α</label><span class="val">0.14</span></div>
+                          <input type="range" min="0" max="0.5" step="0.01" />
+                        </div>
+                        <div class="ctrl" data-key="css.vignetteStrength">
+                          <div class="ctrl-row"><label>暗角强度 vignette</label><span class="val">0.22</span></div>
+                          <input type="range" min="0" max="0.8" step="0.01" />
+                        </div>
+              </div>
+            </details>
+            <details class="group" name="look-acc">
+              <summary>海拔色阶 <small>Elevation</small></summary>
+              <div class="group-body">
+                <div class="field-range">
+                  <div class="ctrl-row"><label for="relief-opacity">设色不透明度</label><span class="val" id="relief-opacity-val">1.00</span></div>
+                  <input type="range" id="relief-opacity" min="0" max="1" step="0.01" value="1" />
+                </div>
+                <div id="elev-list"></div>
+              </div>
+            </details>
+            <details class="group" name="look-acc">
+              <summary>地表颜色 <small>地表 · 海洋 · 道路</small></summary>
+              <div class="group-body"><div id="color-list"></div></div>
+            </details>
+            <details class="group" name="look-acc">
+              <summary>水系颜色 <small>湖 · 一 / 二 / 三级河</small></summary>
+              <div class="group-body">
+                        <div class="ctrl" data-key="water.lakeFill" data-type="rgba">
+                          <label>湖泊填充 lake-fill</label>
+                          <div class="rgba-row">
+                            <input type="color" />
+                            <input type="text" class="hex" maxlength="7" />
+                            <div class="alpha-wrap">
+                              <label>α</label>
+                              <input type="range" min="0" max="1" step="0.01" class="alpha" />
+                              <span class="val alpha-val">0.26</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="ctrl" data-key="water.riverLevel3" data-type="rgba">
+                          <label>三级河 river-l3（资料四级）</label>
+                          <div class="rgba-row">
+                            <input type="color" />
+                            <input type="text" class="hex" maxlength="7" />
+                            <div class="alpha-wrap">
+                              <label>α</label>
+                              <input type="range" min="0" max="1" step="0.01" class="alpha" />
+                              <span class="val alpha-val">0.28</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="ctrl" data-key="water.riverL3Width">
+                          <div class="ctrl-row"><label>三级河线宽 base</label><span class="val">0.7</span></div>
+                          <input type="range" min="0.1" max="3" step="0.05" />
+                        </div>
+                        <div class="ctrl" data-key="water.riverLevel2" data-type="rgba">
+                          <label>二级河 river-l2</label>
+                          <div class="rgba-row">
+                            <input type="color" />
+                            <input type="text" class="hex" maxlength="7" />
+                            <div class="alpha-wrap">
+                              <label>α</label>
+                              <input type="range" min="0" max="1" step="0.01" class="alpha" />
+                              <span class="val alpha-val">0.34</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="ctrl" data-key="water.riverL2Width">
+                          <div class="ctrl-row"><label>二级河线宽 base</label><span class="val">1.0</span></div>
+                          <input type="range" min="0.2" max="4" step="0.05" />
+                        </div>
+                        <div class="ctrl" data-key="water.riverLevel1" data-type="rgba">
+                          <label>一级河 river-l1</label>
+                          <div class="rgba-row">
+                            <input type="color" />
+                            <input type="text" class="hex" maxlength="7" />
+                            <div class="alpha-wrap">
+                              <label>α</label>
+                              <input type="range" min="0" max="1" step="0.01" class="alpha" />
+                              <span class="val alpha-val">0.52</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="ctrl" data-key="water.riverL1Width">
+                          <div class="ctrl-row"><label>一级河线宽 base</label><span class="val">1.6</span></div>
+                          <input type="range" min="0.2" max="6" step="0.05" />
+                        </div>
+              </div>
+            </details>
+          </section>
+
+          <!-- 镜头 -->
+          <section class="sec" id="sec-camera">
             <div class="btn-row">
+              <button class="btn" id="btn-china">全国视角</button>
+              <button class="btn" id="btn-terrain-rise" title="idle 后量化隆起地形，验证 setTerrain 去抖">地形隆起</button>
+            </div>
+            <p class="hint">拖动地图会同步读数。看山脊 mesh：点「地形隆起」飞到祁连近景（zoom≈11 · pitch≈70），别停在全国俯视。</p>
+            <div class="group-flat">
+                        <div class="ctrl" data-key="camera.centerLng">
+                          <div class="ctrl-row"><label>经度 lng</label><span class="val">100.2</span></div>
+                          <input type="range" min="70" max="140" step="0.1" />
+                        </div>
+                        <div class="ctrl" data-key="camera.centerLat">
+                          <div class="ctrl-row"><label>纬度 lat</label><span class="val">38.5</span></div>
+                          <input type="range" min="15" max="55" step="0.1" />
+                        </div>
+                        <div class="ctrl" data-key="camera.zoom">
+                          <div class="ctrl-row"><label>缩放 zoom</label><span class="val">5.2</span></div>
+                          <input type="range" min="3" max="14" step="0.1" />
+                        </div>
+                        <div class="ctrl" data-key="camera.pitch">
+                          <div class="ctrl-row"><label>俯仰 pitch</label><span class="val">28</span></div>
+                          <input type="range" min="0" max="85" step="1" />
+                        </div>
+                        <div class="ctrl" data-key="camera.bearing">
+                          <div class="ctrl-row"><label>方位 bearing</label><span class="val">-8</span></div>
+                          <input type="range" min="-180" max="180" step="1" />
+                        </div>
+            </div>
+          </section>
+
+          <section class="sec" id="sec-isolate">
+            <div class="toggle-list">
+              <div class="toggle-row"><span>启用拆出</span><button type="button" class="tgl" id="btn-isolate" aria-label="启用拆出"></button></div>
+            </div>
+            <div class="notice" id="isolate-warn">未加载拆出轮廓 REGION_ISOLATE_DATA，可粘贴 GeoJSON。</div>
+            <div class="field-label">区域</div>
+            <div class="btn-row isolate-pick">
+              <select class="btn-select" id="isolate-region" title="拆出区域：中国 / 34 省 / 地级市" aria-label="拆出区域"></select>
+              <button class="btn" id="btn-isolate-paste" title="从剪贴板粘贴 Polygon / MultiPolygon / Feature">粘贴轮廓</button>
+            </div>
+            <div id="isolate-region-btns" role="group" aria-label="拆出区域"></div>
+            <div id="isolate-city-btns" role="group" aria-label="当前省份的地级市" style="display:none"></div>
+            <div class="ctrl" data-key="ui.islandSideColor" data-type="color">
+              <div class="ctrl-row">
+                <label>拆出侧面色</label>
+                <input type="color" />
+                <input type="text" class="hex" maxlength="7" />
+              </div>
+              <p class="hint">独立块侧壁着色，默认岩石棕。仅地图投影拆出有效。</p>
+            </div>
+          </section>
+
+          <!-- 预设 / 导出 -->
+          <section class="sec" id="sec-preset">
+            <div id="panel-actions">
+              <button class="btn" id="btn-copy" title="复制当前参数为 JSON">复制 JSON</button>
+              <button class="btn" id="btn-download">下载 JSON</button>
+              <button class="btn" id="btn-paste" title="从剪贴板导入 JSON">粘贴 JSON</button>
+              <button class="btn danger" id="btn-reset" title="重置为 antique-default">重置</button>
+            </div>
+            <p class="hint">默认加载 <code>antique-default</code>，改动自动存进 localStorage（<code>china-antique-maplibre-tuner-v1</code>）。</p>
+            <div class="btn-row">
+              <button class="btn" id="btn-ref">参考图</button>
               <button class="btn" id="btn-ref-mode" data-mode="pip">对比模式：画中画</button>
-              <button class="btn" id="btn-clear-storage">清除本地缓存</button>
             </div>
-            <div class="summary-box" id="paint-summary">—</div>
-          </div>
-        </details>
-
-        <!-- 2. 卫星层 -->
-        <details class="group" open>
-          <summary>卫星层</summary>
-          <div class="group-body">
-            <div class="ctrl" data-key="satellite.opacity">
-              <div class="ctrl-row"><label>不透明度 opacity</label><span class="val">0.42</span></div>
-              <input type="range" min="0" max="1" step="0.01" />
-            </div>
-            <div class="ctrl" data-key="satellite.saturation">
-              <div class="ctrl-row"><label>饱和度 saturation</label><span class="val">-0.55</span></div>
-              <input type="range" min="-1" max="1" step="0.01" />
-            </div>
-            <div class="ctrl" data-key="satellite.contrast">
-              <div class="ctrl-row"><label>对比度 contrast</label><span class="val">-0.08</span></div>
-              <input type="range" min="-1" max="1" step="0.01" />
-            </div>
-            <div class="ctrl" data-key="satellite.brightnessMin">
-              <div class="ctrl-row"><label>亮度下限 brightness-min</label><span class="val">0.14</span></div>
-              <input type="range" min="0" max="1" step="0.01" />
-            </div>
-            <div class="ctrl" data-key="satellite.brightnessMax">
-              <div class="ctrl-row"><label>亮度上限 brightness-max</label><span class="val">0.82</span></div>
-              <input type="range" min="0" max="1" step="0.01" />
-            </div>
-            <div class="ctrl" data-key="satellite.hueRotate">
-              <div class="ctrl-row"><label>色相旋转 hue-rotate (°)</label><span class="val">18</span></div>
-              <input type="range" min="0" max="360" step="1" />
-            </div>
-          </div>
-        </details>
-
-        <!-- 3. 山影 -->
-        <details class="group" open>
-          <summary>山影 hillshade</summary>
-          <div class="group-body">
-            <div class="ctrl" data-key="hillshade.exaggeration">
-              <div class="ctrl-row"><label>山影强度 exaggeration</label><span class="val">0.48</span></div>
-              <input type="range" min="0" max="1" step="0.01" />
-            </div>
-            <div class="ctrl" data-key="hillshade.illuminationDirection">
-              <div class="ctrl-row"><label>光照方向 (°)</label><span class="val">315</span></div>
-              <input type="range" min="0" max="359" step="1" />
-            </div>
-            <div class="ctrl" data-key="hillshade.shadowColor" data-type="color">
-              <div class="ctrl-row">
-                <label>阴影色 shadow</label>
-                <input type="color" />
-                <input type="text" class="hex" maxlength="7" />
+            <details class="group">
+              <summary>诊断 <small>参数摘要 · 来源</small></summary>
+              <div class="group-body">
+                <div class="summary-box" id="paint-summary">—</div>
+                        <div class="summary-box" id="css-summary">—</div>
+                <dl class="state-list">
+                  <dt>CSS</dt><dd><code id="st-css">—</code></dd>
+                  <dt>FX</dt><dd id="st-fx">—</dd>
+                  <dt>来源</dt><dd id="attribution-note">—</dd>
+                </dl>
               </div>
-            </div>
-            <div class="ctrl" data-key="hillshade.highlightColor" data-type="color">
-              <div class="ctrl-row">
-                <label>高光色 highlight</label>
-                <input type="color" />
-                <input type="text" class="hex" maxlength="7" />
-              </div>
-            </div>
-            <div class="ctrl" data-key="hillshade.accentColor" data-type="color">
-              <div class="ctrl-row">
-                <label>强调色 accent</label>
-                <input type="color" />
-                <input type="text" class="hex" maxlength="7" />
-              </div>
-            </div>
-          </div>
-        </details>
-
-        <!-- 4. 底色 / 地形 -->
-        <details class="group" open>
-          <summary>底色 / 地形</summary>
-          <div class="group-body">
-            <div class="ctrl" data-key="backgroundColor" data-type="color">
-              <div class="ctrl-row">
-                <label>背景色 background</label>
-                <input type="color" />
-                <input type="text" class="hex" maxlength="7" />
-              </div>
-            </div>
-            <div class="ctrl terrain-ex" data-key="terrainExaggeration">
-              <div class="ctrl-row"><label>山高 · 真实海拔=1.0</label><span class="val">1.00</span></div>
-              <input type="range" min="0" max="3" step="0.05" />
-            </div>
-          </div>
-        </details>
-
-        <!-- 6. CSS 古卷滤镜 -->
-        <details class="group" open>
-          <summary>CSS 古卷滤镜</summary>
-          <div class="group-body">
-            <div class="toggle-row">启用滤镜 <button type="button" class="sw on" id="sw-css-filter-panel" aria-pressed="true"></button></div>
-            <div class="ctrl" data-key="css.sepia">
-              <div class="ctrl-row"><label>sepia</label><span class="val">0.42</span></div>
-              <input type="range" min="0" max="1" step="0.01" />
-            </div>
-            <div class="ctrl" data-key="css.saturate">
-              <div class="ctrl-row"><label>saturate</label><span class="val">0.72</span></div>
-              <input type="range" min="0" max="2" step="0.01" />
-            </div>
-            <div class="ctrl" data-key="css.contrast">
-              <div class="ctrl-row"><label>contrast</label><span class="val">1.06</span></div>
-              <input type="range" min="0.5" max="2" step="0.01" />
-            </div>
-            <div class="ctrl" data-key="css.brightness">
-              <div class="ctrl-row"><label>brightness</label><span class="val">0.97</span></div>
-              <input type="range" min="0.5" max="1.5" step="0.01" />
-            </div>
-            <div class="ctrl" data-key="css.hueRotate">
-              <div class="ctrl-row"><label>hue-rotate (°)</label><span class="val">-6</span></div>
-              <input type="range" min="-30" max="30" step="1" />
-            </div>
-            <div class="ctrl" data-key="css.warmTintColor" data-type="color">
-              <div class="ctrl-row">
-                <label>暖色叠层色</label>
-                <input type="color" />
-                <input type="text" class="hex" maxlength="7" />
-              </div>
-            </div>
-            <div class="ctrl" data-key="css.warmTintAlpha">
-              <div class="ctrl-row"><label>暖色叠层 α</label><span class="val">0.14</span></div>
-              <input type="range" min="0" max="0.5" step="0.01" />
-            </div>
-            <div class="ctrl" data-key="css.vignetteStrength">
-              <div class="ctrl-row"><label>暗角强度 vignette</label><span class="val">0.22</span></div>
-              <input type="range" min="0" max="0.8" step="0.01" />
-            </div>
-            <p class="hint">滤镜作用在地图容器；暖色 soft-light + 暗角 multiply 为绝对定位叠层。</p>
-            <div class="summary-box" id="css-summary">—</div>
-          </div>
-        </details>
-
-        <!-- 7. 相机 -->
-        <details class="group" open>
-          <summary>相机</summary>
-          <div class="group-body">
-            <div class="ctrl" data-key="camera.centerLng">
-              <div class="ctrl-row"><label>经度 lng</label><span class="val">100.2</span></div>
-              <input type="range" min="70" max="140" step="0.1" />
-            </div>
-            <div class="ctrl" data-key="camera.centerLat">
-              <div class="ctrl-row"><label>纬度 lat</label><span class="val">38.5</span></div>
-              <input type="range" min="15" max="55" step="0.1" />
-            </div>
-            <div class="ctrl" data-key="camera.zoom">
-              <div class="ctrl-row"><label>缩放 zoom</label><span class="val">5.2</span></div>
-              <input type="range" min="2" max="14" step="0.1" />
-            </div>
-            <div class="ctrl" data-key="camera.pitch">
-              <div class="ctrl-row"><label>俯仰 pitch</label><span class="val">28</span></div>
-              <input type="range" min="0" max="60" step="1" />
-            </div>
-            <div class="ctrl" data-key="camera.bearing">
-              <div class="ctrl-row"><label>方位 bearing</label><span class="val">-8</span></div>
-              <input type="range" min="-180" max="180" step="1" />
-            </div>
-            <p class="hint">地图交互拖动也会同步更新相机读数；点「全国视角」快速跳转。</p>
-          </div>
-        </details>
-      </div>
-    </aside>
+            </details>
+            <div class="btn-row"><button class="btn danger" id="btn-clear-storage">清除本地缓存</button></div>
+          </section>
+        </div>
+      </aside>
+    </div>
   </div>
 
   <div id="toast"></div>
 
-  <script src="assets/map-fx.js?v=20260911-skysoft"></script>
-  <script src="assets/region-isolate.js?v=20260911-maritime"></script>
-  <script src="assets/terrain-island.js?v=20260905-flat-wall"></script>
-  <script src="assets/isolate-workbench.js?v=20260911-islands"></script>
-  <script>
-  (function () {
-    'use strict';
-
-    // ============================================================
-    // 默认预设 antique-default
-    // ============================================================
-    const PRESET_ID = 'antique-default';
-    const STORAGE_KEY = 'mapstage-tuner-v1';
-
-    // 默认 = 用户手调 antique-default（保留三级河 / 高亮水系字段）
-    const DEFAULT_PARAMS = {
-      id: PRESET_ID,
-      label: '手绘古地图 · MapStage + Mapterhorn 山影',
-      version: 3,
-      camera: {
-        center: [104.0, 35.5],
-        zoom: 4.2,
-        pitch: 28,
-        bearing: 0,
-      },
-      mapstage: {
-        backgroundColor: '#c8c2b4',
-        terrainExaggeration: 1,
-        satellite: {
-          opacity: 0.7,
-          saturation: -0.08,
-          contrast: 0.02,
-          brightnessMin: 0.08,
-          brightnessMax: 0.96,
-          hueRotate: 12,
-        },
-        hillshade: {
-          exaggeration: 0.42,
-          illuminationDirection: 315,
-          shadowColor: '#2c2824',
-          highlightColor: '#f0ece4',
-          accentColor: '#6a6458',
-        },
-        water: {
-          lakeFill: 'rgba(50,118,138,0.9)',
-          lakeOutline: 'rgba(90,110,105,0.8)',
-          riverLevel3: 'rgba(48,112,128,0.55)',
-          riverLevel2: 'rgba(45,110,125,0.88)',
-          riverLevel1: 'rgba(42,105,120,0.95)',
-          highlightRiver: 'rgba(38,100,118,1)',
-          riverL3Width: 1.2,
-          riverL2Width: 2,
-          riverL1Width: 1.8,
-          highlightWidth: 2.4,
-        },
-      },
-      css: {
-        sepia: 0.08,
-        saturate: 0.98,
-        contrast: 1.03,
-        brightness: 1.0,
-        hueRotate: -1,
-        warmTintAlpha: 0.04,
-        warmTintColor: '#9a8868',
-        vignetteStrength: 0.1,
-      },
-      ui: {
-        showWater: false,
-        showHighlight: false,
-        showRiverLabels: false,
-        showCities: true,
-        showSatellite: true,
-        showRelief: false,
-        showCssFilter: true,
-        showRef: false,
-        projection: 'map',
-        refMode: 'pip', // pip | split
-      },
-      isolate: {
-        enabled: false,
-        regionId: 'china',
-      },
-      cities: {
-        dataFile: 'assets/sample-sites.json',
-        halfKm: 18,
-        renderMode: 'fill-extrusion',
-      },
-      season: null, // null | spring | summer | autumn | winter
-    };
-
-    /** 主河名（短名）；其余支流为次级 */
-    const RIVER_LABEL_MAIN = {
-      黄河: true,
-      石羊河: true,
-      黑河: true,
-      弱水: true,
-      疏勒河: true,
-      党河: true,
-    };
-    /**
-     * 支流河名最低缩放。
-     * 中纬度≈38.5°、比例尺控件 maxWidth=120 时，zoom≈9.5 对应刻度约 20 km。
-     */
-    const RIVER_LABEL_SIDE_MIN_ZOOM = 9.5;
-    const RIVER_LABEL_MAIN_MIN_ZOOM = 3.8;
-    const LAKE_LABEL_MAIN_MIN_ZOOM = 3.8;
-    const LAKE_LABEL_SIDE_MIN_ZOOM = 6.0;
-
-    /**
-     * 重要湖泊（源 chinaLakes.name 为空，按 WGS84 锚点匹配面心）。
-     * 示例：青海湖、哈拉湖、居延海（黑河尾闾）、黄河源两湖。
-     */
-    /** 仅主湖；次级湖不标注 */
-    const IMPORTANT_LAKES = [
-      { name: '青海湖', lng: 100.17, lat: 36.88, tier: 'main', maxDist: 0.45 },
-      { name: '哈拉湖', lng: 97.61, lat: 38.29, tier: 'main', maxDist: 0.4 },
-      { name: '居延海', lng: 100.74, lat: 42.4, tier: 'main', maxDist: 0.4 },
-      { name: '鄂陵湖', lng: 97.73, lat: 34.9, tier: 'main', maxDist: 0.4 },
-      { name: '扎陵湖', lng: 97.3, lat: 34.94, tier: 'main', maxDist: 0.4 },
-    ];
-
-    // 视角快捷
-    const VIEW_CHINA = { center: [104.0, 35.5], zoom: 4.2, pitch: 28, bearing: 0 };
-
-    const BASELINE_REF = {
-      src: '_ref_handdrawn_preview.jpg',
-      label: '参考图 · 手绘古地图',
-    };
-
-    // ============================================================
-    // 工具函数
-    // ============================================================
-    function deepClone(o) {
-      return JSON.parse(JSON.stringify(o));
-    }
-
-    function clamp(v, min, max) {
-      return Math.min(max, Math.max(min, v));
-    }
-
-    function round(v, d) {
-      const p = Math.pow(10, d == null ? 2 : d);
-      return Math.round(v * p) / p;
-    }
-
-    /** 解析 rgba()/#hex → { hex, a } */
-    function parseColor(str) {
-      if (!str) return { hex: '#000000', a: 1 };
-      str = String(str).trim();
-      const rgba = str.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)/i);
-      if (rgba) {
-        const r = clamp(Math.round(+rgba[1]), 0, 255);
-        const g = clamp(Math.round(+rgba[2]), 0, 255);
-        const b = clamp(Math.round(+rgba[3]), 0, 255);
-        const a = rgba[4] != null ? clamp(+rgba[4], 0, 1) : 1;
-        return {
-          hex: '#' + [r, g, b].map((x) => x.toString(16).padStart(2, '0')).join(''),
-          a: round(a, 3),
-        };
-      }
-      let hex = str;
-      if (/^#[0-9a-f]{3}$/i.test(hex)) {
-        hex = '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3];
-      }
-      if (!/^#[0-9a-f]{6}$/i.test(hex)) hex = '#000000';
-      return { hex: hex.toLowerCase(), a: 1 };
-    }
-
-    function toRgba(hex, a) {
-      const c = parseColor(hex);
-      const r = parseInt(c.hex.slice(1, 3), 16);
-      const g = parseInt(c.hex.slice(3, 5), 16);
-      const b = parseInt(c.hex.slice(5, 7), 16);
-      return 'rgba(' + r + ',' + g + ',' + b + ',' + round(a, 3) + ')';
-    }
-
-    function hexToRgb(hex) {
-      const c = parseColor(hex);
-      return {
-        r: parseInt(c.hex.slice(1, 3), 16),
-        g: parseInt(c.hex.slice(3, 5), 16),
-        b: parseInt(c.hex.slice(5, 7), 16),
-      };
-    }
-
-    /** 路径读写 params 对象 */
-    function getByPath(obj, path) {
-      // 特殊：相机中心拆成 centerLng / centerLat
-      if (path === 'camera.centerLng') return obj.camera.center[0];
-      if (path === 'camera.centerLat') return obj.camera.center[1];
-      if (path === 'camera.zoom') return obj.camera.zoom;
-      if (path === 'camera.pitch') return obj.camera.pitch;
-      if (path === 'camera.bearing') return obj.camera.bearing;
-
-      if (path === 'backgroundColor') return obj.mapstage.backgroundColor;
-      if (path === 'terrainExaggeration') return obj.mapstage.terrainExaggeration;
-
-      const parts = path.split('.');
-      if (parts[0] === 'satellite') return obj.mapstage.satellite[parts[1]];
-      if (parts[0] === 'hillshade') return obj.mapstage.hillshade[parts[1]];
-      if (parts[0] === 'water') return obj.mapstage.water[parts[1]];
-      if (parts[0] === 'css') return obj.css[parts[1]];
-      return undefined;
-    }
-
-    function setByPath(obj, path, value) {
-      if (path === 'camera.centerLng') {
-        obj.camera.center[0] = value;
-        return;
-      }
-      if (path === 'camera.centerLat') {
-        obj.camera.center[1] = value;
-        return;
-      }
-      if (path === 'camera.zoom') {
-        obj.camera.zoom = value;
-        return;
-      }
-      if (path === 'camera.pitch') {
-        obj.camera.pitch = value;
-        return;
-      }
-      if (path === 'camera.bearing') {
-        obj.camera.bearing = value;
-        return;
-      }
-      if (path === 'backgroundColor') {
-        obj.mapstage.backgroundColor = value;
-        return;
-      }
-      if (path === 'terrainExaggeration') {
-        obj.mapstage.terrainExaggeration = value;
-        return;
-      }
-
-      const parts = path.split('.');
-      if (parts[0] === 'satellite') obj.mapstage.satellite[parts[1]] = value;
-      else if (parts[0] === 'hillshade') obj.mapstage.hillshade[parts[1]] = value;
-      else if (parts[0] === 'water') obj.mapstage.water[parts[1]] = value;
-      else if (parts[0] === 'css') obj.css[parts[1]] = value;
-    }
-
-    function toast(msg) {
-      const el = document.getElementById('toast');
-      el.textContent = msg;
-      el.classList.add('show');
-      clearTimeout(toast._t);
-      toast._t = setTimeout(function () {
-        el.classList.remove('show');
-      }, 1800);
-    }
-
-    // ============================================================
-    // 状态
-    // ============================================================
-    let params = deepClone(DEFAULT_PARAMS);
-    let map = null;
-    let mapReady = false;
-    let waterAvailable = false;
-    let syncingFromMap = false; // 防止相机回写时循环
-    let hanCityLayer = null; // MapStage custom layer 实例（含 setVisible）
-    let riverLabelMarkers = []; // maplibregl.Marker[]
-    let riverLabelCatalog = []; // { name, lng, lat, tier, minZoom }[]
-    let lakeLabelMarkers = []; // maplibregl.Marker[]
-    let lakeLabelCatalog = []; // { name, lng, lat, tier, minZoom }[]
-
-    // 尝试从 localStorage 恢复
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const saved = JSON.parse(raw);
-        params = mergeParams(DEFAULT_PARAMS, saved);
-      }
-    } catch (e) {
-      console.warn('localStorage 读取失败', e);
-    }
-
-    function mergeParams(base, override) {
-      const out = deepClone(base);
-      if (!override || typeof override !== 'object') return out;
-
-      if (override.camera) {
-        if (Array.isArray(override.camera.center) && override.camera.center.length >= 2) {
-          out.camera.center = [+override.camera.center[0], +override.camera.center[1]];
-        }
-        if (override.camera.zoom != null) out.camera.zoom = +override.camera.zoom;
-        if (override.camera.pitch != null) out.camera.pitch = +override.camera.pitch;
-        if (override.camera.bearing != null) out.camera.bearing = +override.camera.bearing;
-      }
-
-      if (override.mapstage || override.maplibre) {
-        const m = override.mapstage || override.maplibre;
-        if (m.backgroundColor) out.mapstage.backgroundColor = m.backgroundColor;
-        if (m.terrainExaggeration != null) out.mapstage.terrainExaggeration = +m.terrainExaggeration;
-        if (m.satellite) Object.assign(out.mapstage.satellite, m.satellite);
-        if (m.hillshade) {
-          Object.assign(out.mapstage.hillshade, m.hillshade);
-          // MapStage hillshade-exaggeration 上限为 1；超限会导致 style 无法加载
-          if (out.mapstage.hillshade.exaggeration != null) {
-            out.mapstage.hillshade.exaggeration = Math.min(1, Math.max(0, +out.mapstage.hillshade.exaggeration));
-          }
-        }
-        if (m.water) Object.assign(out.mapstage.water, m.water);
-        // Legacy key: qilianRiver → highlightRiver
-        if (out.mapstage.water.qilianRiver != null && out.mapstage.water.highlightRiver == null) {
-          out.mapstage.water.highlightRiver = out.mapstage.water.qilianRiver;
-        }
-        // Legacy key: qilianWidth → highlightWidth
-        if (out.mapstage.water.qilianWidth != null && out.mapstage.water.highlightWidth == null) {
-          out.mapstage.water.highlightWidth = out.mapstage.water.qilianWidth;
-        }
-        delete out.mapstage.water.qilianRiver;
-        delete out.mapstage.water.qilianWidth;
-      }
-
-      if (override.css) Object.assign(out.css, override.css);
-      if (override.ui) Object.assign(out.ui, override.ui);
-      if (override.isolate) {
-        out.isolate = Object.assign({}, out.isolate || {}, override.isolate);
-      }
-      if (override.ui && override.ui.projection) {
-        out.ui.projection = override.ui.projection === 'globe' ? 'globe' : 'map';
-      }
-      // Legacy key: showQilian → showHighlight
-      if (out.ui.showQilian != null && out.ui.showHighlight == null) {
-        out.ui.showHighlight = out.ui.showQilian;
-      }
-      delete out.ui.showQilian;
-      if (override.cities) {
-        out.cities = Object.assign({}, out.cities || {}, override.cities);
-      }
-      if (override.id) out.id = override.id;
-      if (override.label) out.label = override.label;
-      if (override.version != null) out.version = override.version;
-      if (Object.prototype.hasOwnProperty.call(override, 'season')) {
-        out.season = override.season;
-      }
-
-      return out;
-    }
-
-    function readLiveCamera() {
-      if (mapReady && map && typeof map.getCenter === 'function') {
-        const c = map.getCenter();
-        return {
-          center: [round(c.lng, 4), round(c.lat, 4)],
-          zoom: round(map.getZoom(), 2),
-          pitch: round(map.getPitch(), 1),
-          bearing: round(map.getBearing(), 1),
-        };
-      }
-      return {
-        center: [round(params.camera.center[0], 4), round(params.camera.center[1], 4)],
-        zoom: round(params.camera.zoom, 2),
-        pitch: round(params.camera.pitch, 1),
-        bearing: round(params.camera.bearing, 1),
-      };
-    }
-
-    function snapshotIsolate() {
-      if (isolateCtl && typeof isolateCtl.getState === 'function') {
-        const st = isolateCtl.getState();
-        return {
-          enabled: !!st.enabled,
-          regionId: st.regionId || 'china',
-        };
-      }
-      return {
-        enabled: !!(params.isolate && params.isolate.enabled),
-        regionId: (params.isolate && params.isolate.regionId) || 'china',
-      };
-    }
-
-    function exportParams() {
-      const cam = readLiveCamera();
-      const iso = snapshotIsolate();
-      const proj = viewMode === 'globe' ? 'globe' : 'map';
-      const out = {
-        id: params.id || PRESET_ID,
-        label: params.label || DEFAULT_PARAMS.label,
-        version: 3,
-        season: params.season || null,
-        camera: cam,
-        mapstage: {
-          backgroundColor: params.mapstage.backgroundColor,
-          terrainExaggeration: round(params.mapstage.terrainExaggeration, 3),
-          satellite: {
-            opacity: round(params.mapstage.satellite.opacity, 3),
-            saturation: round(params.mapstage.satellite.saturation, 3),
-            contrast: round(params.mapstage.satellite.contrast, 3),
-            brightnessMin: round(params.mapstage.satellite.brightnessMin, 3),
-            brightnessMax: round(params.mapstage.satellite.brightnessMax, 3),
-            hueRotate: round(params.mapstage.satellite.hueRotate, 1),
-          },
-          hillshade: {
-            exaggeration: round(params.mapstage.hillshade.exaggeration, 3),
-            illuminationDirection: Math.round(params.mapstage.hillshade.illuminationDirection),
-            shadowColor: params.mapstage.hillshade.shadowColor,
-            highlightColor: params.mapstage.hillshade.highlightColor,
-            accentColor: params.mapstage.hillshade.accentColor,
-          },
-          water: {
-            lakeFill: params.mapstage.water.lakeFill,
-            lakeOutline: params.mapstage.water.lakeOutline,
-            riverLevel3: params.mapstage.water.riverLevel3,
-            riverLevel2: params.mapstage.water.riverLevel2,
-            riverLevel1: params.mapstage.water.riverLevel1,
-            highlightRiver: params.mapstage.water.highlightRiver,
-            riverL3Width: round(params.mapstage.water.riverL3Width, 2),
-            riverL2Width: round(params.mapstage.water.riverL2Width, 2),
-            riverL1Width: round(params.mapstage.water.riverL1Width, 2),
-            highlightWidth: round(params.mapstage.water.highlightWidth, 2),
-          },
-        },
-        css: {
-          sepia: round(params.css.sepia, 3),
-          saturate: round(params.css.saturate, 3),
-          contrast: round(params.css.contrast, 3),
-          brightness: round(params.css.brightness, 3),
-          hueRotate: round(params.css.hueRotate, 1),
-          warmTintAlpha: round(params.css.warmTintAlpha, 3),
-          warmTintColor: params.css.warmTintColor,
-          vignetteStrength: round(params.css.vignetteStrength, 3),
-        },
-        ui: {
-          projection: proj,
-          showSatellite: params.ui && params.ui.showSatellite !== false,
-          showRelief: !!(params.ui && params.ui.showRelief),
-          showCssFilter: params.ui && params.ui.showCssFilter !== false,
-          showCities: params.ui && params.ui.showCities !== false,
-          showRef: !!(params.ui && params.ui.showRef),
-          showWater: false,
-          showHighlight: false,
-        },
-        isolate: iso,
-        cities: {
-          dataFile: (params.cities && params.cities.dataFile) || 'assets/sample-sites.json',
-          halfKm: round((params.cities && params.cities.halfKm) != null ? params.cities.halfKm : 18, 2),
-          renderMode: (params.cities && params.cities.renderMode) || 'fill-extrusion',
-        },
-      };
-      return out;
-    }
-
-    function packForShare(full) {
-      full = full || exportParams();
-      var sat = full.mapstage.satellite;
-      var hill = full.mapstage.hillshade;
-      var css = full.css;
-      var ui = full.ui || {};
-      var iso = full.isolate || {};
-      var cam = full.camera || { center: [0, 0], zoom: 0, pitch: 0, bearing: 0 };
-      return {
-        format: 'cam-v3',
-        c: [cam.center[0], cam.center[1], cam.zoom, cam.pitch, cam.bearing],
-        n: [
-          full.mapstage.terrainExaggeration,
-          sat.opacity, sat.saturation, sat.contrast, sat.brightnessMin, sat.brightnessMax, sat.hueRotate,
-          hill.exaggeration, hill.illuminationDirection,
-          css.sepia, css.saturate, css.contrast, css.brightness, css.hueRotate, css.warmTintAlpha, css.vignetteStrength,
-        ],
-        b: [
-          ui.showSatellite ? 1 : 0,
-          ui.showRelief ? 1 : 0,
-          ui.showCssFilter ? 1 : 0,
-          ui.showCities ? 1 : 0,
-          ui.showRef ? 1 : 0,
-          iso.enabled ? 1 : 0,
-          ui.projection === 'globe' ? 1 : 0,
-        ],
-        s: [
-          full.mapstage.backgroundColor,
-          hill.shadowColor,
-          hill.highlightColor,
-          hill.accentColor,
-          css.warmTintColor,
-          iso.regionId || 'china',
-        ],
-      };
-    }
-
-    function unpackShare(obj) {
-      if (!obj || obj.format !== 'cam-v3' || !Array.isArray(obj.n)) return obj;
-      var n = obj.n;
-      var b = obj.b || [];
-      var s = obj.s || [];
-      var c = obj.c || [];
-      return {
-        version: 3,
-        camera: {
-          center: [c[0], c[1]],
-          zoom: c[2],
-          pitch: c[3],
-          bearing: c[4],
-        },
-        mapstage: {
-          backgroundColor: s[0],
-          terrainExaggeration: n[0],
-          satellite: {
-            opacity: n[1],
-            saturation: n[2],
-            contrast: n[3],
-            brightnessMin: n[4],
-            brightnessMax: n[5],
-            hueRotate: n[6],
-          },
-          hillshade: {
-            exaggeration: n[7],
-            illuminationDirection: n[8],
-            shadowColor: s[1],
-            highlightColor: s[2],
-            accentColor: s[3],
-          },
-        },
-        css: {
-          sepia: n[9],
-          saturate: n[10],
-          contrast: n[11],
-          brightness: n[12],
-          hueRotate: n[13],
-          warmTintAlpha: n[14],
-          vignetteStrength: n[15],
-          warmTintColor: s[4],
-        },
-        ui: {
-          showSatellite: !!b[0],
-          showRelief: !!b[1],
-          showCssFilter: b[2] !== 0,
-          showCities: b[3] !== 0,
-          showRef: !!b[4],
-          projection: b[6] ? 'globe' : 'map',
-        },
-        isolate: {
-          enabled: !!b[5],
-          regionId: s[5] || 'china',
-        },
-      };
-    }
-
-    var persistTimer = null;
-    var PERSIST_MS = 280;
-
-    function persistNow() {
-      try {
-        const data = exportParams();
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-      } catch (e) {
-        console.warn('localStorage 写入失败', e);
-      }
-    }
-
-    function persist(immediate) {
-      if (immediate) {
-        if (persistTimer) {
-          clearTimeout(persistTimer);
-          persistTimer = null;
-        }
-        persistNow();
-        return;
-      }
-      if (persistTimer) clearTimeout(persistTimer);
-      persistTimer = setTimeout(function () {
-        persistTimer = null;
-        persistNow();
-      }, PERSIST_MS);
-    }
-
-    window.addEventListener('pagehide', function () { persist(true); });
-    document.addEventListener('visibilitychange', function () {
-      if (document.visibilityState === 'hidden') persist(true);
-    });
-
-    // ============================================================
-    // CSS 滤镜 & 叠层
-    // ============================================================
-    function buildCssFilter() {
-      const c = params.css;
-      return (
-        'sepia(' + c.sepia + ') ' +
-        'saturate(' + c.saturate + ') ' +
-        'contrast(' + c.contrast + ') ' +
-        'brightness(' + c.brightness + ') ' +
-        'hue-rotate(' + c.hueRotate + 'deg)'
-      );
-    }
-
-    function applyCssOverlays() {
-      const filterEl = document.getElementById('map-canvas-filter');
-      const warmEl = document.getElementById('warm-tint');
-      const vigEl = document.getElementById('vignette');
-      const on = !params.ui || params.ui.showCssFilter !== false;
-      const filterStr = on ? buildCssFilter() : 'none';
-      const vig = params.css.vignetteStrength;
-      const warmBg = on
-        ? (function () {
-            const rgb = hexToRgb(params.css.warmTintColor);
-            return 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + params.css.warmTintAlpha + ')';
-          })()
-        : 'rgba(0,0,0,0)';
-
-      if (filterEl) filterEl.style.filter = filterStr;
-      if (warmEl) warmEl.style.background = warmBg;
-      if (vigEl) {
-        vigEl.style.background = on
-          ? 'radial-gradient(ellipse at center, transparent 42%, rgba(46,28,16,' + vig + ') 100%)'
-          : 'none';
-      }
-
-      if (typeof setToggle === 'function') {
-        setToggle(document.getElementById('sw-css-filter-panel'), on);
-      }
-
-      var stCss = document.getElementById('st-css');
-      if (stCss) stCss.textContent = filterStr;
-      var cssSummary = document.getElementById('css-summary');
-      if (cssSummary) {
-        cssSummary.textContent =
-          'filter: ' + filterStr + ';\n' +
-          'warm-tint: ' + warmBg + ' / soft-light;\n' +
-          'vignette: strength ' + vig;
-      }
-    }
-
-    // ============================================================
-    // MapStage 图层更新
-    // ============================================================
-    function safeSetPaint(layerId, prop, value) {
-      if (!mapReady || !map.getLayer(layerId)) return;
-      try {
-        map.setPaintProperty(layerId, prop, value);
-      } catch (e) {
-        console.warn('setPaint', layerId, prop, e);
-      }
-    }
-
-    function applyMapStyles() {
-      if (!mapReady) return;
-      const m = params.mapstage;
-      const s = m.satellite;
-      const h = m.hillshade;
-      const w = m.water;
-
-      safeSetPaint('background', 'background-color', m.backgroundColor);
-
-      // 地形夸张
-      try {
-        const tcfg = window.__tunerTileConfig;
-        if (tcfg && tcfg.terrain && tcfg.terrain.enabled) {
-          map.setTerrain({
-            source: tcfg.terrain.sourceId || 'terrain',
-            exaggeration: m.terrainExaggeration,
-          });
-        }
-      } catch (e) { /* ignore */ }
-
-      // 卫星
-      safeSetPaint('satellite', 'raster-opacity', s.opacity);
-      safeSetPaint('satellite', 'raster-saturation', s.saturation);
-      safeSetPaint('satellite', 'raster-contrast', s.contrast);
-      safeSetPaint('satellite', 'raster-brightness-min', s.brightnessMin);
-      safeSetPaint('satellite', 'raster-brightness-max', s.brightnessMax);
-      safeSetPaint('satellite', 'raster-hue-rotate', s.hueRotate);
-
-      // 山影
-      safeSetPaint('hillshade', 'hillshade-exaggeration', Math.min(1, Math.max(0, +h.exaggeration || 0)));
-      safeSetPaint('hillshade', 'hillshade-illumination-direction', h.illuminationDirection);
-      safeSetPaint('hillshade', 'hillshade-shadow-color', h.shadowColor);
-      safeSetPaint('hillshade', 'hillshade-highlight-color', h.highlightColor);
-      safeSetPaint('hillshade', 'hillshade-accent-color', h.accentColor);
-
-      // 水系
-      safeSetPaint('lakes-fill', 'fill-color', w.lakeFill);
-      safeSetPaint('lakes-outline', 'line-color', w.lakeOutline);
-      safeSetPaint('river-l3', 'line-color', w.riverLevel3);
-      safeSetPaint('river-l2', 'line-color', w.riverLevel2);
-      safeSetPaint('river-l1', 'line-color', w.riverLevel1);
-      safeSetPaint('river-highlight', 'line-color', w.highlightRiver);
-
-      // 线宽（随缩放插值，base 为中等 zoom 的基准）
-      if (map.getLayer('river-l3')) {
-        map.setPaintProperty('river-l3', 'line-width', [
-          'interpolate', ['linear'], ['zoom'],
-          3, w.riverL3Width * 0.35,
-          6, w.riverL3Width,
-          10, w.riverL3Width * 1.6,
-        ]);
-      }
-      if (map.getLayer('river-l2')) {
-        map.setPaintProperty('river-l2', 'line-width', [
-          'interpolate', ['linear'], ['zoom'],
-          3, w.riverL2Width * 0.4,
-          6, w.riverL2Width,
-          10, w.riverL2Width * 1.8,
-        ]);
-      }
-      if (map.getLayer('river-l1')) {
-        map.setPaintProperty('river-l1', 'line-width', [
-          'interpolate', ['linear'], ['zoom'],
-          3, w.riverL1Width * 0.45,
-          6, w.riverL1Width,
-          10, w.riverL1Width * 2.0,
-        ]);
-      }
-      if (map.getLayer('river-highlight')) {
-        map.setPaintProperty('river-highlight', 'line-width', [
-          'interpolate', ['linear'], ['zoom'],
-          3, w.highlightWidth * 0.5,
-          6, w.highlightWidth,
-          10, w.highlightWidth * 1.9,
-        ]);
-      }
-
-      updateWaterVisibility();
-      updatePaintSummary();
-    }
-
-    function updateWaterVisibility() {
-      if (!mapReady) return;
-      const vis = params.ui.showWater ? 'visible' : 'none';
-      ['lakes-fill', 'lakes-outline', 'river-l3', 'river-l2', 'river-l1'].forEach(function (id) {
-        if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
-      });
-      // 高亮水系可独立开关；关闭总水系时一并隐藏
-      const qVis = params.ui.showWater && params.ui.showHighlight ? 'visible' : 'none';
-      if (map.getLayer('river-highlight')) map.setLayoutProperty('river-highlight', 'visibility', qVis);
-      var btnWaterVis = document.getElementById('btn-water');
-      if (btnWaterVis) btnWaterVis.classList.toggle('active', params.ui.showWater);
-      const qBtn = document.getElementById('btn-highlight');
-      if (qBtn) qBtn.classList.toggle('active', !!params.ui.showHighlight);
-      const rlBtn = document.getElementById('btn-river-labels');
-      if (rlBtn) rlBtn.classList.toggle('active', params.ui.showRiverLabels !== false);
-      updateRiverLabelMarkers();
-      updateLakeLabelMarkers();
-      updateCitiesVisibility();
-    }
-
-    /** 去掉括号别名：黑河(弱水、东河、西河) → 黑河 */
-    function shortRiverName(name) {
-      if (!name) return '';
-      return String(name).replace(/[（(].*$/, '').trim();
-    }
-
-    function flattenLineCoords(geom) {
-      if (!geom || !geom.coordinates) return null;
-      if (geom.type === 'LineString') return geom.coordinates;
-      if (geom.type === 'MultiLineString') {
-        // 取最长一段，避免拼接断裂
-        let best = null;
-        let bestLen = -1;
-        for (let i = 0; i < geom.coordinates.length; i++) {
-          const c = geom.coordinates[i];
-          const L = lineStringLength(c);
-          if (L > bestLen) {
-            bestLen = L;
-            best = c;
-          }
-        }
-        return best;
-      }
-      return null;
-    }
-
-    function lineStringLength(coords) {
-      if (!coords || coords.length < 2) return 0;
-      let t = 0;
-      for (let i = 1; i < coords.length; i++) {
-        const dx = coords[i][0] - coords[i - 1][0];
-        const dy = coords[i][1] - coords[i - 1][1];
-        t += Math.sqrt(dx * dx + dy * dy);
-      }
-      return t;
-    }
-
-    /** 按弧长中点取标注锚点 */
-    function lineStringMidpoint(coords) {
-      if (!coords || !coords.length) return null;
-      if (coords.length === 1) return [coords[0][0], coords[0][1]];
-      const total = lineStringLength(coords);
-      if (total <= 0) return [coords[0][0], coords[0][1]];
-      let acc = 0;
-      const half = total / 2;
-      for (let i = 1; i < coords.length; i++) {
-        const a = coords[i - 1];
-        const b = coords[i];
-        const d = Math.sqrt(
-          (b[0] - a[0]) * (b[0] - a[0]) + (b[1] - a[1]) * (b[1] - a[1])
-        );
-        if (acc + d >= half) {
-          const t = d > 0 ? (half - acc) / d : 0;
-          return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
-        }
-        acc += d;
-      }
-      const last = coords[coords.length - 1];
-      return [last[0], last[1]];
-    }
-
-    /**
-     * 从水系 GeoJSON 汇总河名标注点：
-     * - 高亮水系（区域高亮水系子集）优先
-     * - 另补一级河中的「黄河」（主参照）
-     * - 同名多段合并，取最长段中点；区域框外杂支剔除
-     */
-    function buildRiverLabelCatalog(data) {
-      const REGION = { minLng: 93, maxLng: 105.5, minLat: 35.5, maxLat: 42.5 };
-      // 主带：标注优先落在这里，避免黑河名被拖到居延北端
-      const CORRIDOR = { minLng: 94.5, maxLng: 104.2, minLat: 37.2, maxLat: 40.6 };
-      const byName = new Map();
-
-      function inBox(lng, lat, box) {
-        return lng >= box.minLng && lng <= box.maxLng && lat >= box.minLat && lat <= box.maxLat;
-      }
-
-      function segmentScore(L, mid) {
-        // 主带内段权重大，同权时更长者优先
-        const corridorBoost = mid && inBox(mid[0], mid[1], CORRIDOR) ? 4 : 1;
-        return L * corridorBoost;
-      }
-
-      function ingest(fc, forceMain) {
-        if (!fc || !fc.features) return;
-        fc.features.forEach(function (f) {
-          const raw = f.properties && f.properties.name;
-          const name = shortRiverName(raw);
-          if (!name) return;
-          const coords = flattenLineCoords(f.geometry);
-          if (!coords || coords.length < 2) return;
-          const L = lineStringLength(coords);
-          const mid = lineStringMidpoint(coords);
-          if (!mid) return;
-          const score = segmentScore(L, mid);
-          const prev = byName.get(name);
-          if (!prev || score > prev.score) {
-            byName.set(name, {
-              name: name,
-              lng: mid[0],
-              lat: mid[1],
-              len: L,
-              score: score,
-              forceMain: !!(prev && prev.forceMain) || !!forceMain,
-            });
-          } else if (forceMain && prev) {
-            prev.forceMain = true;
-          }
-        });
-      }
-
-      if (data.highlightWaterSystems) ingest(data.highlightWaterSystems, false);
-      // 一级河只取黄河，避免全国河名铺满
-      if (data.riverLevel1) {
-        const onlyHuang = {
-          type: 'FeatureCollection',
-          features: data.riverLevel1.features.filter(function (f) {
-            const n = shortRiverName(f.properties && f.properties.name);
-            return n === '黄河';
-          }),
-        };
-        // 优先选落在区域视野内的黄河段
-        let best = null;
-        onlyHuang.features.forEach(function (f) {
-          const coords = flattenLineCoords(f.geometry);
-          if (!coords) return;
-          const mid = lineStringMidpoint(coords);
-          if (!mid) return;
-          const inView =
-            mid[0] >= 96 && mid[0] <= 106 && mid[1] >= 34 && mid[1] <= 41.5;
-          const L = lineStringLength(coords);
-          if (!best || (inView && !best.inView) || (inView === best.inView && L > best.len)) {
-            best = { name: '黄河', lng: mid[0], lat: mid[1], len: L, inView: inView, forceMain: true };
-          }
-        });
-        if (best) {
-          byName.set('黄河', {
-            name: '黄河',
-            lng: best.lng,
-            lat: best.lat,
-            len: best.len,
-            forceMain: true,
-          });
-        }
-      }
-
-      const out = [];
-      byName.forEach(function (item) {
-        const inRegion =
-          item.lng >= REGION.minLng &&
-          item.lng <= REGION.maxLng &&
-          item.lat >= REGION.minLat &&
-          item.lat <= REGION.maxLat;
-        // 泥河等误匹配到外省的段丢掉；黄河 forceMain 保留
-        if (!inRegion && !item.forceMain) return;
-        const isMain = item.forceMain || !!RIVER_LABEL_MAIN[item.name];
-        out.push({
-          name: item.name,
-          lng: round(item.lng, 5),
-          lat: round(item.lat, 5),
-          tier: isMain ? 'main' : 'side',
-          minZoom: isMain ? RIVER_LABEL_MAIN_MIN_ZOOM : RIVER_LABEL_SIDE_MIN_ZOOM,
-        });
-      });
-
-      // 主河优先，同 tier 按长度近似（名字稳定排序）
-      out.sort(function (a, b) {
-        if (a.tier !== b.tier) return a.tier === 'main' ? -1 : 1;
-        return a.name.localeCompare(b.name, 'zh');
-      });
-      return out;
-    }
-
-    function clearRiverLabelMarkers() {
-      for (let i = 0; i < riverLabelMarkers.length; i++) {
-        try {
-          riverLabelMarkers[i].remove();
-        } catch (e) {
-          /* ignore */
-        }
-      }
-      riverLabelMarkers = [];
-    }
-
-    function clearLakeLabelMarkers() {
-      for (let i = 0; i < lakeLabelMarkers.length; i++) {
-        try {
-          lakeLabelMarkers[i].remove();
-        } catch (e) {
-          /* ignore */
-        }
-      }
-      lakeLabelMarkers = [];
-    }
-
-    function updateRiverLabelMarkers() {
-      if (!mapReady || !map) return;
-      clearRiverLabelMarkers();
-      const show =
-        params.ui.showWater &&
-        params.ui.showRiverLabels !== false &&
-        riverLabelCatalog.length > 0;
-      if (!show) {
-        const rlBtn = document.getElementById('btn-river-labels');
-        if (rlBtn) rlBtn.classList.toggle('active', params.ui.showRiverLabels !== false);
-        return;
-      }
-      const z = map.getZoom();
-      for (let i = 0; i < riverLabelCatalog.length; i++) {
-        const item = riverLabelCatalog[i];
-        if (z < item.minZoom) continue;
-        // 关闭高亮水系时，仅保留黄河等主参照，支流名先藏
-        if (item.tier === 'side' && !params.ui.showHighlight) continue;
-        const el = document.createElement('div');
-        el.className =
-          'river-label ' + (item.tier === 'main' ? 'tier-main' : 'tier-side');
-        el.textContent = item.name;
-        el.title = item.name;
-        riverLabelMarkers.push(
-          new maplibregl.Marker({ element: el, anchor: 'center' })
-            .setLngLat([item.lng, item.lat])
-            .addTo(map)
-        );
-      }
-      const rlBtn = document.getElementById('btn-river-labels');
-      if (rlBtn) rlBtn.classList.toggle('active', params.ui.showRiverLabels !== false);
-    }
-
-    function lakeRingArea(ring) {
-      if (!ring || ring.length < 3) return 0;
-      let a = 0;
-      for (let i = 0, n = ring.length - 1; i < n; i++) {
-        a += ring[i][0] * ring[i + 1][1] - ring[i + 1][0] * ring[i][1];
-      }
-      return Math.abs(a / 2);
-    }
-
-    function lakeGeomInfo(geom) {
-      if (!geom || !geom.coordinates) return null;
-      let rings = [];
-      if (geom.type === 'Polygon') rings = [geom.coordinates[0]];
-      else if (geom.type === 'MultiPolygon') {
-        rings = geom.coordinates.map(function (poly) {
-          return poly[0];
-        });
-      } else return null;
-      let area = 0;
-      let sx = 0;
-      let sy = 0;
-      let n = 0;
-      for (let r = 0; r < rings.length; r++) {
-        const ring = rings[r];
-        if (!ring) continue;
-        area += lakeRingArea(ring);
-        for (let i = 0; i < ring.length; i++) {
-          sx += ring[i][0];
-          sy += ring[i][1];
-          n++;
-        }
-      }
-      if (!n || area <= 0) return null;
-      return { area: area, lng: sx / n, lat: sy / n };
-    }
-
-    /**
-     * 重要湖泊标注：源数据 name 为空，按 IMPORTANT_LAKES 锚点匹配面心。
-     */
-    function buildLakeLabelCatalog(data) {
-      const fc = data && data.chinaLakes;
-      if (!fc || !fc.features) return [];
-      const candidates = [];
-      for (let i = 0; i < fc.features.length; i++) {
-        const info = lakeGeomInfo(fc.features[i].geometry);
-        if (!info) continue;
-        candidates.push(info);
-      }
-
-      const used = {};
-      const out = [];
-      for (let k = 0; k < IMPORTANT_LAKES.length; k++) {
-        const def = IMPORTANT_LAKES[k];
-        // 只保留主湖
-        if (def.tier === 'side') continue;
-        const maxDist = def.maxDist != null ? def.maxDist : 0.4;
-        let best = null;
-        let bestIdx = -1;
-        for (let i = 0; i < candidates.length; i++) {
-          if (used[i]) continue;
-          const c = candidates[i];
-          const d = Math.sqrt(
-            (c.lng - def.lng) * (c.lng - def.lng) +
-              (c.lat - def.lat) * (c.lat - def.lat)
-          );
-          if (d > maxDist) continue;
-          // 近且面积大优先
-          const score = c.area / (d + 0.05);
-          if (!best || score > best.score) {
-            best = {
-              name: def.name,
-              lng: c.lng,
-              lat: c.lat,
-              area: c.area,
-              dist: d,
-              score: score,
-              tier: def.tier === 'side' ? 'side' : 'main',
-            };
-            bestIdx = i;
-          }
-        }
-        if (best && bestIdx >= 0) {
-          used[bestIdx] = true;
-          out.push({
-            name: best.name,
-            lng: round(best.lng, 5),
-            lat: round(best.lat, 5),
-            tier: best.tier,
-            minZoom:
-              best.tier === 'main'
-                ? LAKE_LABEL_MAIN_MIN_ZOOM
-                : LAKE_LABEL_SIDE_MIN_ZOOM,
-          });
-        }
-      }
-
-      out.sort(function (a, b) {
-        if (a.tier !== b.tier) return a.tier === 'main' ? -1 : 1;
-        return a.name.localeCompare(b.name, 'zh');
-      });
-      return out;
-    }
-
-    function updateLakeLabelMarkers() {
-      if (!mapReady || !map) return;
-      clearLakeLabelMarkers();
-      // 湖名与河名共用「河名」开关；水系关闭时一并隐藏
-      const show =
-        params.ui.showWater &&
-        params.ui.showRiverLabels !== false &&
-        lakeLabelCatalog.length > 0;
-      if (!show) return;
-      const z = map.getZoom();
-      for (let i = 0; i < lakeLabelCatalog.length; i++) {
-        const item = lakeLabelCatalog[i];
-        if (z < item.minZoom) continue;
-        const el = document.createElement('div');
-        el.className =
-          'lake-label ' + (item.tier === 'main' ? 'tier-main' : 'tier-side');
-        el.textContent = item.name;
-        el.title = item.name;
-        lakeLabelMarkers.push(
-          new maplibregl.Marker({ element: el, anchor: 'center' })
-            .setLngLat([item.lng, item.lat])
-            .addTo(map)
-        );
-      }
-    }
-
-    function updateCitiesVisibility() {
-      const show = params.ui.showCities !== false;
-      if (hanCityLayer && typeof hanCityLayer.setVisible === 'function') {
-        hanCityLayer.setVisible(show);
-      } else if (mapReady && map && map.getLayer('han-city-3d')) {
-        try {
-          map.setLayoutProperty('han-city-3d', 'visibility', show ? 'visible' : 'none');
-        } catch (e) {
-          /* custom layer 可能无 layout */
-        }
-      }
-      const btn = document.getElementById('btn-cities');
-      if (btn) btn.classList.toggle('active', show);
-    }
-
-    function applyCamera(animate) {
-      if (!mapReady) return;
-      const c = params.camera;
-      const opts = {
-        center: c.center.slice(),
-        zoom: c.zoom,
-        pitch: c.pitch,
-        bearing: c.bearing,
-      };
-      if (animate) {
-        map.easeTo(Object.assign({ duration: 900 }, opts));
-      } else {
-        map.jumpTo(opts);
-      }
-    }
-
-    function updatePaintSummary() {
-      const m = params.mapstage;
-      const s = m.satellite;
-      const h = m.hillshade;
-      const el = document.getElementById('paint-summary');
-      if (!el) return;
-      el.textContent =
-        'bg ' + m.backgroundColor +
-        ' · terrain ' + m.terrainExaggeration +
-        '\nsat op ' + s.opacity +
-        ' sat ' + s.saturation +
-        ' con ' + s.contrast +
-        ' hue ' + s.hueRotate +
-        '\nbmin ' + s.brightnessMin +
-        ' bmax ' + s.brightnessMax +
-        '\nhill ex ' + h.exaggeration +
-        ' dir ' + h.illuminationDirection +
-        '\nshadow ' + h.shadowColor +
-        ' hi ' + h.highlightColor +
-        ' acc ' + h.accentColor +
-        '\nlake ' + m.water.lakeFill +
-        '\nriverL3 ' + m.water.riverLevel3 +
-        ' w' + m.water.riverL3Width +
-        '\nriverL1 ' + m.water.riverLevel1 +
-        ' w' + m.water.riverL1Width +
-        '\nhighlight ' + m.water.highlightRiver +
-        ' w' + m.water.highlightWidth;
-    }
-
-    // ============================================================
-    // UI 绑定：控件 ↔ params
-    // ============================================================
-    function refreshAllControls() {
-      document.querySelectorAll('.ctrl').forEach(function (el) {
-        const key = el.dataset.key;
-        const type = el.dataset.type || 'number';
-        const value = getByPath(params, key);
-
-        if (type === 'color') {
-          const parsed = parseColor(value);
-          const colorInput = el.querySelector('input[type="color"]');
-          const hexInput = el.querySelector('input.hex');
-          if (colorInput) colorInput.value = parsed.hex;
-          if (hexInput) hexInput.value = parsed.hex;
-        } else if (type === 'rgba') {
-          const parsed = parseColor(value);
-          const colorInput = el.querySelector('input[type="color"]');
-          const hexInput = el.querySelector('input.hex');
-          const alphaInput = el.querySelector('input.alpha');
-          const alphaVal = el.querySelector('.alpha-val');
-          if (colorInput) colorInput.value = parsed.hex;
-          if (hexInput) hexInput.value = parsed.hex;
-          if (alphaInput) alphaInput.value = parsed.a;
-          if (alphaVal) alphaVal.textContent = String(parsed.a);
-        } else {
-          const range = el.querySelector('input[type="range"]');
-          const valEl = el.querySelector('.val');
-          if (range && value != null) range.value = value;
-          if (valEl && value != null) {
-            valEl.textContent = formatNum(value, range);
-          }
-        }
-      });
-
-      var stPreset = document.getElementById('st-preset');
-      if (stPreset) stPreset.textContent = params.id || PRESET_ID;
-      var btnRef = document.getElementById('btn-ref');
-      if (btnRef) btnRef.classList.toggle('active', !!params.ui.showRef);
-      var btnWater = document.getElementById('btn-water');
-      if (btnWater) btnWater.classList.toggle('active', !!params.ui.showWater);
-      const qBtn = document.getElementById('btn-highlight');
-      if (qBtn) qBtn.classList.toggle('active', !!params.ui.showHighlight);
-      const rlBtn = document.getElementById('btn-river-labels');
-      if (rlBtn) rlBtn.classList.toggle('active', params.ui.showRiverLabels !== false);
-      const cBtn = document.getElementById('btn-cities');
-      if (cBtn) cBtn.classList.toggle('active', params.ui.showCities !== false);
-      updatePresetStatus();
-      updateRefImage();
-      updateRefCompare();
-      applyCssOverlays();
-      syncBasemapLayers();
-    }
-
-    function formatNum(v, range) {
-      if (range) {
-        const step = parseFloat(range.step) || 1;
-        if (step >= 1) return String(Math.round(v));
-        if (Math.abs(step - 0.05) < 1e-9) return Number(v).toFixed(2);
-        if (step >= 0.1) return String(round(v, 1));
-        return String(round(v, 2));
-      }
-      return String(round(v, 2));
-    }
-
-    function bindControls() {
-      document.querySelectorAll('.ctrl').forEach(function (el) {
-        const key = el.dataset.key;
-        const type = el.dataset.type || 'number';
-
-        if (type === 'color') {
-          const colorInput = el.querySelector('input[type="color"]');
-          const hexInput = el.querySelector('input.hex');
-
-          function commit(hex) {
-            const p = parseColor(hex);
-            setByPath(params, key, p.hex);
-            colorInput.value = p.hex;
-            hexInput.value = p.hex;
-            onParamChange(key);
-          }
-
-          colorInput.addEventListener('input', function () {
-            commit(colorInput.value);
-          });
-          hexInput.addEventListener('change', function () {
-            commit(hexInput.value);
-          });
-        } else if (type === 'rgba') {
-          const colorInput = el.querySelector('input[type="color"]');
-          const hexInput = el.querySelector('input.hex');
-          const alphaInput = el.querySelector('input.alpha');
-          const alphaVal = el.querySelector('.alpha-val');
-
-          function commitRgba() {
-            const hex = colorInput.value;
-            const a = parseFloat(alphaInput.value);
-            const rgba = toRgba(hex, a);
-            setByPath(params, key, rgba);
-            hexInput.value = parseColor(hex).hex;
-            alphaVal.textContent = String(round(a, 2));
-            onParamChange(key);
-          }
-
-          colorInput.addEventListener('input', commitRgba);
-          alphaInput.addEventListener('input', commitRgba);
-          hexInput.addEventListener('change', function () {
-            const p = parseColor(hexInput.value);
-            colorInput.value = p.hex;
-            commitRgba();
-          });
-        } else {
-          const range = el.querySelector('input[type="range"]');
-          const valEl = el.querySelector('.val');
-          range.addEventListener('input', function () {
-            let v = parseFloat(range.value);
-            setByPath(params, key, v);
-            valEl.textContent = formatNum(v, range);
-            onParamChange(key);
-          });
-        }
-      });
-    }
-
-    function onParamChange(key) {
-      // CSS 相关
-      if (key && key.indexOf('css.') === 0) {
-        applyCssOverlays();
-      }
-
-      // 相机
-      if (key && key.indexOf('camera.') === 0) {
-        applyCamera(false);
-      } else {
-        applyMapStyles();
-      }
-
-      // CSS 叠层始终同步
-      if (!key || key.indexOf('css.') !== 0) {
-        // map 样式也可能影响 summary
-      }
-
-      persist();
-    }
-
-    // ============================================================
-    // 参考图对比
-    // ============================================================
-    function updateRefImage() {
-      const img = document.getElementById('ref-img');
-      const label = document.getElementById('ref-label');
-      if (!img || !label) return;
-      img.src = BASELINE_REF.src;
-      img.alt = '手绘古地图参考';
-      label.textContent = BASELINE_REF.label;
-      img.onerror = function () {
-        img.style.display = 'none';
-        const box = document.getElementById('ref-compare');
-        if (box) box.style.display = 'none';
-        if (params && params.ui) params.ui.showRef = false;
-        const btn = document.getElementById('btn-ref');
-        if (btn) btn.classList.remove('active');
-      };
-    }
-
-    function updatePresetStatus() {
-      const st = document.getElementById('st-preset');
-      if (st) st.textContent = params.id || PRESET_ID;
-    }
-
-    function applyBaseline() {
-      params = deepClone(DEFAULT_PARAMS);
-      params.season = null;
-      updateRefImage();
-      refreshAllControls();
-      applyCssOverlays();
-      applyMapStyles();
-      applyCamera(true);
-      applyImportedState();
-      updatePresetStatus();
-      updateRefCompare();
-      persist(true);
-      toast('已回到 antique-default 基线');
-    }
-
-    function updateRefCompare() {
-      const box = document.getElementById('ref-compare');
-      const modeBtn = document.getElementById('btn-ref-mode');
-      box.classList.toggle('visible', !!params.ui.showRef);
-      box.classList.remove('pip', 'split');
-      box.classList.add(params.ui.refMode === 'split' ? 'split' : 'pip');
-      modeBtn.textContent =
-        '对比模式：' + (params.ui.refMode === 'split' ? '左右分屏' : '画中画');
-      document.getElementById('btn-ref').classList.toggle('active', !!params.ui.showRef);
-      updateRefImage();
-    }
-
-    // ============================================================
-    // 按钮
-    // ============================================================
-    function bindButtons() {
-      var cssFilterBtn = document.getElementById('sw-css-filter-panel');
-      if (cssFilterBtn && !cssFilterBtn._cssFilterBound) {
-        cssFilterBtn._cssFilterBound = true;
-        cssFilterBtn.addEventListener('click', function () {
-          params.ui.showCssFilter = !this.classList.contains('on');
-          applyCssOverlays();
-          persist();
-        });
-      }
-
-      document.getElementById('btn-reset').addEventListener('click', function () {
-        applyBaseline();
-      });
-
-      document.getElementById('btn-copy').addEventListener('click', async function () {
-        const json = JSON.stringify(packForShare(exportParams()), null, 2);
-        try {
-          await navigator.clipboard.writeText(json);
-          toast('已复制 JSON 到剪贴板');
-        } catch (e) {
-          // fallback
-          const ta = document.createElement('textarea');
-          ta.value = json;
-          document.body.appendChild(ta);
-          ta.select();
-          document.execCommand('copy');
-          document.body.removeChild(ta);
-          toast('已复制 JSON');
-        }
-      });
-
-      document.getElementById('btn-download').addEventListener('click', function () {
-        const json = JSON.stringify(packForShare(exportParams()), null, 2);
-        const blob = new Blob([json], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'map-antique-params-' + Date.now() + '.json';
-        a.click();
-        URL.revokeObjectURL(url);
-        toast('已下载 JSON');
-      });
-
-      document.getElementById('btn-paste').addEventListener('click', async function () {
-        try {
-          const text = await navigator.clipboard.readText();
-          const raw = JSON.parse(text);
-          const obj = unpackShare(raw);
-          params = mergeParams(DEFAULT_PARAMS, obj);
-          if (obj.ui) Object.assign(params.ui, obj.ui);
-          if (obj.isolate) params.isolate = Object.assign({}, params.isolate || {}, obj.isolate);
-          if (Object.prototype.hasOwnProperty.call(obj, 'season')) {
-            params.season = obj.season;
-          }
-          updateRefImage();
-          refreshAllControls();
-          applyCssOverlays();
-          applyMapStyles();
-          applyCamera(true);
-          applyImportedState();
-          updatePresetStatus();
-          updateRefCompare();
-          persist(true);
-          toast('已从剪贴板应用参数');
-        } catch (e) {
-          toast('粘贴失败：剪贴板非有效 JSON');
-          console.warn(e);
-        }
-      });
-
-      document.getElementById('btn-ref').addEventListener('click', function () {
-        params.ui.showRef = !params.ui.showRef;
-        updateRefCompare();
-        persist();
-      });
-
-      document.getElementById('btn-ref-mode').addEventListener('click', function () {
-        params.ui.refMode = params.ui.refMode === 'split' ? 'pip' : 'split';
-        if (!params.ui.showRef) params.ui.showRef = true;
-        updateRefCompare();
-        persist();
-      });
-
-      var btnWaterBind = document.getElementById('btn-water');
-      if (btnWaterBind) btnWaterBind.addEventListener('click', function () {
-        params.ui.showWater = !params.ui.showWater;
-        updateWaterVisibility();
-        persist();
-      });
-
-      var btnHighlight = document.getElementById('btn-highlight');
-      if (btnHighlight) btnHighlight.addEventListener('click', function () {
-        params.ui.showHighlight = !params.ui.showHighlight;
-        if (params.ui.showHighlight && !params.ui.showWater) params.ui.showWater = true;
-        updateWaterVisibility();
-        persist();
-        toast(params.ui.showHighlight ? '高亮水系开' : '高亮水系关');
-      });
-
-      var btnRiverLabels = document.getElementById('btn-river-labels');
-      if (btnRiverLabels) btnRiverLabels.addEventListener('click', function () {
-        params.ui.showRiverLabels = !(params.ui.showRiverLabels !== false);
-        if (params.ui.showRiverLabels && !params.ui.showWater) {
-          params.ui.showWater = true;
-          updateWaterVisibility();
-        } else {
-          updateRiverLabelMarkers();
-          updateLakeLabelMarkers();
-        }
-        persist();
-        toast(params.ui.showRiverLabels !== false ? '河名/湖名开' : '河名/湖名关');
-      });
-
-      document.getElementById('btn-cities').addEventListener('click', function () {
-        params.ui.showCities = !(params.ui.showCities !== false);
-        updateCitiesVisibility();
-        persist();
-        toast(params.ui.showCities !== false ? '城池点位开' : '城池点位关');
-      });
-
-      document.getElementById('btn-china').addEventListener('click', function () {
-        params.camera = {
-          center: VIEW_CHINA.center.slice(),
-          zoom: VIEW_CHINA.zoom,
-          pitch: VIEW_CHINA.pitch,
-          bearing: VIEW_CHINA.bearing,
-        };
-        refreshCameraControlsOnly();
-        applyCamera(true);
-        persist();
-        toast('全国视角');
-      });
-
-      document.getElementById('btn-clear-storage').addEventListener('click', function () {
-        localStorage.removeItem(STORAGE_KEY);
-        toast('已清除本地缓存（当前参数仍保留在界面）');
-      });
-
-      // 面板折叠
-      const panel = document.getElementById('panel');
-      const toggle = document.getElementById('panel-toggle');
-      toggle.addEventListener('click', function () {
-        const collapsed = panel.classList.toggle('collapsed');
-        toggle.classList.toggle('collapsed', collapsed);
-        toggle.textContent = collapsed ? '‹' : '›';
-        // 等待 CSS transition 后 resize
-        setTimeout(function () {
-          if (map) map.resize();
-        }, 220);
-      });
-    }
-
-    function refreshCameraControlsOnly() {
-      ['camera.centerLng', 'camera.centerLat', 'camera.zoom', 'camera.pitch', 'camera.bearing'].forEach(
-        function (key) {
-          const el = document.querySelector('.ctrl[data-key="' + key + '"]');
-          if (!el) return;
-          const range = el.querySelector('input[type="range"]');
-          const valEl = el.querySelector('.val');
-          const value = getByPath(params, key);
-          if (range) range.value = value;
-          if (valEl) valEl.textContent = formatNum(value, range);
-        }
-      );
-    }
-
-    // Demo banner (online / local)
-    (function () {
-      var btn = document.getElementById('demo-banner-close');
-      var bar = document.getElementById('demo-banner');
-      if (btn && bar) {
-        btn.addEventListener('click', function () {
-          bar.style.display = 'none';
-        });
-      }
-    })();
-
-    // ============================================================
-    // 地图初始化（瓦片端点来自 map-tiles.config*.js，默认无商业卫星热链）
-    // ============================================================
-    function resolveTileConfig() {
-      const cfg = window.MAP_TILE_CONFIG || {};
-      const satIn = cfg.satellite || {};
-      const terIn = cfg.terrain || {};
-      const satTiles = Array.isArray(satIn.tiles)
-        ? satIn.tiles.filter(function (u) { return typeof u === 'string' && u.length > 0; })
-        : [];
-      const terTiles = Array.isArray(terIn.tiles)
-        ? terIn.tiles.filter(function (u) { return typeof u === 'string' && u.length > 0; })
-        : ['https://tiles.mapterhorn.com/{z}/{x}/{y}.webp'];
-      const satEnabled = satIn.enabled !== false && satTiles.length > 0;
-      const terEnabled = terIn.enabled !== false && terTiles.length > 0;
-      const terMax = terIn.maxzoom != null ? terIn.maxzoom : 17;
-      const visualMax = terIn.visualMaxzoom != null ? terIn.visualMaxzoom : Math.min(terMax, 16);
-      return {
-        satellite: {
-          enabled: satEnabled,
-          tiles: satTiles,
-          tileSize: satIn.tileSize || 256,
-          maxzoom: satIn.maxzoom != null ? satIn.maxzoom : 18,
-          attribution: satIn.attribution || '',
-          sourceId: satIn.sourceId || 'basemapRaster',
-          layerId: satIn.layerId || 'satellite',
-        },
-        terrain: {
-          enabled: terEnabled,
-          tiles: terTiles,
-          tileSize: terIn.tileSize || 512,
-          maxzoom: terMax,
-          visualMaxzoom: visualMax,
-          visualSourceId: terIn.visualSourceId || 'terrainVisual',
-          encoding: terIn.encoding || 'terrarium',
-          attribution:
-            terIn.attribution ||
-            '<a href="https://mapterhorn.com/attribution" target="_blank" rel="noopener">© Mapterhorn</a>',
-          sourceId: terIn.sourceId || 'terrain',
-        },
-        uiAttribution:
-          cfg.uiAttribution ||
-          (satEnabled
-            ? '底图：已配置栅格 · 地形 DEM：Mapterhorn'
-            : '底图：未配置卫星 · 地形 DEM：Mapterhorn'),
-      };
-    }
-
-    function buildMapStyle(tileCfg) {
-      const sources = {};
-      const layers = [
-        {
-          id: 'background',
-          type: 'background',
-          paint: {
-            'background-color': params.mapstage.backgroundColor,
-          },
-        },
-      ];
-
-      if (tileCfg.terrain.enabled) {
-        const dem = {
-          type: 'raster-dem',
-          tiles: tileCfg.terrain.tiles,
-          tileSize: tileCfg.terrain.tileSize,
-          encoding: tileCfg.terrain.encoding || 'terrarium',
-          attribution: tileCfg.terrain.attribution,
-        };
-        sources[tileCfg.terrain.sourceId] = Object.assign({}, dem, {
-          maxzoom: tileCfg.terrain.maxzoom,
-        });
-        const visualId = tileCfg.terrain.visualSourceId || 'terrainVisual';
-        sources[visualId] = Object.assign({}, dem, {
-          maxzoom: tileCfg.terrain.visualMaxzoom != null ? tileCfg.terrain.visualMaxzoom : tileCfg.terrain.maxzoom,
-        });
-        layers.push({
-          id: 'vl-relief',
-          type: 'color-relief',
-          source: visualId,
-          layout: { visibility: params.ui.showRelief ? 'visible' : 'none' },
-          paint: {
-            'color-relief-opacity': 1,
-            'color-relief-color': window.AntiqueVectorPaint
-              ? AntiqueVectorPaint.elevationColorExpr()
-              : ['interpolate', ['linear'], ['elevation'], -2000, '#14324a', 0, '#4f7a45', 5500, '#e8ece8'],
-          },
-        });
-        layers.push({
-          id: 'hillshade',
-          type: 'hillshade',
-          source: visualId,
-          paint: {
-            'hillshade-exaggeration': Math.min(1, Math.max(0, +params.mapstage.hillshade.exaggeration || 0)),
-            'hillshade-illumination-direction': params.mapstage.hillshade.illuminationDirection,
-            'hillshade-shadow-color': params.mapstage.hillshade.shadowColor,
-            'hillshade-highlight-color': params.mapstage.hillshade.highlightColor,
-            'hillshade-accent-color': params.mapstage.hillshade.accentColor,
-            'hillshade-illumination-anchor': 'viewport',
-          },
-        });
-      }
-
-      // 卫星/栅格底图叠在山影之上（半透明），仅当用户配置了合规 tiles
-      if (tileCfg.satellite.enabled) {
-        sources[tileCfg.satellite.sourceId] = {
-          type: 'raster',
-          tiles: tileCfg.satellite.tiles,
-          tileSize: tileCfg.satellite.tileSize,
-          maxzoom: tileCfg.satellite.maxzoom,
-          attribution: tileCfg.satellite.attribution,
-        };
-        layers.push({
-          id: tileCfg.satellite.layerId || 'satellite',
-          type: 'raster',
-          source: tileCfg.satellite.sourceId,
-          paint: {
-            'raster-opacity': params.mapstage.satellite.opacity,
-            'raster-saturation': params.mapstage.satellite.saturation,
-            'raster-contrast': params.mapstage.satellite.contrast,
-            'raster-brightness-min': params.mapstage.satellite.brightnessMin,
-            'raster-brightness-max': params.mapstage.satellite.brightnessMax,
-            'raster-hue-rotate': params.mapstage.satellite.hueRotate,
-          },
-        });
-      }
-
-      sources.openmaptiles = {
-        type: 'vector',
-        url: (window.AntiqueVectorPaint && AntiqueVectorPaint.TILEJSON_URL) || 'https://tiles.openfreemap.org/planet',
-        attribution:
-          '<a href="https://openfreemap.org">OpenFreeMap</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      };
-      layers.push({
-        id: 'omt-ocean',
-        type: 'fill',
-        source: 'openmaptiles',
-        'source-layer': 'water',
-        filter: ['==', ['get', 'class'], 'ocean'],
-        paint: { 'fill-color': '#2a6d7a', 'fill-opacity': 1 },
-      });
-      layers.push({
-        id: 'omt-water',
-        type: 'fill',
-        source: 'openmaptiles',
-        'source-layer': 'water',
-        filter: ['!=', ['get', 'class'], 'ocean'],
-        paint: { 'fill-color': '#2f7d8c', 'fill-opacity': 0.92 },
-      });
-      layers.push({
-        id: 'omt-waterway',
-        type: 'line',
-        source: 'openmaptiles',
-        'source-layer': 'waterway',
-        paint: {
-          'line-color': '#2a7aa0',
-          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.7, 6, 1.5, 10, 2.6],
-          'line-opacity': 0.92,
-        },
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-      });
-
-      return { version: 8, sources: sources, layers: layers };
-    }
-
-    function isWaterDataReady() {
-      return (
-        typeof window.CHINA_WATER_DATA === 'object' &&
-        window.CHINA_WATER_DATA !== null
-      );
-    }
-
-    function tunerAssetUrl(rel) {
-      var base = window.__TUNER_BASE__;
-      if (!base) {
-        var path = location.pathname || '/';
-        if (/\.[a-zA-Z0-9]+$/.test(path)) {
-          path = path.replace(/\/[^/]*$/, '/');
-        } else if (path.charAt(path.length - 1) !== '/') {
-          path += '/';
-        }
-        base = location.origin + path;
-      }
-      if (base.charAt(base.length - 1) !== '/') base += '/';
-      return base + String(rel || '').replace(/^\//, '');
-    }
-
-    function setWaterWarn(message) {
-      const el = document.getElementById('water-warn');
-      if (!el) return;
-      if (!message) {
-        el.textContent = '';
-        el.style.display = 'none';
-        return;
-      }
-      el.textContent = message;
-      el.style.display = 'block';
-    }
-
-    /**
-     * Optional water overlay before initMap (no race).
-     * Default: read tiny assets/water-pack.json (enabled:false) and skip
-     * fetching the large pack — no expected 404 on water-data.js.
-     * When enabled:true, load src (absolute via __TUNER_BASE__).
-     */
-    async function ensureWaterData() {
-      if (isWaterDataReady()) {
-        return { ok: true, via: 'preexisting' };
-      }
-
-      var packUrl = tunerAssetUrl('assets/water-pack.json');
-      var pack = { enabled: false, src: 'assets/water-data.js' };
-      try {
-        var packRes = await fetch(packUrl, { cache: 'default' });
-        if (packRes.ok) {
-          pack = Object.assign(pack, await packRes.json());
-        }
-      } catch (e) {
-        // Keep defaults; treat as not shipped.
-      }
-
-      const url = tunerAssetUrl(pack.src || 'assets/water-data.js');
-
-      var res;
-      try {
-        res = await fetch(url, { cache: 'default' });
-      } catch (e) {
-        return {
-          ok: false,
-          reason: 'optional-absent',
-          detail: String((e && e.message) || e),
-          url: url,
-        };
-      }
-
-      if (res.status === 404 || res.status === 403 || res.status === 410) {
-        return {
-          ok: false,
-          reason: 'not-shipped',
-          detail: res.status + ' ' + url,
-          url: url,
-        };
-      }
-      if (!res.ok) {
-        return {
-          ok: false,
-          reason: 'http',
-          detail: res.status + ' ' + url,
-          url: url,
-        };
-      }
-
-      var code = await res.text();
-      if (!code || code.indexOf('CHINA_WATER_DATA') === -1) {
-        return {
-          ok: false,
-          reason: 'empty',
-          detail: url + ' (no CHINA_WATER_DATA assignment)',
-          url: url,
-        };
-      }
-
-      try {
-        (0, eval)(code);
-        if (!isWaterDataReady()) {
-          return { ok: false, reason: 'parse', detail: url, url: url };
-        }
-        return { ok: true, via: 'fetch', url: url };
-      } catch (e) {
-        return {
-          ok: false,
-          reason: 'parse',
-          detail: String((e && e.message) || e),
-          url: url,
-        };
-      }
-    }
-
-    function waterOptionalMessage(result) {
-      return '';
-    }
-
-    var viewMode = 'map';
-    var isolateCtl = null;
-
-    function satLayerId() {
-      return (window.__tunerTileConfig && window.__tunerTileConfig.satellite && window.__tunerTileConfig.satellite.layerId) || 'satellite';
-    }
-
-    function setToggle(el, on) {
-      if (!el) return;
-      el.classList.toggle('on', !!on);
-      el.setAttribute('aria-pressed', on ? 'true' : 'false');
-    }
-
-    function syncBasemapLayers() {
-      if (!map) return;
-      var satOn = params.ui.showSatellite !== false;
-      var reliefOn = !!params.ui.showRelief;
-      var satId = satLayerId();
-      if (map.getLayer(satId)) {
-        map.setLayoutProperty(satId, 'visibility', satOn ? 'visible' : 'none');
-      }
-      if (map.getLayer('vl-relief')) {
-        map.setLayoutProperty('vl-relief', 'visibility', reliefOn ? 'visible' : 'none');
-      }
-      if (map.getLayer('omt-ocean')) {
-        map.setLayoutProperty('omt-ocean', 'visibility', satOn ? 'none' : 'visible');
-      }
-      setToggle(document.getElementById('sw-satellite'), satOn);
-      setToggle(document.getElementById('sw-relief'), reliefOn);
-    }
-
-    function setupGlobeAndIsolate() {
-      if (!map) return;
-      var VP = window.AntiqueVectorPaint;
-      var tileCfg = window.__tunerTileConfig || {};
-      if (VP && tileCfg.terrain && tileCfg.terrain.enabled && !map.getLayer('vl-relief')) {
-        try {
-          var before = map.getLayer(satLayerId()) ? satLayerId() : undefined;
-          map.addLayer({
-            id: 'vl-relief',
-            type: 'color-relief',
-            source: tileCfg.terrain.visualSourceId || 'terrainVisual',
-            layout: { visibility: params.ui.showRelief ? 'visible' : 'none' },
-            paint: {
-              'color-relief-opacity': 1,
-              'color-relief-color': VP.elevationColorExpr(),
-            },
-          }, before);
-        } catch (e) {
-          console.warn('color-relief layer', e);
-        }
-      }
-      if (window.AntiqueIsolateWorkbench) {
-        if (params.isolate && params.isolate.enabled && typeof AntiqueIsolateWorkbench.ensureIsolateData === 'function') {
-          AntiqueIsolateWorkbench.ensureIsolateData();
-        }
-        isolateCtl = AntiqueIsolateWorkbench.mount({
-          map: map,
-          maplibregl: maplibregl,
-          FX: window.AntiqueMapFx,
-          getViewMode: function () { return viewMode; },
-          toast: toast,
-          wrapEl: document.getElementById('map'),
-          enabled: !!(params.isolate && params.isolate.enabled),
-          regionId: (params.isolate && params.isolate.regionId) || 'china',
-          sideColor: '#6d4a36',
-          onNeedMap: function () { applyViewMode('map'); },
-          onChange: function (st) {
-            params.isolate = {
-              enabled: !!(st && st.enabled),
-              regionId: (st && st.regionId) || 'china',
-            };
-            persist();
-          },
-        });
-        isolateCtl.start();
-      }
-      document.querySelectorAll('#viewmode-seg button').forEach(function (b) {
-        b.addEventListener('click', function () {
-          applyViewMode(b.getAttribute('data-mode'));
-        });
-      });
-      var satBtn = document.getElementById('sw-satellite');
-      if (satBtn) {
-        satBtn.addEventListener('click', function () {
-          params.ui.showSatellite = !this.classList.contains('on');
-          syncBasemapLayers();
-          persist();
-        });
-      }
-      var reliefBtn = document.getElementById('sw-relief');
-      if (reliefBtn) {
-        reliefBtn.addEventListener('click', function () {
-          params.ui.showRelief = !this.classList.contains('on');
-          syncBasemapLayers();
-          persist();
-        });
-      }
-      function bindCssFilterToggle(el) {
-        if (!el || el._cssFilterBound) return;
-        el._cssFilterBound = true;
-        el.addEventListener('click', function () {
-          params.ui.showCssFilter = !this.classList.contains('on');
-          applyCssOverlays();
-          persist();
-        });
-      }
-      bindCssFilterToggle(document.getElementById('sw-css-filter-panel'));
-      applyCssOverlays();
-      syncBasemapLayers();
-    }
-
-    function applyViewMode(mode) {
-      if (!map) return;
-      var next = mode === 'globe' ? 'globe' : 'map';
-      var changed = viewMode !== next;
-      viewMode = next;
-      document.querySelectorAll('#viewmode-seg button').forEach(function (b) {
-        b.classList.toggle('active', b.getAttribute('data-mode') === viewMode);
-      });
-      try {
-        map.setProjection({ type: viewMode === 'globe' ? 'globe' : 'mercator' });
-      } catch (e) {
-        console.warn('setProjection', e);
-      }
-      if (changed) {
-        try { map.setMinZoom(viewMode === 'globe' ? 0.8 : 2); } catch (e1) {}
-      }
-      syncBasemapLayers();
-      if (isolateCtl && typeof isolateCtl.sync === 'function') isolateCtl.sync();
-      if (params.ui) params.ui.projection = viewMode;
-      persist();
-    }
-
-    function applyImportedState(opts) {
-      opts = opts || {};
-      var proj = (params.ui && params.ui.projection) || 'map';
-      applyViewMode(proj);
-      syncBasemapLayers();
-      applyCssOverlays();
-      if (isolateCtl) {
-        var iso = params.isolate || {};
-        if (iso.regionId && typeof isolateCtl.setRegion === 'function') {
-          isolateCtl.setRegion(iso.regionId, { frame: false });
-        }
-        if (typeof isolateCtl.setEnabled === 'function') {
-          isolateCtl.setEnabled(!!iso.enabled, opts.frameIsolate !== false && !!iso.enabled);
-        }
-      }
-    }
-
-    function initMap() {
-      waterAvailable = false;
-
-      if (!waterAvailable) {
-        setWaterWarn(waterOptionalMessage(window.__WATER_DATA_LOAD_RESULT));
-      } else {
-        setWaterWarn('');
-      }
-
-      const tileCfg = resolveTileConfig();
-      window.__tunerTileConfig = tileCfg;
-      const attrEl = document.getElementById('attribution-note');
-      if (attrEl) attrEl.textContent = tileCfg.uiAttribution;
-      if (!tileCfg.satellite.enabled) {
-        console.info(
-          '[tuner] satellite basemap disabled — set tiles in map-tiles.config.js ' +
-            'or map-tiles.config.local.js (see map-tiles.config.example.js). ' +
-            'This project does not grant map-tile rights.'
-        );
-      }
-      if (!tileCfg.terrain.enabled) {
-        console.warn('[tuner] terrain DEM disabled — hillshade/setTerrain unavailable');
-      }
-
-      const cam = params.camera;
-
-      if (window.AntiqueMapFx && typeof AntiqueMapFx.configureMapStage === 'function') {
-        AntiqueMapFx.configureMapStage(maplibregl);
-      }
-      const mapOpts = {
-        container: 'map',
-        style: buildMapStyle(tileCfg),
-        center: cam.center,
-        zoom: cam.zoom,
-        pitch: cam.pitch,
-        bearing: cam.bearing,
-        maxPitch: 85,
-        attributionControl: true,
-      };
-      if (window.AntiqueMapFx && typeof AntiqueMapFx.mapOptions === 'function') {
-        const fxOpts = AntiqueMapFx.mapOptions('tuner');
-        delete fxOpts.renderWorldCopies;
-        Object.assign(mapOpts, fxOpts);
-      }
-      map = new maplibregl.Map(mapOpts);
-
-      window.__tunerMap = map;
-
-      map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
-      map.addControl(
-        new maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }),
-        'bottom-left'
-      );
-
-      function onMapReady() {
-        if (mapReady) return;
-        mapReady = true;
-        try {
-          const tcfg = window.__tunerTileConfig;
-          if (tcfg && tcfg.terrain && tcfg.terrain.enabled) {
-            map.setTerrain({
-              source: tcfg.terrain.sourceId || 'terrain',
-              exaggeration: params.mapstage.terrainExaggeration,
-            });
-          }
-        } catch (e) {
-          console.warn('setTerrain 失败（其余图层仍可用）', e);
-        }
-        try {
-          addHanCityLayer();
-        } catch (e) {
-          console.warn('城池层添加失败', e);
-        }
-        try {
-          setupGlobeAndIsolate();
-        } catch (e) {
-          console.warn('地球/地区显示初始化失败', e);
-        }
-        applyCssOverlays();
-        applyMapStyles();
-        applyImportedState({ frameIsolate: false });
-        updatePaintSummary();
-        updateCitiesVisibility();
-        updatePresetStatus();
-      }
-
-      // style.load 先于 load：不因 DEM 瓦片失败而一直卡在未就绪
-      map.once('style.load', onMapReady);
-      map.on('load', onMapReady);
-
-      // 用户交互同步相机到面板
-      map.on('moveend', function () {
-        if (syncingFromMap) return;
-        const c = map.getCenter();
-        params.camera.center = [round(c.lng, 4), round(c.lat, 4)];
-        params.camera.zoom = round(map.getZoom(), 2);
-        params.camera.pitch = round(map.getPitch(), 1);
-        params.camera.bearing = round(map.getBearing(), 1);
-        refreshCameraControlsOnly();
-        // 支流河名 / 次级湖名随 zoom 显隐
-        updateRiverLabelMarkers();
-        updateLakeLabelMarkers();
-        persist();
-      });
-
-      // 缩放过程中也刷新，避免等到松手才出现支流名
-      map.on('zoomend', function () {
-        updateRiverLabelMarkers();
-        updateLakeLabelMarkers();
-      });
-
-      map.on('error', function (e) {
-        console.warn('MapStage error', e && e.error);
-      });
-    }
-
-    function updateWaterStats() {
-      const el = document.getElementById('water-stats');
-      if (!el) return;
-      const d = window.CHINA_WATER_DATA;
-      if (!d) {
-        el.textContent = '';
-        return;
-      }
-      function n(fc) { return fc && fc.features ? fc.features.length : 0; }
-      const q = d.highlightWaterSystems;
-      const by = {};
-      if (q && q.features) {
-        q.features.forEach(function (f) {
-          const id = (f.properties && f.properties.systemId) || 'other';
-          by[id] = (by[id] || 0) + 1;
-        });
-      }
-      const mainN = riverLabelCatalog.filter(function (x) { return x.tier === 'main'; }).length;
-      const sideN = riverLabelCatalog.filter(function (x) { return x.tier === 'side'; }).length;
-      const lakeMainN = lakeLabelCatalog.filter(function (x) { return x.tier === 'main'; }).length;
-      const lakeSideN = lakeLabelCatalog.filter(function (x) { return x.tier === 'side'; }).length;
-      el.textContent =
-        '一级河 ' + n(d.riverLevel1) +
-        ' · 二级河 ' + n(d.riverLevel2) +
-        ' · 三级河 ' + n(d.riverLevel3) +
-        ' · 湖 ' + n(d.chinaLakes) +
-        '\n高亮水系 ' + n(q) +
-        '（石羊 ' + (by.shiyang || 0) +
-        ' · 黑河 ' + (by.heihe || 0) +
-        ' · 疏勒 ' + (by.shule || 0) +
-        ' · 南坡 ' + (by['qilian' + '_south'] || by.south || 0) + '）' +
-        '\n区域高亮水系子集（北坡内流 + 南坡支流）' +
-        '\n河名标注 ' + riverLabelCatalog.length +
-        '（主 ' + mainN + ' · 支 ' + sideN + '）' +
-        '\n湖名标注 ' + lakeLabelCatalog.length +
-        '（主 ' + lakeMainN + ' · 次 ' + lakeSideN + '）';
-    }
-
-    function addWaterLayers() {
-      const data = window.CHINA_WATER_DATA;
-      const w = params.mapstage.water;
-      const vis = params.ui.showWater ? 'visible' : 'none';
-      const qVis = params.ui.showWater && params.ui.showHighlight ? 'visible' : 'none';
-
-      // 1. 湖泊
-      if (data.chinaLakes) {
-        map.addSource('lakes', {
-          type: 'geojson',
-          data: data.chinaLakes,
-        });
-        map.addLayer({
-          id: 'lakes-fill',
-          type: 'fill',
-          source: 'lakes',
-          paint: {
-            'fill-color': w.lakeFill,
-            'fill-outline-color': 'rgba(0,0,0,0)',
-          },
-          layout: { visibility: vis },
-        });
-        map.addLayer({
-          id: 'lakes-outline',
-          type: 'line',
-          source: 'lakes',
-          paint: {
-            'line-color': w.lakeOutline,
-            'line-width': 0.8,
-            'line-opacity': 1,
-          },
-          layout: { visibility: vis },
-        });
-      }
-
-      // 2. 三级河（资料四级 River4，最细底网）
-      if (data.riverLevel3) {
-        map.addSource('river-l3-src', {
-          type: 'geojson',
-          data: data.riverLevel3,
-        });
-        map.addLayer({
-          id: 'river-l3',
-          type: 'line',
-          source: 'river-l3-src',
-          paint: {
-            'line-color': w.riverLevel3,
-            'line-width': [
-              'interpolate', ['linear'], ['zoom'],
-              3, w.riverL3Width * 0.35,
-              6, w.riverL3Width,
-              10, w.riverL3Width * 1.6,
-            ],
-            'line-opacity': 1,
-          },
-          layout: {
-            'line-cap': 'round',
-            'line-join': 'round',
-            visibility: vis,
-          },
-        });
-      }
-
-      // 3. 二级河
-      if (data.riverLevel2) {
-        map.addSource('river-l2-src', {
-          type: 'geojson',
-          data: data.riverLevel2,
-        });
-        map.addLayer({
-          id: 'river-l2',
-          type: 'line',
-          source: 'river-l2-src',
-          paint: {
-            'line-color': w.riverLevel2,
-            'line-width': [
-              'interpolate', ['linear'], ['zoom'],
-              3, w.riverL2Width * 0.4,
-              6, w.riverL2Width,
-              10, w.riverL2Width * 1.8,
-            ],
-            'line-opacity': 1,
-          },
-          layout: {
-            'line-cap': 'round',
-            'line-join': 'round',
-            visibility: vis,
-          },
-        });
-      }
-
-      // 4. 一级河
-      if (data.riverLevel1) {
-        map.addSource('river-l1-src', {
-          type: 'geojson',
-          data: data.riverLevel1,
-        });
-        map.addLayer({
-          id: 'river-l1',
-          type: 'line',
-          source: 'river-l1-src',
-          paint: {
-            'line-color': w.riverLevel1,
-            'line-width': [
-              'interpolate', ['linear'], ['zoom'],
-              3, w.riverL1Width * 0.45,
-              6, w.riverL1Width,
-              10, w.riverL1Width * 2.0,
-            ],
-            'line-opacity': 1,
-          },
-          layout: {
-            'line-cap': 'round',
-            'line-join': 'round',
-            visibility: vis,
-          },
-        });
-      }
-
-      // 5. 高亮水系（最上）
-      if (data.highlightWaterSystems) {
-        map.addSource('river-highlight-src', {
-          type: 'geojson',
-          data: data.highlightWaterSystems,
-        });
-        map.addLayer({
-          id: 'river-highlight',
-          type: 'line',
-          source: 'river-highlight-src',
-          paint: {
-            'line-color': w.highlightRiver,
-            'line-width': [
-              'interpolate', ['linear'], ['zoom'],
-              3, w.highlightWidth * 0.5,
-              6, w.highlightWidth,
-              10, w.highlightWidth * 1.9,
-            ],
-            'line-opacity': 1,
-          },
-          layout: {
-            'line-cap': 'round',
-            'line-join': 'round',
-            visibility: qVis,
-          },
-        });
-      }
-
-      // 6. 河流 / 湖泊名称（HTML Marker；无 glyphs 也能显示中文）
-      riverLabelCatalog = buildRiverLabelCatalog(data);
-      lakeLabelCatalog = buildLakeLabelCatalog(data);
-      updateRiverLabelMarkers();
-      updateLakeLabelMarkers();
-
-      updateWaterStats();
-    }
-
-    var threeJsPromise = null;
-    function loadThreeJs() {
-      if (window.THREE) return Promise.resolve(window.THREE);
-      if (threeJsPromise) return threeJsPromise;
-      threeJsPromise = new Promise(function (resolve, reject) {
-        var s = document.createElement('script');
-        s.src = 'https://unpkg.com/three@0.160.0/build/three.min.js';
-        s.async = true;
-        s.onload = function () {
-          if (window.THREE) resolve(window.THREE);
-          else reject(new Error('THREE missing after load'));
-        };
-        s.onerror = function () {
-          threeJsPromise = null;
-          reject(new Error('three.min.js failed'));
-        };
-        document.head.appendChild(s);
-      });
-      return threeJsPromise;
-    }
-
-    /**
-     * 多级城池点位（大/中/小城 + 关卡 + 驿站 + 牙帐）
-     * 仅加载 params.cities.dataFile（默认 assets/sample-sites.json）；失败回退内置
-     */
-    async function addHanCityLayer() {
-      if (!map) return;
-      if (typeof window.HanCity3D === 'undefined') {
-        console.warn('[han-city-3d] HanCity3D 未加载，跳过城池层');
-        return;
-      }
-      if (map.getLayer('han-city-extrude-plinth') || map.getLayer('han-city-3d')) return;
-
-      function normalizeSite(c) {
-        return {
-          id: c.id,
-          name: c.name,
-          lng: c.lng,
-          lat: c.lat,
-          tier: c.tier || 'medium',
-          modelType: c.modelType,
-          scale: c.scale,
-          halfKm: c.halfKm,
-          heightScale: c.heightScale,
-          palette: c.palette,
-          bearing: c.bearing,
-          group: c.group,
-          role: c.role,
-          label: c.label,
-          note: c.note,
-        };
-      }
-
-      var cities = null;
-      var sitesUrl =
-        (params.cities && params.cities.dataFile) || 'assets/sample-sites.json';
-      try {
-        var resN = await fetch(sitesUrl);
-        if (resN.ok) {
-          var dataN = await resN.json();
-          var list = Array.isArray(dataN)
-            ? dataN
-            : dataN && Array.isArray(dataN.sites)
-              ? dataN.sites
-              : dataN && Array.isArray(dataN.cities)
-                ? dataN.cities
-                : null;
-          if (list && list.length) {
-            cities = list.map(normalizeSite);
-            console.info('[han-city-3d] 加载 ' + sitesUrl + ' · ' + cities.length + ' 点');
-          }
-        }
-      } catch (e) {
-        console.info('[han-city-3d] ' + sitesUrl + ' 不可用，使用内置示例');
-      }
-
-      try {
-        var halfKmGlobal =
-          params.cities && params.cities.halfKm != null ? params.cities.halfKm : 18;
-        var cityList = cities || (window.HanCity3D.FALLBACK_CITIES || []).map(function (c) {
-          return normalizeSite(Object.assign({ tier: 'medium', modelType: 'commandery' }, c));
-        });
-
-        async function tryThreeFallback(reason) {
-          if (reason) console.warn('[han-city-3d] extrusion 不可用，尝试 Three.js', reason);
-          try {
-            await loadThreeJs();
-          } catch (e3) {
-            console.warn('[han-city-3d] Three.js 加载失败', e3);
-            return false;
-          }
-          if (typeof window.THREE === 'undefined' || typeof window.HanCity3D.createCustomLayer !== 'function') {
-            console.warn('[han-city-3d] 无 extrusion 也无 THREE，跳过');
-            return false;
-          }
-          hanCityLayer = window.HanCity3D.createCustomLayer(maplibregl, window.THREE, {
-            id: 'han-city-3d',
-            cities: cityList,
-            visible: params.ui.showCities !== false,
-            palette: window.HanCity3D.DEFAULT_PALETTE,
-            visualScale: 80,
-            altitudeBoost: 400,
-          });
-          map.addLayer(hanCityLayer);
-          return true;
-        }
-
-        var placed = false;
-        if (typeof window.HanCity3D.addExtrusionCities === 'function') {
-          try {
-            hanCityLayer = window.HanCity3D.addExtrusionCities(map, maplibregl, {
-              cities: cityList,
-              halfKm: halfKmGlobal,
-              visible: params.ui.showCities !== false,
-            });
-            placed = true;
-          } catch (eEx) {
-            placed = await tryThreeFallback(eEx);
-          }
-        } else {
-          placed = await tryThreeFallback(null);
-        }
-        if (!placed) return;
-        updateCitiesVisibility();
-        map.once('idle', function () {
-          if (hanCityLayer && typeof hanCityLayer.repositionToTerrain === 'function') {
-            hanCityLayer.repositionToTerrain();
-          }
-          map.triggerRepaint();
-        });
-      } catch (err) {
-        console.warn('[han-city-3d] 添加城池层失败', err);
-        hanCityLayer = null;
-      }
-    }
-
-    // ============================================================
-    // 启动：优先尝试加载外部 preset JSON，再初始化
-    // ============================================================
-    async function boot() {
-      // 若 localStorage 无数据，尝试 fetch 默认 preset 文件
-      const hasLocal = !!localStorage.getItem(STORAGE_KEY);
-      if (!hasLocal) {
-        try {
-          const res = await fetch('preset-antique-default.json?v=20260908-v3');
-          if (res.ok) {
-            const preset = await res.json();
-            params = mergeParams(DEFAULT_PARAMS, preset);
-            params.season = null;
-          }
-        } catch (e) {
-          // file:// 或离线时忽略，使用内嵌 DEFAULT_PARAMS
-          console.info('未加载外部 preset 文件，使用内嵌默认值');
-        }
-      }
-
-      if (params.ui.showSatellite == null) params.ui.showSatellite = true;
-      if (params.ui.showRelief == null) params.ui.showRelief = false;
-      if (params.ui.showCssFilter == null) params.ui.showCssFilter = true;
-      if (!params.ui.projection) params.ui.projection = 'map';
-      if (!params.isolate) params.isolate = { enabled: false, regionId: 'china' };
-      params.ui.showWater = false;
-      params.ui.showHighlight = false;
-      params.ui.showRiverLabels = false;
-
-      bindControls();
-      bindButtons();
-      try {
-        refreshAllControls();
-        updatePresetStatus();
-        updateRefImage();
-      } catch (e) {
-        console.warn('refreshAllControls', e);
-      }
-      initMap();
-    }
-
-    boot();
-  })();
-  </script>
+  <script src="assets/region-isolate.js?v=20260824-scanedge8"></script>
+  <script src="assets/region-isolate-data.js?v=20260823-cities"></script>
+  <script src="assets/terrain-island.js?v=20260903-rim-geostep"></script>
+  <script src="assets/tuner-util.js?v=20260929-split"></script>
+  <script src="assets/tuner-params.js?v=20261024-night"></script>
+  <script src="vendor/maplibre-contour.min.js"></script>
+  <script src="assets/tuner-vector.js?v=20261024-baked"></script>
+  <script src="assets/tuner-app.js?v=20261024-baked"></script>
+  <script src="assets/tuner-shell.js?v=20261020-studio"></script>
 </body>
 </html>

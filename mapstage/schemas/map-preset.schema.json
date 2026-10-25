@@ -3,80 +3,166 @@
   "$id": "https://skills.local/mapstage/schemas/map-preset.schema.json",
   "title": "MapStage preset",
   "type": "object",
-  "required": ["id", "version", "camera", "mapstage", "css", "ui"],
+  "required": [
+    "id",
+    "version",
+    "camera",
+    "css",
+    "ui"
+  ],
   "additionalProperties": true,
   "properties": {
-    "id": { "type": "string" },
-    "label": { "type": "string" },
-    "version": { "type": "integer", "minimum": 1, "description": "Current tuner export is 3" },
-    "savedAt": { "type": "string" },
+    "id": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Current tuner export is 3"
+    },
+    "savedAt": {
+      "type": "string"
+    },
     "season": {
-      "type": ["string", "null"],
-      "enum": [null, "spring", "summer", "autumn", "winter"]
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        null,
+        "spring",
+        "summer",
+        "autumn",
+        "winter"
+      ]
     },
     "camera": {
       "type": "object",
-      "required": ["center", "zoom"],
+      "required": [
+        "center",
+        "zoom"
+      ],
       "properties": {
         "center": {
           "type": "array",
           "minItems": 2,
           "maxItems": 2,
-          "items": { "type": "number" }
+          "items": {
+            "type": "number"
+          }
         },
-        "zoom": { "type": "number" },
-        "pitch": { "type": "number" },
-        "bearing": { "type": "number" }
+        "zoom": {
+          "type": "number"
+        },
+        "pitch": {
+          "type": "number"
+        },
+        "bearing": {
+          "type": "number"
+        }
       },
       "additionalProperties": false
     },
-    "mapstage": {
+    "maplibre": {
       "type": "object",
-      "required": ["backgroundColor", "terrainExaggeration", "satellite", "hillshade"],
+      "required": [
+        "backgroundColor",
+        "terrainExaggeration",
+        "satellite",
+        "hillshade"
+      ],
       "properties": {
-        "backgroundColor": { "type": "string" },
-        "terrainExaggeration": { "type": "number" },
+        "backgroundColor": {
+          "type": "string"
+        },
+        "terrainExaggeration": {
+          "type": "number"
+        },
         "satellite": {
           "type": "object",
           "properties": {
-            "opacity": { "type": "number" },
-            "saturation": { "type": "number" },
-            "contrast": { "type": "number" },
-            "brightnessMin": { "type": "number" },
-            "brightnessMax": { "type": "number" },
-            "hueRotate": { "type": "number" }
+            "opacity": {
+              "type": "number"
+            },
+            "saturation": {
+              "type": "number"
+            },
+            "contrast": {
+              "type": "number"
+            },
+            "brightnessMin": {
+              "type": "number"
+            },
+            "brightnessMax": {
+              "type": "number"
+            },
+            "hueRotate": {
+              "type": "number"
+            }
           },
           "additionalProperties": true
         },
         "hillshade": {
           "type": "object",
           "properties": {
-            "exaggeration": { "type": "number" },
-            "illuminationDirection": { "type": "number" },
-            "shadowColor": { "type": "string" },
-            "highlightColor": { "type": "string" },
-            "accentColor": { "type": "string" }
+            "exaggeration": {
+              "type": "number"
+            },
+            "illuminationDirection": {
+              "type": "number"
+            },
+            "shadowColor": {
+              "type": "string"
+            },
+            "highlightColor": {
+              "type": "string"
+            },
+            "accentColor": {
+              "type": "string"
+            }
           },
           "additionalProperties": true
         },
         "water": {
           "type": "object",
-          "description": "Legacy overlay paint. Public tuner does not drive OpenFreeMap from these keys.",
           "properties": {
-            "lakeFill": { "type": "string" },
-            "lakeOutline": { "type": "string" },
-            "riverLevel3": { "type": "string" },
-            "riverLevel2": { "type": "string" },
-            "riverLevel1": { "type": "string" },
-            "highlightRiver": { "type": "string" },
+            "lakeFill": {
+              "type": "string"
+            },
+            "lakeOutline": {
+              "type": "string"
+            },
+            "riverLevel3": {
+              "type": "string"
+            },
+            "riverLevel2": {
+              "type": "string"
+            },
+            "riverLevel1": {
+              "type": "string"
+            },
+            "highlightRiver": {
+              "type": "string"
+            },
             "qilianRiver": {
               "type": "string",
               "description": "Legacy alias of highlightRiver"
             },
-            "riverL3Width": { "type": "number" },
-            "riverL2Width": { "type": "number" },
-            "riverL1Width": { "type": "number" },
-            "highlightWidth": { "type": "number" },
+            "riverL3Width": {
+              "type": "number"
+            },
+            "riverL2Width": {
+              "type": "number"
+            },
+            "riverL1Width": {
+              "type": "number"
+            },
+            "highlightWidth": {
+              "type": "number"
+            },
             "qilianWidth": {
               "type": "number",
               "description": "Legacy alias of highlightWidth"
@@ -87,63 +173,240 @@
       },
       "additionalProperties": true
     },
-    "maplibre": {
-      "type": "object",
-      "description": "Legacy alias of mapstage"
-    },
     "css": {
       "type": "object",
       "properties": {
-        "sepia": { "type": "number" },
-        "saturate": { "type": "number" },
-        "contrast": { "type": "number" },
-        "brightness": { "type": "number" },
-        "hueRotate": { "type": "number" },
-        "warmTintAlpha": { "type": "number" },
-        "warmTintColor": { "type": "string" },
-        "vignetteStrength": { "type": "number" }
+        "sepia": {
+          "type": "number"
+        },
+        "saturate": {
+          "type": "number"
+        },
+        "contrast": {
+          "type": "number"
+        },
+        "brightness": {
+          "type": "number"
+        },
+        "hueRotate": {
+          "type": "number"
+        },
+        "warmTintAlpha": {
+          "type": "number"
+        },
+        "warmTintColor": {
+          "type": "string"
+        },
+        "vignetteStrength": {
+          "type": "number",
+          "description": "Platform-compliant default is 0 (no vignette)"
+        }
       },
       "additionalProperties": true
     },
     "ui": {
       "type": "object",
       "properties": {
-        "projection": { "type": "string", "enum": ["map", "globe"] },
-        "showSatellite": { "type": "boolean" },
-        "showRelief": { "type": "boolean" },
-        "showCssFilter": { "type": "boolean" },
-        "showCities": { "type": "boolean" },
-        "showRef": { "type": "boolean" },
         "showWater": {
-          "type": "boolean",
-          "description": "Legacy GeoJSON overlay. Public export is always false."
+          "type": "boolean"
         },
-        "showHighlight": { "type": "boolean" },
+        "showHighlight": {
+          "type": "boolean"
+        },
         "showQilian": {
           "type": "boolean",
           "description": "Legacy alias of showHighlight"
         },
-        "showRiverLabels": { "type": "boolean" },
-        "refMode": { "type": "string", "enum": ["pip", "split"] }
-      },
-      "additionalProperties": true
-    },
-    "isolate": {
-      "type": "object",
-      "properties": {
-        "enabled": { "type": "boolean" },
-        "regionId": { "type": "string" }
+        "showCities": {
+          "type": "boolean"
+        },
+        "showRef": {
+          "type": "boolean"
+        },
+        "showRegionIsolate": {
+          "type": "boolean",
+          "description": "Hide everything outside the selected region with a parchment fill (world polygon minus region holes). Default false."
+        },
+        "regionIsolateId": {
+          "type": "string",
+          "description": "Region id from REGION_ISOLATE_DATA.regions, or custom after paste"
+        },
+        "showRiverLabels": {
+          "type": "boolean"
+        },
+        "refMode": {
+          "type": "string",
+          "enum": [
+            "pip",
+            "split"
+          ]
+        },
+        "projection": {
+          "type": "string",
+          "enum": [
+            "map",
+            "globe"
+          ]
+        },
+        "showSatellite": {
+          "type": "boolean"
+        },
+        "showRelief": {
+          "type": "boolean"
+        },
+        "showCssFilter": {
+          "type": "boolean"
+        }
       },
       "additionalProperties": true
     },
     "cities": {
       "type": "object",
       "properties": {
-        "dataFile": { "type": "string" },
-        "halfKm": { "type": "number" },
-        "renderMode": { "type": "string" }
+        "dataFile": {
+          "type": "string"
+        },
+        "halfKm": {
+          "type": "number"
+        },
+        "renderMode": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "mapstage": {
+      "type": "object",
+      "required": [
+        "backgroundColor",
+        "terrainExaggeration",
+        "satellite",
+        "hillshade"
+      ],
+      "properties": {
+        "backgroundColor": {
+          "type": "string"
+        },
+        "terrainExaggeration": {
+          "type": "number"
+        },
+        "satellite": {
+          "type": "object",
+          "properties": {
+            "opacity": {
+              "type": "number"
+            },
+            "saturation": {
+              "type": "number"
+            },
+            "contrast": {
+              "type": "number"
+            },
+            "brightnessMin": {
+              "type": "number"
+            },
+            "brightnessMax": {
+              "type": "number"
+            },
+            "hueRotate": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": true
+        },
+        "hillshade": {
+          "type": "object",
+          "properties": {
+            "exaggeration": {
+              "type": "number"
+            },
+            "illuminationDirection": {
+              "type": "number"
+            },
+            "shadowColor": {
+              "type": "string"
+            },
+            "highlightColor": {
+              "type": "string"
+            },
+            "accentColor": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        },
+        "water": {
+          "type": "object",
+          "properties": {
+            "lakeFill": {
+              "type": "string"
+            },
+            "lakeOutline": {
+              "type": "string"
+            },
+            "riverLevel3": {
+              "type": "string"
+            },
+            "riverLevel2": {
+              "type": "string"
+            },
+            "riverLevel1": {
+              "type": "string"
+            },
+            "highlightRiver": {
+              "type": "string"
+            },
+            "qilianRiver": {
+              "type": "string",
+              "description": "Legacy alias of highlightRiver"
+            },
+            "riverL3Width": {
+              "type": "number"
+            },
+            "riverL2Width": {
+              "type": "number"
+            },
+            "riverL1Width": {
+              "type": "number"
+            },
+            "highlightWidth": {
+              "type": "number"
+            },
+            "qilianWidth": {
+              "type": "number",
+              "description": "Legacy alias of highlightWidth"
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true,
+      "description": "v3 name of the maplibre block"
+    },
+    "isolate": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "regionId": {
+          "type": "string"
+        }
       },
       "additionalProperties": true
     }
-  }
+  },
+  "description": "Look layer (preset v3). `mapstage` is the v3 key; `maplibre` is the legacy alias the tuner still reads and writes. One of the two is required.",
+  "anyOf": [
+    {
+      "required": [
+        "mapstage"
+      ]
+    },
+    {
+      "required": [
+        "maplibre"
+      ]
+    }
+  ]
 }

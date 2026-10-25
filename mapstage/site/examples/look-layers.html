@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>图层开关 · MapStage 示例</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c8c2b4; font: 13px/1.4 system-ui, sans-serif; }
+    #stage { position: absolute; inset: 0; }
+    .ui { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+          max-width: calc(100% - 48px); padding: 8px 10px; background: rgba(251, 248, 241, 0.92); color: #241b14;
+          border: 1px solid #ddd2bf; border-radius: 8px; }
+    .ui button { font: inherit; padding: 5px 10px; border: 1px solid #ddd2bf; border-radius: 6px; background: #fff; color: inherit; cursor: pointer; }
+    .ui button[aria-pressed=true] { background: #241b14; color: #fbf8f1; border-color: #241b14; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="ui">
+    <button data-layer="hill" aria-pressed="true">山影</button>
+    <button data-layer="road" aria-pressed="true">道路</button>
+    <button data-layer="land" aria-pressed="true">植被地表</button>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script>
+    // 三个开关各对应一组图层：山影（hillshade）、道路（transportation）、植被地表（landcover）
+    const LAYERS = {
+      hill: AntiqueVectorPaint.setHillshade,
+      road: AntiqueVectorPaint.setRoads,
+      land: AntiqueVectorPaint.setLandcover,
+    };
+    const map = new maplibregl.Map({
+      container: 'stage',
+      style: MapStage.buildStyle({ skin: 'parchment', terrain: 1.2 }),
+      center: [104.5, 36.5], zoom: 6, pitch: 20,
+    });
+    window.map = map;
+
+    const buttons = Array.from(document.querySelectorAll('.ui button'));
+    const apply = (btn) => LAYERS[btn.dataset.layer](map, btn.getAttribute('aria-pressed') === 'true');
+    // 图层要等样式加载完才存在：load 后按按钮当前状态统一设一遍
+    map.on('load', () => buttons.forEach((btn) => apply(btn)));
+    buttons.forEach((btn) => {
+      btn.onclick = () => {
+        btn.setAttribute('aria-pressed', String(btn.getAttribute('aria-pressed') !== 'true'));
+        apply(btn);
+      };
+    });
+  </script>
+</body>
+</html>

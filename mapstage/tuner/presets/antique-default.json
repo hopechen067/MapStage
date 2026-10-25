@@ -2,17 +2,20 @@
   "id": "antique-default",
   "label": "Antique parchment default",
   "version": 3,
-  "savedAt": "2026-09-08T12:00:00",
+  "savedAt": "2026-10-19T12:00:00",
   "season": null,
   "camera": {
-    "center": [104.0, 35.5],
+    "center": [
+      104,
+      35.5
+    ],
     "zoom": 4.2,
     "pitch": 28,
     "bearing": 0
   },
   "mapstage": {
-    "backgroundColor": "#c8c2b4",
-    "terrainExaggeration": 1,
+    "backgroundColor": "#000000",
+    "terrainExaggeration": 1.6,
     "satellite": {
       "opacity": 0.7,
       "saturation": -0.08,
@@ -30,40 +33,30 @@
     },
     "water": {
       "lakeFill": "rgba(50,118,138,0.9)",
-      "lakeOutline": "rgba(90,110,105,0.8)",
       "riverLevel3": "rgba(48,112,128,0.55)",
       "riverLevel2": "rgba(45,110,125,0.88)",
       "riverLevel1": "rgba(42,105,120,0.95)",
-      "highlightRiver": "rgba(38,100,118,1)",
       "riverL3Width": 1.2,
       "riverL2Width": 2,
-      "riverL1Width": 1.8,
-      "highlightWidth": 2.4
+      "riverL1Width": 1.8
     }
   },
   "css": {
     "sepia": 0.08,
     "saturate": 0.98,
     "contrast": 1.03,
-    "brightness": 1.0,
+    "brightness": 1,
     "hueRotate": -1,
     "warmTintAlpha": 0.04,
     "warmTintColor": "#9a8868",
-    "vignetteStrength": 0.1
+    "vignetteStrength": 0
   },
   "ui": {
-    "projection": "map",
-    "showSatellite": true,
-    "showRelief": false,
-    "showCssFilter": true,
+    "showWater": true,
     "showCities": true,
     "showRef": false,
-    "showWater": false,
-    "showHighlight": false
-  },
-  "isolate": {
-    "enabled": false,
-    "regionId": "china"
+    "showRegionIsolate": false,
+    "regionIsolateId": "china"
   },
   "cities": {
     "dataFile": "assets/sample-sites.json",

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>地形夸张 · MapStage 示例</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c8c2b4; font: 13px/1.4 system-ui, sans-serif; }
+    #stage { position: absolute; inset: 0; }
+    .ui { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+          max-width: calc(100% - 48px); padding: 8px 10px; background: rgba(251, 248, 241, 0.92); color: #241b14;
+          border: 1px solid #ddd2bf; border-radius: 8px; }
+    .ui input[type=range] { width: 200px; accent-color: #b3332a; }
+    .ui output { font: 12px ui-monospace, Consolas, monospace; min-width: 52px; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="ui">
+    <label>地形夸张 <input id="ex" type="range" min="1" max="2" step="0.1" value="1.4" aria-label="地形夸张"></label>
+    <output id="read"></output>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script>
+    // 机位用 VIEW_RELIEF：祁连山前、俯角 70°，起伏才看得清
+    const view = AntiqueVectorPaint.VIEW_RELIEF;
+    const map = new maplibregl.Map({
+      container: 'stage',
+      style: MapStage.buildStyle({ skin: 'parchment', terrain: 1 }),
+      center: view.center, zoom: view.zoom, pitch: view.pitch, bearing: view.bearing,
+      maxPitch: 80,
+    });
+    window.map = map;
+    const $ = (id) => document.getElementById(id);
+
+    // setTerrainEx 默认按当前 zoom / pitch 做预算，俯角 70° 时会把 2.0 压到 0.8；
+    // 这里 budget: false 让滑杆值原样生效，显示的是返回的实际值
+    const apply = (v) => {
+      const ex = AntiqueMapFx.setTerrainEx(map, 'terrain', v, { budget: false });
+      $('read').textContent = v.toFixed(1) + ' → 实际 ' + Number(ex).toFixed(2);
+    };
+    $('ex').oninput = () => apply(Number($('ex').value));
+    map.on('load', () => apply(Number($('ex').value)));
+  </script>
+</body>
+</html>

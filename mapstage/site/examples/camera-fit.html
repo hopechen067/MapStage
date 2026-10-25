@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>按地点自动取景 · MapStage 示例</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c8c2b4; font: 13px/1.4 system-ui, sans-serif; }
+    #stage { position: absolute; inset: 0; }
+    .ui { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+          max-width: calc(100% - 48px); padding: 8px 10px; background: rgba(251, 248, 241, 0.92); color: #241b14;
+          border: 1px solid #ddd2bf; border-radius: 8px; }
+    .ui label { display: inline-flex; gap: 4px; align-items: center; cursor: pointer; }
+    #safe { position: absolute; z-index: 5; pointer-events: none; border: 1.5px dashed rgba(179, 51, 42, 0.75); background: rgba(179, 51, 42, 0.03); }
+    #safe span { position: absolute; left: 6px; top: 4px; font: 12px ui-monospace, Consolas, monospace; color: #b3332a; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div id="safe" aria-hidden="true"><span>安全区 SAFE_AREA</span></div>
+  <div class="ui">
+    <span>勾选地点，机位按安全区自动求：</span>
+    <span id="picks" style="display:contents"></span>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script>
+    // 没有时间轴：story 只为挂载提供地点，机位完全由勾选决定
+    const sites = [
+      { id: 'beijing', name: '北京', lngLat: [116.40, 39.90], tier: 'capital' },
+      { id: 'xian', name: '西安', lngLat: [108.94, 34.34], tier: 'capital' },
+      { id: 'chengdu', name: '成都', lngLat: [104.07, 30.66], tier: 'capital' },
+      { id: 'kunming', name: '昆明', lngLat: [102.71, 25.04], tier: 'capital' },
+      { id: 'guangzhou', name: '广州', lngLat: [113.26, 23.13], tier: 'capital' },
+      { id: 'wuhan', name: '武汉', lngLat: [114.31, 30.60], tier: 'capital' },
+      { id: 'lanzhou', name: '兰州', lngLat: [103.83, 36.06], tier: 'capital' },
+      { id: 'urumqi', name: '乌鲁木齐', lngLat: [87.62, 43.83], tier: 'capital' },
+    ];
+    const picked = new Set(['beijing', 'xian', 'chengdu', 'guangzhou']);
+    const story = { version: 1, id: 'camera-fit', duration: 1, sites, routes: [], shots: [] };
+
+    const $ = (id) => document.getElementById(id);
+    let stage = null;
+
+    // 安全区 SAFE_AREA 是归一化屏幕坐标，直接画成虚线框，看清机位把点放在哪里
+    const s = MapStage.SAFE_AREA;
+    const safe = $('safe');
+    safe.style.left = (s[0] * 100) + '%';
+    safe.style.top = (s[1] * 100) + '%';
+    safe.style.width = ((s[2] - s[0]) * 100) + '%';
+    safe.style.height = ((s[3] - s[1]) * 100) + '%';
+
+    // 选中的点 → 外接框 → 安全区像素边距 → 机位。只算平面，不计俯仰（见已知限制，pitch 取小值）
+    function fit() {
+      if (!stage) return;
+      const pts = sites.filter((x) => picked.has(x.id)).map((x) => x.lngLat);
+      if (!pts.length) return;
+      const el = $('stage');
+      const b = MapStage.bbox(pts);
+      const pad = MapStage.safePadding(el.clientWidth, el.clientHeight);
+      // 只选一个点时外接框退化成一点，maxZoom 限住视距，免得拉得无限近
+      const cam = stage.map.cameraForBounds([[b[0], b[1]], [b[2], b[3]]], { padding: pad, pitch: 20, bearing: 0, maxZoom: 7 });
+      stage.map.jumpTo(cam);
+    }
+
+    MapStage.mount($('stage'), { story, interactive: true }).then((st) => {
+      stage = st;
+      window.stage = stage;   // 控制台里可以 stage.map 直接看
+      const box = $('picks');
+      sites.forEach((x) => {
+        const l = document.createElement('label');
+        const c = document.createElement('input');
+        c.type = 'checkbox';
+        c.checked = picked.has(x.id);
+        c.onchange = () => { if (c.checked) picked.add(x.id); else picked.delete(x.id); fit(); };
+        l.append(c, x.name);
+        box.appendChild(l);
+      });
+      fit();
+      window.addEventListener('resize', fit);
+    });
+  </script>
+</body>
+</html>

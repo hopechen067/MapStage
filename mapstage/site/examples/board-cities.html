@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>城池圈、徽标与选中环 · MapStage 示例</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c8c2b4; font: 13px/1.4 system-ui, sans-serif; }
+    #stage { position: absolute; inset: 0; }
+    .ui { position: absolute; top: 12px; left: 12px; z-index: 10; max-width: min(420px, calc(100% - 48px)); padding: 10px 12px;
+          background: rgba(251, 248, 241, 0.92); color: #241b14; border: 1px solid #ddd2bf; border-radius: 8px; }
+    .ui .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
+    .ui .row b { min-width: 3.5em; font-weight: 600; }
+    .ui button { font: inherit; padding: 4px 9px; border: 1px solid #ddd2bf; border-radius: 6px; background: #fff; color: inherit; cursor: pointer; }
+    .ui button[aria-pressed=true] { background: #241b14; color: #fbf8f1; border-color: #241b14; }
+    .ui input[type=range] { width: 180px; accent-color: #b3332a; }
+    .ui output { font: 12px ui-monospace, Consolas, monospace; min-width: 32px; }
+    .ui pre { margin: 0; padding: 8px; background: #fff; border: 1px solid #ddd2bf; border-radius: 6px;
+              font: 12px/1.5 ui-monospace, Consolas, monospace; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="ui">
+    <div class="row"><b>当前城</b><output id="cur"></output><span>（点地图上的城切换）</span></div>
+    <div class="row"><b>颜色</b>
+      <button data-color="#b8432f">红</button><button data-color="#3f5f8a">蓝</button><button data-color="#2f7d5b">绿</button>
+    </div>
+    <div class="row"><b>圈大小</b><input id="value" type="range" min="1" max="60" value="16" aria-label="value"><output id="vout">16</output></div>
+    <div class="row"><b>徽标</b><button id="badge-up">+1</button><button id="badge-off">去掉徽标</button></div>
+    <div class="row"><b>选中环</b><output id="rings"></output>
+      <button data-ring="select">select</button><button data-ring="target">target</button><button data-ring="null">null</button>
+    </div>
+    <div class="row"><b>标签</b>
+      <button data-label="normal">normal</button><button data-label="active">active</button><button data-label="dim">dim</button>
+    </div>
+    <div class="row"><button id="clear">清除这座城（null）</button></div>
+    <pre id="json"></pre>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script src="../studio/assets/mapstage-board.js"></script>
+  <script>
+    // 城池的每个字段各管一件事：color 决定画不画、颜色；value 决定圈大小；badge 是圈上的数字；
+    // ring 是外框（select / target / null）；label 是地名状态（normal / active / dim）。
+    const sites = [
+      { id: 'changan', name: '长安', lngLat: [108.94, 34.27], tier: 'large' },
+      { id: 'luoyang', name: '洛阳', lngLat: [112.45, 34.62], tier: 'capital' },
+      { id: 'hanzhong', name: '汉中', lngLat: [107.03, 33.07], tier: 'medium' },
+      { id: 'chengdu', name: '成都', lngLat: [104.07, 30.67], tier: 'capital' },
+      { id: 'xiangyang', name: '襄阳', lngLat: [112.14, 32.04], tier: 'large' },
+      { id: 'jiangling', name: '江陵', lngLat: [112.19, 30.35], tier: 'medium' },
+      { id: 'jianye', name: '建业', lngLat: [118.78, 32.06], tier: 'capital' },
+    ];
+    const DEFAULT_COLOR = '#3f5f8a';
+    const $ = (id) => document.getElementById(id);
+    let cur = 'chengdu';
+    let board;
+
+    // 只改当前城的一两个字段；城没有 color 就不会画，所以补一个默认色
+    function patch(fields) {
+      const base = board.getCity(cur) || {};
+      board.setCities({ [cur]: Object.assign({ color: base.color || DEFAULT_COLOR }, fields) });
+      refresh();
+    }
+
+    function refresh() {
+      $('cur').textContent = board.sites[cur].name + '（' + cur + '）';
+      $('json').textContent = JSON.stringify(board.getCity(cur), null, 2) || 'null';
+      document.querySelectorAll('[data-ring]').forEach((b) => {
+        const c = board.getCity(cur) || {};
+        b.setAttribute('aria-pressed', String((c.ring || 'null') === b.dataset.ring));
+      });
+      document.querySelectorAll('[data-label]').forEach((b) => {
+        const c = board.getCity(cur) || {};
+        b.setAttribute('aria-pressed', String((c.label || 'normal') === b.dataset.label));
+      });
+    }
+
+    MapStageBoard.create($('stage'), { sites }).then((b) => {
+      board = b;
+      window.board = board;   // 控制台里可以试：board.setCities({ luoyang: { badge: 9 } })
+
+      // 初始状态：让几座城各示范一种写法，地图一打开就能看到效果
+      board.setCities({
+        chengdu: { color: '#b8432f', value: 25, badge: 3, ring: 'select', label: 'active' },
+        luoyang: { color: '#3f5f8a', value: 16, badge: 2 },
+        jianye: { color: '#2f7d5b', value: 9, badge: 1, ring: 'target' },
+        changan: { label: 'dim' },   // 没有 color 的城只显示地名状态，不画圈
+      });
+
+      // pick：点到城就切换当前城；点在空地（id 为 null）保持不变
+      board.on('pick', ({ id }) => { if (id) { cur = id; refresh(); } });
+
+      document.querySelectorAll('[data-color]').forEach((btn) => {
+        btn.onclick = () => patch({ color: btn.dataset.color });
+      });
+      $('value').oninput = () => { $('vout').textContent = $('value').value; patch({ value: Number($('value').value) }); };
+      $('badge-up').onclick = () => patch({ badge: ((board.getCity(cur) || {}).badge || 0) + 1 });
+      $('badge-off').onclick = () => patch({ badge: null });
+      document.querySelectorAll('[data-ring]').forEach((btn) => {
+        btn.onclick = () => patch({ ring: btn.dataset.ring === 'null' ? null : btn.dataset.ring });
+      });
+      document.querySelectorAll('[data-label]').forEach((btn) => {
+        btn.onclick = () => patch({ label: btn.dataset.label });
+      });
+      // setCities 传 null 清掉整座城的样式
+      $('clear').onclick = () => { board.setCities({ [cur]: null }); refresh(); };
+      // RINGS 是 ring 字段的样式表，这里把它列出来
+      $('rings').textContent = Object.entries(MapStageBoard.RINGS).map(([k, v]) => k + ' ' + v.color).join('，');
+
+      refresh();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+# Store and check out text as UTF-8 + LF on every OS. core.autocrlf=true on
+# Windows plus an editor re-save once turned tuner/index.html into CRLF
+# Latin-1 / GBK mojibake; pinning eol keeps diffs honest.
+* text=auto eol=lf
+
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.gif binary
+*.mp4 binary
+*.webm binary
+*.pbf binary
+*.woff2 binary

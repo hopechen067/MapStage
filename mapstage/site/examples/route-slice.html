@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>自己画路线 sliceRoute · MapStage 示例</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c8c2b4; font: 13px/1.4 system-ui, sans-serif; }
+    #stage { position: absolute; inset: 0; }
+    .ui { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+          max-width: calc(100% - 48px); padding: 8px 10px; background: rgba(251, 248, 241, 0.92); color: #241b14;
+          border: 1px solid #ddd2bf; border-radius: 8px; }
+    .ui input[type=range] { width: 240px; accent-color: #b3332a; }
+    .ui output { font: 12px ui-monospace, Consolas, monospace; min-width: 52px; }
+    .ui .info { font: 12px ui-monospace, Consolas, monospace; color: #6a5a48; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="ui">
+    <span>进度</span>
+    <input id="p" type="range" min="0" max="1" step="0.01" value="0.6" aria-label="路线进度">
+    <output id="read">0%</output>
+    <span class="info" id="info"></span>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script>
+    // 不用 story：只用纯函数 sliceRoute 切出已走部分，自己接到 MapLibre 图层上
+    const $ = (id) => document.getElementById(id);
+    const coords = [[102.64, 37.93], [100.45, 38.93], [98.49, 39.73], [94.66, 40.14]];   // 武威 → 张掖 → 酒泉 → 敦煌
+
+    const map = window.map = new maplibregl.Map({
+      container: 'stage',
+      style: MapStage.buildStyle({ terrain: false }),   // 不要地形，只要古卷底图
+      center: [99.5, 39.3], zoom: 5.2, pitch: 20,
+    });
+
+    const feature = (geometry) => ({ type: 'Feature', properties: {}, geometry });
+
+    // 每一帧：进度 → smoothstep 缓动 → sliceRoute 给出已走部分、头部点、朝向、里程
+    function update() {
+      if (!map.getSource('head')) return;   // 底图还没 load 完，图层未加
+      const p = Number($('p').value);
+      const s = MapStage.sliceRoute(coords, MapStage.smoothstep(p));
+      // 单点的 LineString 在 MapLibre 里不画，p=0 时用退化的两点
+      const walked = s.line.length > 1 ? s.line : [s.head, s.head];
+      map.getSource('walked').setData(feature({ type: 'LineString', coordinates: walked }));
+      map.getSource('head').setData(feature({ type: 'Point', coordinates: s.head }));
+      $('read').textContent = Math.round(p * 100) + '%';
+      $('info').textContent = '已走 ' + s.km.toFixed(0) + ' / ' + s.totalKm.toFixed(0) + ' km · 朝向 ' + s.bearing.toFixed(0) + '°' +
+        ' · 首段直线 ' + MapStage.haversineKm(coords[0], coords[1]).toFixed(0) + ' km';
+    }
+
+    map.on('load', () => {
+      map.addSource('full', { type: 'geojson', data: feature({ type: 'LineString', coordinates: coords }) });
+      map.addSource('walked', { type: 'geojson', data: feature({ type: 'LineString', coordinates: coords.slice(0, 2) }) });
+      map.addSource('head', { type: 'geojson', data: feature({ type: 'Point', coordinates: coords[0] }) });
+      // 全程淡虚线：先告诉观众要去哪
+      map.addLayer({ id: 'full', type: 'line', source: 'full', layout: { 'line-cap': 'round' },
+        paint: { 'line-color': MapStage.SIDE_COLORS.red, 'line-width': 2.5, 'line-opacity': 0.3, 'line-dasharray': [1.2, 1.6] } });
+      map.addLayer({ id: 'walked', type: 'line', source: 'walked', layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': MapStage.SIDE_COLORS.red, 'line-width': 4.5 } });
+      map.addLayer({ id: 'head', type: 'circle', source: 'head',
+        paint: { 'circle-radius': 6, 'circle-color': MapStage.SIDE_COLORS.red, 'circle-stroke-color': '#fbf8f1', 'circle-stroke-width': 2 } });
+      update();
+    });
+
+    $('p').oninput = update;
+  </script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>校验不过就拒绝渲染 · MapStage 示例</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c8c2b4; font: 13px/1.4 system-ui, sans-serif; }
+    #stage { position: absolute; inset: 0; }
+    .ui { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start;
+          max-width: calc(100% - 48px); padding: 8px 10px; background: rgba(251, 248, 241, 0.92); color: #241b14;
+          border: 1px solid #ddd2bf; border-radius: 8px; }
+    .ui .btns { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+    .ui button { font: inherit; padding: 5px 10px; border: 1px solid #ddd2bf; border-radius: 6px; background: #fff; color: inherit; cursor: pointer; }
+    .ui output { display: block; font: 12px/1.5 ui-monospace, Consolas, monospace; white-space: pre-wrap; max-width: 680px; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="ui">
+    <div class="btns">
+      <button data-case="valid">合法 story</button>
+      <button data-case="missing">引用缺失</button>
+      <button data-case="approx">C 级没标约</button>
+      <button data-case="twoPrimary">同屏两条 primary</button>
+      <button data-case="hold">hold 越段</button>
+      <button data-case="dense">镜头太密</button>
+    </div>
+    <output id="read">点一个按钮：每个按钮制造一种错误，然后调 validateStory</output>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    // 合法的基础 story：每个按钮都从它的副本出发，只改一处
+    const VALID = {
+      version: 1, id: 'validate', duration: 12,
+      sites: [
+        { id: 'wuwei', name: '武威', lngLat: [102.64, 37.93], tier: 'large' },
+        { id: 'zhangye', name: '张掖', lngLat: [100.45, 38.93], tier: 'large' },
+        { id: 'jiuquan', name: '酒泉', lngLat: [98.49, 39.73], tier: 'large' },
+        { id: 'dunhuang', name: '敦煌', lngLat: [94.66, 40.14], tier: 'large' },
+      ],
+      routes: [
+        { id: 'main', side: 'red', role: 'primary', via: ['wuwei', 'zhangye', 'jiuquan', 'dunhuang'],
+          curve: 'none', draw: [1, 8], hold: 10 },
+      ],
+      beats: [{ t: 0, active: ['wuwei'] }, { t: 4, active: ['zhangye'] }],
+      shots: [
+        { t: 0, fit: ['wuwei', 'dunhuang'], pitch: 20 },
+        { t: 6, fit: ['zhangye', 'jiuquan'], pitch: 20 },   // 间隔 6 秒 ≥ move 2.2 秒
+      ],
+    };
+
+    // 每个按钮制造一种错误（都是运行时会拒绝的）
+    const CASES = {
+      valid: (s) => s,
+      missing: (s) => { s.routes[0].via[1] = 'nowhere'; return s; },                 // 引用了不存在的地点
+      approx: (s) => { s.sites[2].confidence = 'C'; return s; },                     // C 级没标 approx
+      twoPrimary: (s) => {                                                           // 第二条 primary 与主线同屏
+        s.routes.push({ id: 'second', side: 'enemy', role: 'primary', via: ['jiuquan', 'dunhuang'],
+          curve: 'none', draw: [4, 11], hold: 12 });
+        return s;
+      },
+      hold: (s) => {                                                                 // 前段 hold 越进后段 draw
+        s.routes = [
+          { id: 'r1', side: 'enemy', role: 'reaction', via: ['wuwei', 'zhangye'], curve: 'none', draw: [1, 5], hold: 8 },
+          { id: 'r2', side: 'enemy', role: 'reaction', via: ['zhangye', 'jiuquan'], curve: 'none', draw: [6, 10], hold: 12 },
+        ];
+        return s;
+      },
+      dense: (s) => { s.shots[1].t = 1; return s; },                                 // 两个镜头只隔 1 秒，小于 move
+    };
+
+    // 不挂载、不改画面：validateStory 只做校验，不过就抛出，错误列在 error.errors 里
+    // lintStory 只返回错误数组（不抛），和 validateStory 报的是同一批条目
+    function check(name) {
+      const story = CASES[name](JSON.parse(JSON.stringify(VALID)));
+      const lint = MapStage.lintStory(story);
+      try {
+        MapStage.validateStory(story);
+        return name + ' → 通过（lintStory ' + lint.length + ' 条）';
+      } catch (e) {
+        const errs = e.errors || [e.message];
+        return name + ' → ' + e.name + '，' + errs.length + ' 条（lintStory ' + lint.length + ' 条）：\n' +
+          errs.map((m, i) => (i + 1) + '. ' + m).join('\n');
+      }
+    }
+
+    document.querySelectorAll('[data-case]').forEach((btn) => {
+      btn.onclick = () => { $('read').textContent = check(btn.dataset.case); };
+    });
+
+    // 合法的那份真的挂上去；window.stage 只挂它
+    MapStage.mount($('stage'), { story: VALID }).then((stage) => {
+      window.stage = stage;
+      stage.render(0);
+    });
+  </script>
+</body>
+</html>

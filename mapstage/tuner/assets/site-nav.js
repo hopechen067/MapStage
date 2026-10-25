@@ -1,6 +1,6 @@
 /**
- * Shared site chrome. Browser: window.AntiqueSiteNav
- * Contract: references/site/00-shared.md
+ * Studio chrome nav. Browser: window.AntiqueSiteNav
+ * Studio 部署在官网 /studio/ 下，站点链接用 ../
  */
 (function (root) {
   'use strict';
@@ -8,27 +8,19 @@
   var GH = 'https://github.com/hopechen067/MapStage';
 
   var LINKS = [
-    { page: 'home', label: '概览', href: 'home.html' },
-    { page: 'browse', label: '目录', href: 'browse.html' },
-    { page: 'edit', label: '编辑器', href: 'vector-layers.html' },
-    { page: 'showcase', label: '成片', href: 'showcase.html' },
-    { page: 'install', label: '安装', href: 'install.html' },
-    { page: 'pricing', label: '定价', href: 'pricing.html' },
+    { page: 'home', label: '首页', href: '../' },
+    { page: 'docs', label: '文档', href: '../docs/' },
+    { page: 'examples', label: '示例', href: '../examples/' },
+    { page: 'studio', label: '调参台', href: 'index.html' },
   ];
 
   var FOOT = [
-    { page: 'legal', label: '许可', href: 'legal.html' },
     { page: 'github', label: 'GitHub', href: GH },
   ];
 
-  function fxHref(family, variant) {
-    return 'fx.html?family=' + encodeURIComponent(family) + '&variant=' + encodeURIComponent(variant);
-  }
-
   function editorPage(family) {
     var f = String(family || '').trim();
-    if (f === 'skin' || f === 'camera') return 'vector-layers.html';
-    if (!f) return 'vector-layers.html';
+    // 皮肤 / 海拔设色已并入调参台「配色」分区；vector-layers.html 仅作实验室页保留
     return 'index.html';
   }
 
@@ -100,7 +92,6 @@
     LINKS: LINKS,
     FOOT: FOOT,
     GH: GH,
-    fxHref: fxHref,
     editorPage: editorPage,
     editorHref: editorHref,
     parseQuery: parseQuery,

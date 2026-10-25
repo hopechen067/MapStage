@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MapStage · 历史视频的地图舞台</title>
+  <meta name="description" content="MapStage：基于 MapLibre GL JS 的叙事地图引擎与 agent skill。古卷底图、路线行进、自动取景、合规规则，一份 JSON 驱动，逐帧可复现。">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="assets/site.css">
+  <style>
+    .hero { padding: 72px 0 88px; }
+    .hero .wrap { display: grid; grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr); gap: 56px; align-items: center; }
+    .hero h1 { font: 900 clamp(36px, 5vw, 60px)/1.12 var(--serif); margin: 0 0 18px; letter-spacing: 0.01em; text-wrap: balance; }
+    .hero h1 em { font-style: normal; color: var(--seal); }
+    .hero .sub { font-size: 18px; color: var(--ink-2); margin: 0 0 8px; max-width: 520px; text-wrap: pretty; }
+    .hero .en { font-size: 14px; color: var(--ink-3); margin: 0 0 30px; letter-spacing: 0.02em; }
+    .hero .ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 28px; }
+    .hero .install { max-width: 520px; }
+    .stage-frame { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid var(--rule); box-shadow: var(--shadow); background: #c8c2b4; }
+    .stage-frame .viewport { position: relative; aspect-ratio: 16 / 9; }
+    .stage-frame #hero-map { position: absolute; inset: 0; }
+    .stage-frame .safe {
+      position: absolute; left: 6%; right: 6%; top: 22%; bottom: 22%; z-index: 3; pointer-events: none;
+      border: 1px dashed rgba(43, 33, 24, 0.0); transition: border-color 0.3s;
+    }
+    .stage-frame.show-safe .safe { border-color: rgba(43, 33, 24, 0.45); }
+    .stage-frame .safe span { position: absolute; top: -20px; left: 0; font: 600 11px/1 var(--mono); color: rgba(43, 33, 24, 0.7); opacity: 0; transition: opacity 0.3s; }
+    .stage-frame.show-safe .safe span { opacity: 1; }
+    .stage-frame .caption {
+      position: absolute; left: 18px; top: 14px; z-index: 4; pointer-events: none;
+      font: 700 22px/1.3 var(--serif); color: #2b2118; text-shadow: 0 0 6px #efe6d2, 0 0 12px #efe6d2;
+    }
+    .stage-frame .caption small { display: block; font: 600 12px/1.4 var(--sans); color: #5a4d40; letter-spacing: 0.06em; }
+    .timeline { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--card); border-top: 1px solid var(--rule); font: 12.5px/1 var(--mono); color: var(--ink-3); }
+    .timeline button { border: 1px solid var(--rule); background: var(--paper); color: var(--ink); width: 30px; height: 30px; border-radius: 7px; cursor: pointer; display: grid; place-items: center; }
+    .timeline button svg { width: 12px; height: 12px; }
+    .timeline input { flex: 1; accent-color: var(--seal); min-width: 0; }
+    .timeline .tc { min-width: 118px; text-align: right; }
+    .timeline label { display: flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; }
+    @media (max-width: 960px) { .hero .wrap { grid-template-columns: minmax(0, 1fr); gap: 40px; } .hero { padding-top: 40px; } }
+    @media (max-width: 520px) { .timeline label { display: none; } .timeline .tc { min-width: 0; } }
+
+    .proof { padding: 30px 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); background: var(--card); }
+    .proof .wrap { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); color: var(--ink-2); font-size: 14px; }
+    .proof span { display: flex; align-items: baseline; justify-content: center; gap: 8px; padding: 4px 12px; }
+    .proof span + span { border-left: 1px solid var(--rule); }
+    .proof b { font: 900 30px/1 var(--serif); color: var(--seal); }
+    @media (max-width: 760px) { .proof .wrap { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 16px; } .proof span:nth-child(3) { border-left: 0; } }
+
+    .layer-card { display: flex; flex-direction: column; gap: 16px; }
+    .layer-card .code { margin-top: auto; font-size: 12.5px; }
+    .layer-card .num { font: 900 15px/1 var(--serif); color: var(--seal); }
+
+    .flow { counter-reset: step; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
+    .flow li { list-style: none; position: relative; padding: 22px 20px 20px; background: var(--card); border: 1px solid var(--rule); border-radius: 12px; }
+    .flow li::before { counter-increment: step; content: counter(step); display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--seal); color: var(--seal-ink); font: 700 14px/1 var(--sans); margin-bottom: 14px; }
+    .flow h3 { font: 700 17px/1.35 var(--serif); margin: 0 0 6px; }
+    .flow p { margin: 0; color: var(--ink-2); font-size: 14.5px; }
+    .flow code { font-size: 12.5px; background: var(--paper-2); padding: 1px 5px; border-radius: 4px; }
+    .prompt-box { margin-top: 28px; }
+    @media (max-width: 960px) { .flow { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 560px) { .flow { grid-template-columns: minmax(0, 1fr); } }
+
+    .rule-card h3 { display: flex; align-items: center; gap: 10px; }
+    .rule-card h3 svg { width: 22px; height: 22px; color: var(--seal); flex: none; }
+    .rule-card .src { display: block; margin-top: 12px; font: 12px/1.4 var(--mono); color: var(--ink-3); }
+
+    .hosts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+    .hosts .card h3 { font-family: var(--sans); font-size: 17px; }
+    .hosts .code { margin-top: 14px; font-size: 12px; }
+    @media (max-width: 960px) { .hosts { grid-template-columns: minmax(0, 1fr); } }
+
+    .band { padding: 72px 0; border-top: 1px solid var(--rule); background: var(--ink); color: var(--paper); }
+    .band h2 { font: 700 clamp(26px, 3.4vw, 36px)/1.3 var(--serif); margin: 0 0 10px; }
+    .band p { color: color-mix(in srgb, var(--paper) 72%, transparent); margin: 0 0 28px; }
+    .band.contour::before { background: var(--paper); opacity: 0.08; }
+    .band .wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: center; }
+    .band .btn { background: transparent; color: var(--paper); border-color: color-mix(in srgb, var(--paper) 35%, transparent); }
+    .band .btn.primary { background: var(--seal); border-color: var(--seal); color: var(--seal-ink); }
+    @media (max-width: 860px) { .band .wrap { grid-template-columns: minmax(0, 1fr); } }
+    .show-video { border-radius: 12px; overflow: hidden; border: 1px solid var(--rule); background: #000; }
+  </style>
+</head>
+<body>
+  <header data-site-header data-page="home"></header>
+
+  <main>
+    <section class="hero contour">
+      <div class="wrap">
+        <div>
+          <p class="eyebrow">MapLibre · Agent Skill · 开源</p>
+          <h1>让地图成为<br>历史视频的<em>舞台</em></h1>
+          <p class="sub">古卷底图、路线行进、自动取景、合规规则——写一份 JSON，或者对 agent 说一句话，就能逐帧渲染出可上线的地图镜头。</p>
+          <p class="en">Narrative maps for history videos. One JSON, frame-exact.</p>
+          <div class="ctas">
+            <a class="btn primary" href="docs/?p=quickstart">五分钟上手</a>
+            <a class="btn" href="examples/">看示例</a>
+            <a class="btn" href="studio/">打开调参台</a>
+          </div>
+          <div class="code install wrap-lines" data-lang="bash" data-title="安装为 agent skill"><pre>npx skills add hopechen067/MapStage --skill mapstage -g</pre></div>
+        </div>
+
+        <div class="stage-frame" id="stage">
+          <div class="viewport">
+            <div id="hero-map" role="img" aria-label="河西走廊从武威到敦煌的路线行进动画"></div>
+            <div class="safe"><span>安全区 0.06 / 0.22 / 0.94 / 0.78</span></div>
+            <div class="caption"><small>示例 · story.json</small>河西走廊 · 武威 → 敦煌</div>
+          </div>
+          <div class="timeline">
+            <button type="button" id="tl-play" aria-label="暂停"><svg viewBox="0 0 12 12"><rect x="2" y="1.5" width="2.6" height="9" fill="currentColor"/><rect x="7.4" y="1.5" width="2.6" height="9" fill="currentColor"/></svg></button>
+            <input type="range" id="tl-range" min="0" max="16" step="0.04" value="0" aria-label="时间轴">
+            <span class="tc" id="tl-tc">seek(0.00)</span>
+            <label><input type="checkbox" id="tl-safe"> 安全区</label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="proof" aria-label="经验来源">
+      <div class="wrap">
+        <span><b>14</b>期长征系列</span>
+        <span><b>1</b>部四渡赤水</span>
+        <span><b>3</b>次平台审核整改</span>
+        <span><b>1</b>份 JSON 驱动整段镜头</span>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap">
+        <p class="eyebrow">三层结构</p>
+        <h2>底图、叙事、舞台，各管一件事</h2>
+        <p class="lead">底图只管「长什么样」，叙事只管「讲什么」，舞台只管「第几秒画什么」。三层各自一份规范，可以单独调，也可以单独换。</p>
+        <div class="grid cols-3">
+          <article class="card layer-card">
+            <span class="num">01 · Look</span>
+            <h3>底图 Preset</h3>
+            <p>五套古卷皮肤、真实地形、可选卫星与水系、区域拆出。调参台里调好，导出 v3 preset JSON。</p>
+            <div class="code" data-lang="json" data-title="preset.json"><pre>{
+  "version": 3,
+  "skin": "parchment",
+  "terrain": { "exaggeration": 1.0 },
+  "camera": { "center": [104, 35.5], "zoom": 4.2 }
+}</pre></div>
+          </article>
+          <article class="card layer-card">
+            <span class="num">02 · Story</span>
+            <h3>叙事 Story</h3>
+            <p>地点、路线、阵营、地名状态、镜头、字卡。长征十四期里反复手写的东西，收成一份声明式规范。</p>
+            <div class="code" data-lang="json" data-title="story.json"><pre>{
+  "routes": [{ "id": "march", "side": "red",
+    "via": ["武威", "张掖", "酒泉", "敦煌"],
+    "draw": [2, 14] }],
+  "shots": [{ "t": 0, "fit": ["武威", "敦煌"] }]
+}</pre></div>
+          </article>
+          <article class="card layer-card">
+            <span class="num">03 · Stage</span>
+            <h3>舞台 Stage</h3>
+            <p>给宿主一个 <code>seek(t)</code>：HyperFrames、Remotion、Playwright 截帧都按同一个时间契约逐帧取画面。</p>
+            <div class="code" data-lang="js" data-title="host.js"><pre>const stage = await MapStage.mount(el, { preset, story });
+await stage.seek(12.5); // 地图 idle 后才 resolve
+</pre></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section alt">
+      <div class="wrap">
+        <p class="eyebrow">一句话出片</p>
+        <h2>对 agent 说一句话，剩下的交给 skill</h2>
+        <p class="lead">安装后用 <code>/mapstage</code> 调起。skill 会按规范生成数据、起本地预览、出低清样片，等你确认再出终版。</p>
+        <ol class="flow">
+          <li><h3>描述镜头</h3><p>「做一个河西走廊从武威到敦煌的路线移动」</p></li>
+          <li><h3>生成 story</h3><p>查坐标、定阵营色、按口播反算机位，写出 <code>story.json</code>。</p></li>
+          <li><h3>低清预览</h3><p>960×540@10 先看节奏与构图，合规检查自动跑。</p></li>
+          <li><h3>逐帧终版</h3><p>确认后 1080p 逐帧截取，断点续拍，局部重拍。</p></li>
+        </ol>
+        <div class="code prompt-box wrap-lines" data-title="复制给你的 agent"><pre>安装 MapStage skill：https://github.com/hopechen067/MapStage
+然后用 /mapstage 做一段河西走廊从武威到敦煌的路线移动，完成后启动本地预览。</pre></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap">
+        <p class="eyebrow">内置规则</p>
+        <h2>踩过的坑，写成默认值</h2>
+        <p class="lead">这些规则来自长征系列与四渡赤水的制作记录和审核整改。默认开启，想关要显式声明。</p>
+        <div class="grid cols-3">
+          <article class="card rule-card">
+            <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>合规底图</h3>
+            <p>不画省界和国界，不加雾化和暗角；出全图时台湾、海南、海岸线完整显示。</p>
+            <span class="src">来源：长征 ep03 / ep14 审核整改</span>
+          </article>
+          <article class="card rule-card">
+            <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M8 12h8M13 9l3 3-3 3"/></svg>一句一动</h3>
+            <p>一句口播最多一次有目的的镜头移动，到位后停稳，只做 6–7% 缓推和 3° 俯仰。</p>
+            <span class="src">来源：长征 ep02 r8（机位 59 → 38）</span>
+          </article>
+          <article class="card rule-card">
+            <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z"/><path d="M4 9h16M9 20V9"/></svg>自动取景</h3>
+            <p>给一组地点，按安全区反算最小视距；全线总览单独放宽上限，路线不再出画。</p>
+            <span class="src">来源：cz_render camfit · ep12</span>
+          </article>
+          <article class="card rule-card">
+            <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="10" r="3"/><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/></svg>地名不消失</h3>
+            <p>地名与城池一旦出现就留在画面上，只在普通、激活、变暗三态之间切换。</p>
+            <span class="src">来源：四渡赤水 AGENTS</span>
+          </article>
+          <article class="card rule-card">
+            <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 18c3-6 6-9 9-9s5 2 7 0"/><path d="M17 6l3 3-3 3"/></svg>阵营与主次</h3>
+            <p>红军红、敌方灰蓝，箭头与牌子同色；同屏最多 1 条主线、2 个部队名牌。</p>
+            <span class="src">来源：长征 ep06 · 四渡赤水分级表</span>
+          </article>
+          <article class="card rule-card">
+            <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>逐帧确定</h3>
+            <p>录制路径只用 <code>jumpTo</code> + 等 idle，不用 easeTo / flyTo；同一时间点永远同一画面。</p>
+            <span class="src">来源：tuner hard rules · shoot_v4</span>
+          </article>
+        </div>
+        <p style="margin:28px 0 0"><a href="docs/?p=lessons">读完整的长征系列地图经验 →</a></p>
+      </div>
+    </section>
+
+    <section class="section alt">
+      <div class="wrap">
+        <p class="eyebrow">示例</p>
+        <h2>每个能力一个可运行的页面</h2>
+        <p class="lead">像 MapLibre 的示例库一样：左边看效果，下面看源码，复制就能用。</p>
+        <div class="grid cols-3" id="home-examples"></div>
+        <p style="margin:28px 0 0"><a href="examples/">全部示例 →</a></p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap">
+        <p class="eyebrow">宿主</p>
+        <h2>一个时间契约，三种渲染宿主</h2>
+        <p class="lead">地图页面暴露 <code>window.__mapstageSeek(t)</code>，宿主按帧调用、等 idle 后截图。调参台只负责调参，从不做终版渲染。</p>
+        <div class="hosts">
+          <article class="card">
+            <h3>HyperFrames</h3>
+            <p>页面声明 <code>data-composition-id</code> 与时长，HyperFrames 逐帧驱动。</p>
+            <div class="code" data-lang="js"><pre>await window.__mapstageSeek(frame / fps);</pre></div>
+          </article>
+          <article class="card">
+            <h3>Remotion</h3>
+            <p>共享一个地图组件，<code>delayRender</code> 等 seek 完成再放行。</p>
+            <div class="code" data-lang="js"><pre>const h = delayRender();
+stage.seek(frame / fps).then(() =&gt; continueRender(h));</pre></div>
+          </article>
+          <article class="card">
+            <h3>Playwright 截帧</h3>
+            <p>分层截图、断点续拍、局部重拍；GPU 光栅化关掉防旧瓦片。</p>
+            <div class="code" data-lang="js"><pre>await page.evaluate(t =&gt; window.__mapstageSeek(t), t);
+await page.screenshot({ path });</pre></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section alt">
+      <div class="wrap">
+        <p class="eyebrow">作品</p>
+        <h2>用 MapStage 做的镜头</h2>
+        <p class="lead">河西走廊系列第 7 期的地图段：古卷底图 + 真实地形 + 分级城池，预缓存后 <code>jumpTo</code> 逐帧录制。这是合规规则定下来之前的早期作品，画面里的虚线是历史郡界；按现在的默认规则，新片不再画任何境界线。</p>
+        <div class="show-video">
+          <video src="studio/media/hexi-ep07-demo-480p.mp4" controls muted playsinline preload="metadata"></video>
+        </div>
+      </div>
+    </section>
+
+    <section class="band contour">
+      <div class="wrap">
+        <div>
+          <h2>开始做第一段地图镜头</h2>
+          <p>装好 skill，跟着快速上手做一段路线行进；或者直接打开调参台调一套自己的底图。</p>
+          <div style="display:flex;flex-wrap:wrap;gap:12px">
+            <a class="btn primary" href="docs/?p=quickstart">五分钟上手</a>
+            <a class="btn" href="docs/?p=roadmap">看路线图</a>
+          </div>
+        </div>
+        <div class="code" data-lang="bash" data-title="或者 gh"><pre>gh skill install hopechen067/MapStage mapstage --scope user</pre></div>
+      </div>
+    </section>
+  </main>
+
+  <footer data-site-footer></footer>
+
+  <script src="assets/site.js"></script>
+  <script src="examples/examples.js"></script>
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="studio/assets/vector-paint.js"></script>
+  <script src="studio/assets/map-fx.js"></script>
+  <script src="studio/assets/mapstage-story.js"></script>
+  <script src="assets/stage-kit.js"></script>
+  <script>
+    (function () {
+      // 首页示例卡片：三层各挑一个
+      var host = document.getElementById('home-examples');
+      ['story-hexi', 'route-march', 'board-basic'].map(window.MapStageExamples.byId).forEach(function (ex) {
+        host.appendChild(window.MapStageExamples.card(ex, 'examples/'));
+      });
+    })();
+
+    (function () {
+      var Kit = window.MapStageKit;
+      var DURATION = 16;
+      var SITES = [
+        { name: '武威', lngLat: [102.64, 37.93], tier: 'capital', at: 0 },
+        { name: '张掖', lngLat: [100.45, 38.93], at: 0.33 },
+        { name: '酒泉', lngLat: [98.49, 39.73], at: 0.55 },
+        { name: '嘉峪关', lngLat: [98.29, 39.80], tier: 'pass', at: 0.58, side: 'left' },
+        { name: '瓜州', lngLat: [95.78, 40.52], at: 0.86 },
+        { name: '敦煌', lngLat: [94.66, 40.14], tier: 'capital', at: 1 },
+      ];
+      var ROUTE = [
+        [102.64, 37.93], [101.97, 38.25], [101.09, 38.78], [100.45, 38.93], [99.82, 39.38],
+        [98.49, 39.73], [98.29, 39.80], [97.05, 40.29], [95.78, 40.52], [94.66, 40.14],
+      ];
+      // 镜头：总览停稳 → 跟进中段 → 落到敦煌；每段只动一次，停稳段缓推
+      var SHOTS = [
+        { t: 0, center: [98.7, 39.25], zoom: 5.55, pitch: 38, bearing: 0, push: 0.12 },
+        { t: 7, center: [99.9, 39.05], zoom: 6.3, pitch: 46, bearing: -12, move: 2.2, push: 0.1 },
+        { t: 13, center: [96.2, 40.05], zoom: 6.5, pitch: 48, bearing: -18, move: 2.4, push: 0.08, tilt: 2 },
+      ];
+      var DRAW = [1.2, 13.6];
+
+      var frame = document.getElementById('stage');
+      var range = document.getElementById('tl-range');
+      var tc = document.getElementById('tl-tc');
+      var playBtn = document.getElementById('tl-play');
+      var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      var map = Kit.createMap('hero-map', {
+        skin: 'parchment', terrain: 1.6, roads: false, interactive: false,
+        center: SHOTS[0].center, zoom: SHOTS[0].zoom, pitch: SHOTS[0].pitch,
+      });
+      var route = null;
+      var labels = [];
+
+      function render(t) {
+        var cam = Kit.cameraAt(SHOTS, t);
+        map.jumpTo(cam);
+        var p = Kit.smoothstep((t - DRAW[0]) / (DRAW[1] - DRAW[0]));
+        if (route) route.seek(p);
+        labels.forEach(function (l) {
+          var st = p >= l.site.at - 0.02 ? (p < l.site.at + 0.12 || (l.site.at === 1 && p >= 0.98) ? 'active' : 'normal') : 'dim';
+          l.setState(st);
+        });
+        range.value = t.toFixed(2);
+        tc.textContent = 'seek(' + t.toFixed(2) + ')';
+      }
+
+      var stop = null;
+      var current = 0;
+      function start(from) {
+        if (stop) stop();
+        stop = Kit.play(DURATION, function (t) { current = t; render(t); }, { from: from || 0, loop: true });
+        playBtn.setAttribute('aria-label', '暂停');
+        playBtn.innerHTML = '<svg viewBox="0 0 12 12"><rect x="2" y="1.5" width="2.6" height="9" fill="currentColor"/><rect x="7.4" y="1.5" width="2.6" height="9" fill="currentColor"/></svg>';
+      }
+      function pause() {
+        if (stop) stop();
+        stop = null;
+        playBtn.setAttribute('aria-label', '播放');
+        playBtn.innerHTML = '<svg viewBox="0 0 12 12"><path d="M2.5 1.5l8 4.5-8 4.5z" fill="currentColor"/></svg>';
+      }
+
+      map.on('load', function () {
+        route = Kit.addRoute(map, { id: 'hexi', side: 'red', coords: ROUTE, width: 4.5 });
+        labels = SITES.map(function (s) {
+          var l = Kit.addLabel(map, s);
+          l.site = s;
+          return l;
+        });
+        Kit.exposeSeek(map, DURATION, function (t) { pause(); current = t; render(t); });
+        if (reduce) { render(DURATION); pause(); return; }
+        start(0);
+        if ('IntersectionObserver' in window) {
+          new IntersectionObserver(function (es) {
+            es.forEach(function (e) {
+              if (!e.isIntersecting && stop) { pause(); frame.dataset.autopaused = '1'; }
+              else if (e.isIntersecting && frame.dataset.autopaused) { delete frame.dataset.autopaused; start(current); }
+            });
+          }).observe(frame);
+        }
+      });
+
+      playBtn.addEventListener('click', function () { if (stop) pause(); else start(current >= DURATION ? 0 : current); });
+      range.addEventListener('input', function () { pause(); current = Number(range.value); render(current); });
+      document.getElementById('tl-safe').addEventListener('change', function (e) { frame.classList.toggle('show-safe', e.target.checked); });
+    })();
+  </script>
+</body>
+</html>

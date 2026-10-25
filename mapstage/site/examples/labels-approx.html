@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>可信度与「约」 · MapStage 示例</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c8c2b4; font: 13px/1.4 system-ui, sans-serif; }
+    #stage { position: absolute; inset: 0; }
+    .ui { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+          max-width: calc(100% - 48px); padding: 8px 10px; background: rgba(251, 248, 241, 0.92); color: #241b14;
+          border: 1px solid #ddd2bf; border-radius: 8px; }
+    .ui button { font: inherit; padding: 5px 10px; border: 1px solid #ddd2bf; border-radius: 6px; background: #fff; color: inherit; cursor: pointer; }
+    .ui button[aria-pressed=true] { background: #241b14; color: #fbf8f1; border-color: #241b14; }
+    .ui output { font: 12px/1.5 ui-monospace, Consolas, monospace; max-width: 620px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="ui">
+    <button id="strip" aria-pressed="false">去掉 approx</button>
+    <output id="read">按钮用来看 lintStory 报什么错</output>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script>
+    // 玉门关史学上有争议，只能给 C 级 + approx；敦煌、瓜州是 A 级，精确落点。
+    // 瓜州、安西两点靠得很近：安西用 label.side = left 往左让开。
+    const story = {
+      version: 1, id: 'labels-approx', duration: 12,
+      sites: [
+        { id: 'dunhuang', name: '敦煌', lngLat: [94.66, 40.14], tier: 'large', confidence: 'A' },
+        { id: 'yumen', name: '玉门关', lngLat: [93.86, 40.35], tier: 'pass', confidence: 'C', approx: true },
+        { id: 'guazhou', name: '瓜州', lngLat: [95.78, 40.52], tier: 'medium', confidence: 'A' },
+        { id: 'anxi', name: '安西', lngLat: [95.77, 40.54], tier: 'station', confidence: 'A', label: { side: 'left' } },
+      ],
+      beats: [{ t: 0, active: ['dunhuang', 'guazhou'] }],
+      shots: [{ t: 0, fit: ['yumen', 'dunhuang', 'guazhou', 'anxi'], pitch: 20 }],
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    MapStage.mount($('stage'), { story }).then((stage) => {
+      window.stage = stage;
+      stage.render(0);
+    });
+
+    // 去掉 approx 是在副本上做的，不动已经挂载的 story；lintStory 只报不抛
+    $('strip').onclick = () => {
+      const on = $('strip').getAttribute('aria-pressed') !== 'true';
+      $('strip').setAttribute('aria-pressed', String(on));
+      $('strip').textContent = on ? '加回 approx' : '去掉 approx';
+      if (!on) { $('read').textContent = '当前 story 通过 lintStory（approx 都在）'; return; }
+      const copy = JSON.parse(JSON.stringify(story));
+      copy.sites.forEach((s) => { if (s.id === 'yumen') delete s.approx; });
+      const errs = MapStage.lintStory(copy);
+      $('read').textContent = errs.length
+        ? 'lintStory 报 ' + errs.length + ' 条：\n' + errs.map((e, i) => (i + 1) + '. ' + e).join('\n')
+        : 'lintStory 通过';
+    };
+  </script>
+</body>
+</html>

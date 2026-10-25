@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>分段 hold 按段末收 · MapStage 示例</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c8c2b4; font: 13px/1.4 system-ui, sans-serif; }
+    #stage { position: absolute; inset: 0; }
+    .ui { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+          max-width: calc(100% - 48px); padding: 8px 10px; background: rgba(251, 248, 241, 0.92); color: #241b14;
+          border: 1px solid #ddd2bf; border-radius: 8px; }
+    .ui button { font: inherit; padding: 5px 10px; border: 1px solid #ddd2bf; border-radius: 6px; background: #fff; color: inherit; cursor: pointer; }
+    .ui input[type=range] { width: 200px; accent-color: #b3332a; }
+    .ui output { font: 12px ui-monospace, Consolas, monospace; min-width: 52px; }
+    .ui .info { font: 12px ui-monospace, Consolas, monospace; color: #6a5a48; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="ui">
+    <button id="play">播放</button>
+    <input id="t" type="range" min="0" step="0.04" value="0" aria-label="时间">
+    <output id="read">0.0 s</output>
+    <span class="info" id="info"></span>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script>
+    // 两段主线首尾相接：前段 hold = 4，正好是后段 draw[0]，前段在后段开画的那一刻收掉
+    const story = {
+      version: 1, id: 'route-hold', duration: 12,
+      sites: [
+        { id: 'wuwei', name: '武威', lngLat: [102.64, 37.93], tier: 'large' },
+        { id: 'zhangye', name: '张掖', lngLat: [100.45, 38.93], tier: 'large' },
+        { id: 'jiuquan', name: '酒泉', lngLat: [98.49, 39.73], tier: 'large' },
+        { id: 'dunhuang', name: '敦煌', lngLat: [94.66, 40.14], tier: 'large' },
+      ],
+      routes: [
+        // 第一段：draw 0.5→3 画完，hold 到 4 才收
+        { id: 'seg-1', side: 'red', role: 'primary', via: ['wuwei', 'zhangye', 'jiuquan'],
+          curve: 'none', draw: [0.5, 3], hold: 4 },
+        // 第二段：4 开画，同屏 primary 始终只有 1 条
+        { id: 'seg-2', side: 'red', role: 'primary', via: ['jiuquan', 'dunhuang'],
+          curve: 'none', draw: [4, 11], hold: 12 },
+      ],
+      shots: [{ t: 0, center: [99.6, 38.8], zoom: 5.4, pitch: 20 }],
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    MapStage.mount($('stage'), { story }).then((stage) => {
+      window.stage = stage;
+      $('t').max = stage.duration;
+      // 窗口用运行时同一套 routeWindow 算，和 validateStory 的「hold 越段」判定一致
+      const wins = story.routes.map((r) => {
+        const w = MapStage.routeWindow(r, story.duration);
+        return r.id + ' [' + w[0] + ', ' + w[1] + ')';
+      });
+      const show = (t) => {
+        stage.render(t);
+        $('t').value = t;
+        $('read').textContent = t.toFixed(1) + ' s';
+        $('info').textContent = wins.join(' · ') + ' · 同屏 primary ' + MapStage.countsAt(story, t).primary;
+      };
+      $('t').oninput = () => show(Number($('t').value));
+
+      let raf = null;
+      $('play').onclick = () => {
+        if (raf) { cancelAnimationFrame(raf); raf = null; $('play').textContent = '播放'; return; }
+        const t0 = performance.now() - Number($('t').value) * 1000;
+        const tick = (now) => {
+          show(((now - t0) / 1000) % stage.duration);
+          raf = requestAnimationFrame(tick);
+        };
+        $('play').textContent = '暂停';
+        raf = requestAnimationFrame(tick);
+      };
+      show(6);   // 交接之后：第一段已收，第二段行进中
+    });
+  </script>
+</body>
+</html>

@@ -1,13 +1,14 @@
 display_name: "MapStage"
 default_prompt: |
-  Use the mapstage skill: MapStage tuner with map/globe projection, optional
-  satellite raster, Mapterhorn hillshade (encoding terrarium), OpenFreeMap
-  vector water, CSS color grade, region isolate, and city extrusions. Prefer
-  tuner preset-antique-default.json (version 3). Export JSON includes
-  ui.projection, ui.showSatellite, ui.showRelief, ui.showCssFilter, and
-  isolate. Migrate into the production MapStage host. Configure tiles only
-  via map-tiles.config.js / map-tiles.config.local.js with endpoints the
-  user is allowed to use. Use jumpTo + idle (no easeTo/flyTo). Do not host
-  final render on the tuner. Follow references/*.md for parameters and
-  layer order. git clone of the GitHub repo is the whole project; copy
-  mapstage/ into the host skills directory to install the skill.
+  Use the mapstage skill to build frame-exact narrative map shots for history
+  videos on MapLibre GL JS 5.6. Three layers: Look (preset.json v3 exported from
+  the studio), Story (story.json v1: sites, routes with side/role/draw, label
+  beats normal/active/dim, shots fitted to the 16:9 safe area, cards), Stage
+  (window.__mapstageSeek(t) resolving after map idle). Defaults are compliant
+  for Chinese video platforms: no province/national borders, no fog, no
+  vignette, Taiwan/Hainan/South China Sea islands complete on full maps. One
+  purposeful camera move per narration line; jumpTo + idle only (no
+  easeTo/flyTo in recording); precache all viewports before recording. Raster
+  DEM must use encoding terrarium. Never use the studio (tuner/) as the final
+  render host. Stop at a 960x540 preview for user approval before the 1080p
+  final. Follow references/*.md for specs.

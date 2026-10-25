@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>悬停提示与点选 · MapStage 示例</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c8c2b4; font: 13px/1.4 system-ui, sans-serif; }
+    #stage { position: absolute; inset: 0; }
+    .ui { position: absolute; top: 12px; left: 12px; z-index: 10; max-width: calc(100% - 48px); padding: 8px 10px;
+          background: rgba(251, 248, 241, 0.92); color: #241b14; border: 1px solid #ddd2bf; border-radius: 8px; }
+    .ui output { font: 12px/1.5 system-ui, sans-serif; }
+    /* 信息卡跟随鼠标，不挡点击 */
+    .card { position: fixed; z-index: 20; pointer-events: none; padding: 6px 9px; background: #fbf8f1; color: #241b14;
+            border: 1px solid #241b14; border-radius: 6px; box-shadow: 0 2px 8px rgba(36, 27, 20, 0.2); white-space: nowrap; }
+    .card[hidden] { display: none; }
+    .card b { display: block; font: 700 15px/1.3 system-ui, sans-serif; }
+    .card span { font: 12px/1.4 system-ui, sans-serif; color: #7d6f5d; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="ui"><output id="read">悬停看信息，点一座城选中</output></div>
+  <div class="card" id="card" hidden></div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script src="../studio/assets/mapstage-board.js"></script>
+  <script>
+    // hover 只在「悬停的城变了」时触发，所以卡片位置另外用 mousemove 跟随鼠标
+    const sites = [
+      { id: 'changan', name: '长安', lngLat: [108.94, 34.27], tier: 'large' },
+      { id: 'luoyang', name: '洛阳', lngLat: [112.45, 34.62], tier: 'capital' },
+      { id: 'hanzhong', name: '汉中', lngLat: [107.03, 33.07], tier: 'medium' },
+      { id: 'chengdu', name: '成都', lngLat: [104.07, 30.67], tier: 'capital' },
+      { id: 'xiangyang', name: '襄阳', lngLat: [112.14, 32.04], tier: 'large' },
+      { id: 'jiangling', name: '江陵', lngLat: [112.19, 30.35], tier: 'medium' },
+      { id: 'jianye', name: '建业', lngLat: [118.78, 32.06], tier: 'capital' },
+    ];
+    const TIER = { capital: '都城', large: '大城', medium: '中城', small: '小城', pass: '关隘', station: '驿站' };
+    const $ = (id) => document.getElementById(id);
+    let picked = null;
+    let board;
+
+    function showCard(site) {
+      const card = $('card');
+      card.replaceChildren();
+      const title = document.createElement('b');
+      title.textContent = site.name;
+      const tier = document.createElement('span');
+      tier.textContent = TIER[site.tier] || site.tier;
+      card.append(title, tier);
+      card.hidden = false;
+    }
+
+    MapStageBoard.create($('stage'), { sites }).then((b) => {
+      board = b;
+      window.board = board;   // 控制台里可以试：board.on('hover', console.log)
+      // 所有城先画成同一种小圈，悬停和选中才看得出差别
+      board.setCities(Object.fromEntries(sites.map((s) => [s.id, { color: '#3f5f8a', value: 4 }])));
+
+      // hover：id 为 null 表示鼠标不在任何城上，卡片隐藏
+      board.on('hover', ({ id, site }) => {
+        if (!id) { $('card').hidden = true; return; }
+        showCard(site);
+      });
+      $('stage').addEventListener('mousemove', (e) => {
+        const card = $('card');
+        card.style.left = e.clientX + 14 + 'px';
+        card.style.top = e.clientY + 14 + 'px';
+      });
+      $('stage').addEventListener('mouseleave', () => { $('card').hidden = true; });
+
+      // pick：选中一座城（select 环）；点在空地则取消选中
+      board.on('pick', ({ id, site }) => {
+        if (picked) board.setCities({ [picked]: { ring: null, label: 'normal' } });
+        picked = id;
+        if (!id) { $('read').textContent = '点在空地，已取消选中'; return; }
+        board.setCities({ [id]: { ring: 'select', label: 'active' } });
+        $('read').textContent = '已选中 ' + site.name + '（' + (TIER[site.tier] || site.tier) + '）';
+      });
+    });
+  </script>
+</body>
+</html>

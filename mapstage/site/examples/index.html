@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>示例 · MapStage</title>
+  <meta name="description" content="MapStage 示例库：底图、路线、地名、镜头、字卡、合规、逐帧舞台、游戏地图，每个功能一个能直接复制运行的示例。">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <header data-site-header data-page="examples"></header>
+  <div class="gallery-band contour"><div class="wrap">
+    <div class="gallery-head">
+      <p class="eyebrow">Examples</p>
+      <h1>示例</h1>
+      <p>每个功能一个示例：一份能单独打开的 HTML，上面是活地图，下面是完整代码，复制成文件双击就能跑。按分组浏览，或者按名字、API 搜索。</p>
+      <div class="chips" role="navigation" aria-label="分组" id="chips"></div>
+      <div class="gallery-tools">
+        <input class="ex-search" id="q" type="search" placeholder="搜索：路线、字卡、seek、setCities…" aria-label="搜索示例">
+        <span class="count" id="count"></span>
+      </div>
+    </div>
+  </div></div>
+  <main class="wrap">
+    <div id="gallery" class="gallery-end"></div>
+  </main>
+  <footer data-site-footer></footer>
+
+  <script src="../assets/site.js"></script>
+  <script src="examples.js"></script>
+  <script>
+    (function () {
+      var E = window.MapStageExamples;
+      var host = document.getElementById('gallery');
+      var chips = document.getElementById('chips');
+      chips.innerHTML = E.groups.map(function (g) {
+        return '<a class="chip" href="#' + g.id + '">' + E.esc(g.title) + '</a>';
+      }).join('');
+
+      E.groups.forEach(function (g) {
+        var sec = document.createElement('section');
+        sec.className = 'gallery-group';
+        sec.id = g.id;
+        sec.innerHTML = '<h2>' + E.esc(g.title) + '</h2><p>' + E.esc(g.blurb) + '</p>';
+        var grid = document.createElement('div');
+        grid.className = 'grid cols-3';
+        E.list.filter(function (ex) { return ex.group === g.id; }).forEach(function (ex) {
+          var c = E.card(ex, '');
+          c.setAttribute('data-id', ex.id);
+          grid.appendChild(c);
+        });
+        sec.appendChild(grid);
+        host.appendChild(sec);
+      });
+
+      var q = document.getElementById('q');
+      var count = document.getElementById('count');
+      function filter() {
+        var text = q.value.trim();
+        var shown = 0;
+        host.querySelectorAll('.gallery-group').forEach(function (sec) {
+          var any = false;
+          sec.querySelectorAll('.ex-card').forEach(function (c) {
+            var ok = E.matches(E.byId(c.getAttribute('data-id')), text);
+            c.hidden = !ok;
+            if (ok) { any = true; shown++; }
+          });
+          sec.hidden = !any;
+        });
+        count.textContent = text ? shown + ' 个匹配' : '共 ' + E.list.length + ' 个示例';
+      }
+      q.addEventListener('input', filter);
+      var init = new URLSearchParams(location.search).get('q');
+      if (init) q.value = init;
+      filter();
+    })();
+  </script>
+</body>
+</html>

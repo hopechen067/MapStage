@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>用 preset.json 定调 · MapStage 示例</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c8c2b4; font: 13px/1.4 system-ui, sans-serif; }
+    #stage { position: absolute; inset: 0; }
+    .ui { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+          max-width: calc(100% - 48px); padding: 8px 10px; background: rgba(251, 248, 241, 0.92); color: #241b14;
+          border: 1px solid #ddd2bf; border-radius: 8px; }
+    .ui span { white-space: nowrap; }
+    .ui output { font: 12px ui-monospace, Consolas, monospace; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="ui">
+    <span>皮肤 <output id="skin"></output></span>
+    <span>色调 <output id="tone"></output></span>
+    <span>地形夸张 <output id="ter"></output></span>
+    <span>默认机位 <output id="cam"></output></span>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script>
+    // preset 是调参台导出的 JSON。mount 从它读：camera（机位）、css（画布调色）、
+    // mapstage.terrainExaggeration（地形，story.look.terrain 没写时生效）、ui.skinId（皮肤）
+    const story = {
+      version: 1, id: 'look-preset', duration: 6,
+      sites: [
+        { id: 'xian', name: '西安', lngLat: [108.94, 34.34], tier: 'capital' },
+        { id: 'wuwei', name: '武威', lngLat: [102.64, 37.93], tier: 'large' },
+        { id: 'dunhuang', name: '敦煌', lngLat: [94.66, 40.14], tier: 'large' },
+      ],
+      beats: [{ t: 0, active: ['xian'] }],
+    };
+    const $ = (id) => document.getElementById(id);
+
+    fetch('../studio/presets/antique-default.json')
+      .then((r) => r.json())
+      .then((preset) => MapStage.mount($('stage'), { story, preset }).then((stage) => {
+        window.stage = stage;   // 控制台里可以 stage.check(3)、stage.map.getTerrain()
+        const fromPreset = preset.ui && preset.ui.skinId;
+        const skin = fromPreset || (story.look && story.look.skin) || 'parchment';
+        $('skin').textContent = fromPreset ? skin : skin + '（preset 未写 skinId，取默认）';
+        $('tone').textContent = 'sepia ' + preset.css.sepia + ' · saturate ' + preset.css.saturate;
+        const ter = stage.map.getTerrain();   // 实际生效的值，不是 JSON 里的数字本身
+        $('ter').textContent = ter ? ter.exaggeration : '无';
+        const c = preset.camera;
+        $('cam').textContent = c.center.join(', ') + ' · z ' + c.zoom + ' · pitch ' + c.pitch;
+      }))
+      .catch((e) => { $('cam').textContent = '载入失败：' + e.message; });
+  </script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>弧线与真实线形 · MapStage 示例</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c8c2b4; font: 13px/1.4 system-ui, sans-serif; }
+    #stage { position: absolute; inset: 0; }
+    .ui { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+          max-width: calc(100% - 48px); padding: 8px 10px; background: rgba(251, 248, 241, 0.92); color: #241b14;
+          border: 1px solid #ddd2bf; border-radius: 8px; }
+    .ui button { font: inherit; padding: 5px 10px; border: 1px solid #ddd2bf; border-radius: 6px; background: #fff; color: inherit; cursor: pointer; }
+    .ui output { font: 12px ui-monospace, Consolas, monospace; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="ui">
+    <button id="count">算一下坐标点数</button>
+    <output id="read">点击按钮查看</output>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script>
+    // curve:"auto" 只给两点或近共线的路线加弧；河段、封锁线用 "none" 保持真实线形
+    const story = {
+      version: 1, id: 'route-curve', duration: 12,
+      sites: [
+        { id: 'wuwei', name: '武威', lngLat: [102.64, 37.93], tier: 'large' },
+        { id: 'zhangye', name: '张掖', lngLat: [100.45, 38.93], tier: 'large' },
+        { id: 'jiuquan', name: '酒泉', lngLat: [98.49, 39.73], tier: 'large' },
+        { id: 'dunhuang', name: '敦煌', lngLat: [94.66, 40.14], tier: 'large' },
+      ],
+      routes: [
+        // 两点路线：auto 出一段弧，表示「行军路线大致走向」
+        { id: 'two-a', side: 'red', role: 'background', via: ['wuwei', 'zhangye'], curve: 'auto', draw: [0, 12], width: 4.5 },
+        { id: 'two-b', side: 'enemy', role: 'background', via: ['jiuquan', 'dunhuang'], curve: 'auto', draw: [0, 12], width: 4.5 },
+        // 河段：多点、真实走向，curve none 原样画，不加弧（示意坐标）
+        { id: 'river', side: 'neutral', role: 'background',
+          coords: [[100.1, 38.6], [100.4, 39.3], [100.9, 40.0], [101.1, 41.2], [101.1, 41.9]],
+          curve: 'none', draw: [0, 12], width: 4.5 },
+      ],
+      shots: [{ t: 0, center: [99.8, 39.4], zoom: 5.6, pitch: 20 }],
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const sitesById = {};
+    story.sites.forEach((s) => { sitesById[s.id] = s; });
+
+    MapStage.mount($('stage'), { story }).then((stage) => {
+      window.stage = stage;
+      stage.render(7);
+
+      // 同样的几何函数，页面上直接算点数，看出「加弧」和「原样」的区别
+      $('count').onclick = () => {
+        const parts = story.routes.map((r) => {
+          const raw = r.via ? r.via.map((id) => sitesById[id].lngLat) : r.coords;
+          const shaped = MapStage.shapeRoute(raw, r.curve);
+          return r.id + '（curve: ' + r.curve + '）原始 ' + raw.length + ' 点 → 形成 ' + shaped.length + ' 点';
+        });
+        const arc = MapStage.arc(sitesById.wuwei.lngLat, sitesById.zhangye.lngLat);
+        $('read').textContent = parts.join('  ·  ') + '  ·  arc() 单独算 ' + arc.length + ' 点';
+      };
+    });
+  </script>
+</body>
+</html>

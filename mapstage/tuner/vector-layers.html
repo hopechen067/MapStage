@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>古卷地图</title>
+  <title>皮肤编辑 · MapStage Studio</title>
   <link rel="preconnect" href="https://unpkg.com" crossorigin />
   <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin />
   <link rel="preconnect" href="https://s3.amazonaws.com" crossorigin />
@@ -16,11 +16,9 @@
   <script src="map-tiles.config.js?v=20260826-globe-perf"></script>
   <script src="map-tiles.config.local.js?v=20260826-globe-perf" onerror="/* optional */"></script>
   <script src="assets/site-nav.js?v=20260829-w1"></script>
-  <script src="assets/vector-paint.js?v=20260905-simple-relief"></script>
-  <script src="vendor/maplibre-gl.js?v=20260905-min"></script>
+  <script src="assets/vector-paint.js?v=20260904-mh-default"></script>
+  <script src="vendor/maplibre-gl.js?v=20260903-mesh-rim14"></script>
   <script src="vendor/maplibre-contour.min.js?v=20260904-contour"></script>
-  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-  <script src="assets/han-city-3d.js"></script>
   <script>
     (function () {
       try {
@@ -53,7 +51,7 @@
     #map {
       position: absolute; inset: 0; background: var(--map-bg);
       /* 古卷 CSS  grade：与 preset-antique-default.json css 块一致 */
-      filter: none;
+      filter: sepia(0.08) saturate(0.98) contrast(1.03) brightness(1) hue-rotate(-1deg);
     }
     #warm-tint, #vignette { position: absolute; inset: 0; pointer-events: none; }
     #warm-tint { z-index: 2; mix-blend-mode: soft-light; background: rgba(154, 136, 104, 0.04); }
@@ -61,12 +59,28 @@
       z-index: 3; mix-blend-mode: multiply;
       background: radial-gradient(ellipse at center, transparent 42%, rgba(46, 28, 16, 0.1) 100%);
     }
+    #chrome {
+      position: absolute; top: 0; left: 0; right: 0; z-index: 20;
+      display: flex; align-items: center; gap: 26px; height: 60px; padding: 0 28px;
+      background: rgba(4, 7, 13, 0.72); backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--line);
+    }
+    #chrome .brand {
+      display: inline-flex; align-items: center; gap: 10px;
+      font-family: var(--serif); font-weight: 600; font-size: 17px;
+      letter-spacing: 0.32em; color: var(--gold); text-decoration: none; white-space: nowrap;
+    }
+    #chrome .brand-mark { width: 24px; height: 24px; flex: none; }
+    #chrome .kicker {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; color: var(--cy-dim);
+    }
+    #chrome .kicker b { font-weight: 500; color: var(--cy); }
     .seg {
-      display: flex; border: 1px solid var(--line); overflow: hidden;
+      display: inline-flex; border: 1px solid var(--line); overflow: hidden;
       background: rgba(6, 11, 20, 0.45);
     }
     .seg button {
-      flex: 1; font-family: var(--sans); font-size: 13px; letter-spacing: 0.06em;
+      font-family: var(--sans); font-size: 13px; letter-spacing: 0.06em;
       padding: 8px 13px; border: 0; background: transparent; color: var(--ink); cursor: pointer;
     }
     .seg button:hover { color: var(--gold); }
@@ -74,13 +88,26 @@
       background: rgba(236, 228, 212, 0.05); color: var(--gold);
       box-shadow: inset 0 -2px 0 var(--gold);
     }
-    #look-rail {
-      position: absolute; z-index: 18; top: 20px; right: 20px;
-      width: 268px; max-height: calc(100% - 40px); overflow: auto;
+    #chrome #site-nav,
+    #chrome #site-nav nav { display: flex; gap: 2px; overflow-x: auto; min-width: 0; }
+    #chrome .nav-link {
+      color: var(--ink); text-decoration: none; padding: 8px 10px;
+      font-size: 13px; letter-spacing: 0.06em; white-space: nowrap;
+    }
+    #chrome .nav-link:hover, #chrome .nav-link.is-active { color: var(--gold); }
+    #chrome .nav-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+    #chrome a.gh {
+      font-size: 13px; letter-spacing: 0.06em; color: var(--ink); text-decoration: none; padding: 8px 13px;
+    }
+    #chrome a.gh:hover { color: var(--gold); }
+    #scene-rail, #look-rail {
+      position: absolute; z-index: 18; top: 72px;
+      width: 232px; max-height: calc(100% - 96px); overflow: auto;
       background: rgba(4, 7, 13, 0.82); backdrop-filter: blur(10px);
       border: 1px solid var(--line); padding: 10px 8px 12px;
     }
-    #viewmode-seg { margin: 2px 8px 8px; }
+    #scene-rail { left: 28px; }
+    #look-rail { right: 28px; width: 268px; }
     .rail-kicker {
       font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
       color: var(--cy-dim); padding: 4px 8px 8px;
@@ -140,67 +167,10 @@
     #terrain-presets { margin-top: 8px; width: 100%; }
     #terrain-presets button { flex: 1; font-size: 12px; padding: 7px 8px; }
     #dem-presets { display: none; }
-    #vl-isolate-picker {
-      position: relative; margin: 4px 8px 8px;
-    }
-    #vl-isolate-region-search-wrap {
-      display: flex; align-items: stretch; gap: 0;
-      border: 1px solid var(--line); background: rgba(6, 11, 20, 0.45);
-    }
-    #vl-isolate-region-search-wrap:focus-within {
-      border-color: rgba(201, 166, 107, 0.55);
-    }
-    #vl-isolate-region-search {
-      flex: 1; min-width: 0; margin: 0; border: 0; background: transparent;
-      color: var(--ink); padding: 7px 8px; font-size: 12px; outline: none;
-    }
-    #vl-isolate-region-search::placeholder { color: var(--muted); }
-    #vl-isolate-region-caret {
-      border: 0; border-left: 1px solid var(--line); background: transparent;
-      color: var(--muted); padding: 0 8px; cursor: pointer; font-size: 11px;
-    }
-    #vl-isolate-region-caret:hover { color: var(--gold); }
-    #vl-isolate-region-list {
-      display: none; position: absolute; left: 0; right: 0; top: calc(100% + 4px);
-      z-index: 30; max-height: 260px; overflow: auto;
-      border: 1px solid var(--line); background: rgba(6, 11, 20, 0.97);
-      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
-    }
-    #vl-isolate-region-list[hidden] { display: none !important; }
-    #vl-isolate-picker.is-open #vl-isolate-region-list:not([hidden]) { display: block; }
-    #vl-isolate-region { display: none !important; }
-    .isolate-list-group {
-      padding: 6px 8px 2px; font-size: 10px; color: var(--muted);
-      letter-spacing: 0.08em;
-    }
-    .isolate-list-item {
-      display: block; width: 100%; border: 0; background: transparent;
-      color: var(--ink); text-align: left; padding: 7px 10px; font-size: 12px;
-      cursor: pointer;
-    }
-    .isolate-list-item:hover, .isolate-list-item.active {
-      background: rgba(201, 166, 107, 0.12); color: var(--gold);
-    }
-    .isolate-list-item.is-child { padding-left: 18px; color: rgba(236, 228, 212, 0.88); }
-    .isolate-list-empty {
-      padding: 10px 8px; font-size: 12px; color: var(--muted);
-    }
-    #vl-isolate-seas-row {
-      display: flex; gap: 6px; padding: 0 8px 6px; align-items: center;
-    }
-    #btn-isolate-seas {
-      font-size: 11px; padding: 4px 8px; cursor: pointer;
-      border: 1px solid var(--line); background: transparent; color: var(--gold);
-      letter-spacing: 0.04em;
-    }
-    #btn-isolate-seas:hover { border-color: var(--gold); }
-    #vl-isolate-seas-hint {
-      display: none; margin: 0 8px 8px; padding: 6px 8px;
-      font-size: 11px; line-height: 1.45; color: rgba(236, 210, 150, 0.92);
-      border: 1px solid rgba(201, 166, 107, 0.35); background: rgba(201, 166, 107, 0.08);
-    }
-    #vl-isolate-seas-hint.flash {
-      border-color: var(--gold); background: rgba(201, 166, 107, 0.18);
+    #vl-isolate-region {
+      width: calc(100% - 16px); margin: 4px 8px 8px;
+      background: rgba(6, 11, 20, 0.45); color: var(--ink);
+      border: 1px solid var(--line); padding: 6px 8px; font-size: 12px;
     }
     #vl-isolate-cities { padding: 0 8px 8px; display: none; }
     #vl-isolate-cities .btn { margin: 2px 4px 2px 0; font-size: 11px; padding: 4px 8px; }
@@ -214,8 +184,15 @@
     }
     #toast.show { opacity: 1; }
     .maplibregl-ctrl-attrib { font-size: 10px !important; background: rgba(4, 7, 13, 0.6) !important; }
+    @media (max-width: 1100px) {
+      #chrome .kicker { display: none; }
+    }
     @media (max-width: 800px) {
-      #look-rail { width: min(220px, calc(50% - 16px)); top: auto; bottom: 16px; max-height: 42vh; }
+      #scene-rail, #look-rail { width: min(220px, calc(50% - 16px)); }
+      #look-rail { top: auto; bottom: 16px; max-height: 42vh; }
+      #chrome { padding: 0 14px; gap: 12px; }
+      #chrome .kicker { display: none; }
+      #chrome #site-nav { display: none; }
     }
   </style>
 </head>
@@ -223,39 +200,68 @@
   <div id="map"></div>
   <div id="warm-tint"></div>
   <div id="vignette"></div>
-  <aside id="look-rail">
+  <header id="chrome">
+    <a class="brand" href="../"><svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true"><path d="M7 52L19 15l13 24 12-20 7 18c1.6 4.4 3.6 7 7 8" fill="none" stroke="currentColor" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/><circle cx="58" cy="45" r="5" fill="#d2564a"/></svg>MapStage</a>
+    <div id="site-nav"></div>
     <div class="seg" id="viewmode-seg" role="group" aria-label="投影">
       <button type="button" data-mode="map">地图</button>
       <button type="button" data-mode="globe" class="active">地球</button>
     </div>
+    <div class="kicker">VECTOR LAYERS · <b id="chrome-proj">GLOBE</b></div>
+    <div class="nav-right">
+      <a class="gh" href="https://github.com/hopechen067/MapStage" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </header>
+  <aside id="scene-rail">
+    <div class="rail-kicker">SCENES</div>
+    <div id="scene-list"></div>
+  </aside>
+  <aside id="look-rail">
+    <div class="rail-kicker">SKINS</div>
+    <div id="skin-list"></div>
     <div class="group-label">VIEW</div>
     <div class="range-row" id="terrain-ctrl">
       <div class="ctrl-row"><label>山高 · 真实海拔=1.0</label><span class="val" id="terrain-ex-val">1.00</span></div>
       <input type="range" id="terrain-ex" min="0" max="3" step="0.05" value="1" />
-    </div>
-    <div class="toggle-row">海拔设色 <button type="button" class="sw on" id="sw-relief" aria-pressed="true"></button></div>
-    <div class="group-label">地区显示</div>
-    <div class="toggle-row">地区显示 <button type="button" class="sw" id="sw-isolate" aria-pressed="false" aria-label="地区显示"></button></div>
-    <div id="vl-isolate-picker" class="isolate-picker">
-      <div id="vl-isolate-region-search-wrap">
-        <input type="search" id="vl-isolate-region-search" placeholder="搜索省 / 市…" autocomplete="off" spellcheck="false" aria-label="搜索地区" aria-autocomplete="list" aria-controls="vl-isolate-region-list" aria-expanded="false" />
-        <button type="button" id="vl-isolate-region-caret" aria-label="打开地区列表" tabindex="-1">▾</button>
+      <div class="seg" id="terrain-presets" role="group" aria-label="山高预设">
+        <button type="button" data-ex="1" class="active">真实 1.0</button>
+        <button type="button" data-ex="1.6">夸张 1.6</button>
       </div>
-      <div id="vl-isolate-region-list" role="listbox" aria-label="地区列表" hidden></div>
-      <select id="vl-isolate-region" aria-hidden="true" tabindex="-1" hidden></select>
+      <p class="hint">1.0 = DEM 米制 1:1。全国俯视几乎看不出起伏，点「祁连」近景才看得见山脊。地形 DEM：Mapterhorn（CC-BY · 须署名）。</p>
+      <div class="seg" id="dem-presets" role="group" aria-label="地形 DEM" hidden>
+        <button type="button" data-dem="mapterhorn" class="active">Mapterhorn</button>
+        <button type="button" data-dem="terrarium">Terrarium</button>
+      </div>
     </div>
-    <div id="vl-isolate-seas-row">
-      <button type="button" class="btn" id="btn-isolate-seas" title="框住南海诸岛与十段线">海域视角</button>
+    <div class="toggle-row">山影 <button type="button" class="sw on" id="sw-hillshade" aria-pressed="true"></button></div>
+    <div class="toggle-row">海拔设色 <button type="button" class="sw on" id="sw-relief" aria-pressed="true"></button></div>
+    <div class="toggle-row">等高线 <button type="button" class="sw on" id="sw-contour" aria-pressed="true"></button></div>
+    <div id="elev-list"></div>
+    <div class="toggle-row">道路 <button type="button" class="sw" id="sw-roads" aria-pressed="false"></button></div>
+    <div class="toggle-row">建筑 3D <button type="button" class="sw" id="sw-bldg3d" aria-pressed="false"></button></div>
+    <div class="rail-kicker">LAYER COLORS</div>
+    <div class="toggle-row">图层颜色 <button type="button" class="sw on" id="sw-landcover" aria-pressed="true"></button></div>
+    <div class="group-label">拆出</div>
+    <div class="toggle-row">拆出 <button type="button" class="sw" id="sw-isolate" aria-pressed="false"></button></div>
+    <select id="vl-isolate-region" aria-label="拆出区域"></select>
+    <div id="vl-isolate-cities" role="group" aria-label="当前省份的地级市"></div>
+    <div class="color-row"><span>侧面色</span><input type="color" id="vl-island-side" value="#6d4a36" /></div>
+    <div class="actions">
+      <button type="button" class="btn" id="btn-isolate-paste">粘贴轮廓</button>
     </div>
-    <div id="vl-isolate-seas-hint">海域：金色虚线为十段线；岛块为东沙/西沙/中沙/南沙等。点「海域视角」可框住南海。</div>
-    <div id="vl-isolate-cities"></div>
+    <div id="color-list"></div>
+    <div class="actions">
+      <button type="button" class="btn" id="btn-reset">重置</button>
+      <button type="button" class="btn" id="btn-copy">复制 JSON</button>
+      <button type="button" class="btn" id="btn-download">下载 JSON</button>
+    </div>
   </aside>
   <div id="toast"></div>
-  <script src="assets/map-fx.js?v=20260911-skysoft"></script>
-  <script src="assets/region-isolate.js?v=20260911-maritime"></script>
-  <script src="assets/region-isolate-data.js?v=20260911-islands"></script>
-  <script src="assets/terrain-island.js?v=20260905-flat-wall"></script>
-  <script src="assets/isolate-workbench.js?v=20260911-islands"></script>
+  <script src="assets/map-fx.js?v=20260826-globe-perf"></script>
+  <script src="assets/region-isolate.js?v=20260824-scanedge8"></script>
+  <script src="assets/region-isolate-data.js?v=20260823-cities"></script>
+  <script src="assets/terrain-island.js?v=20260903-rim-geostep"></script>
+  <script src="assets/isolate-workbench.js?v=20260902-rim-fp2"></script>
   <script>
   (function () {
     var maplibregl = window.maplibregl;
@@ -306,15 +312,7 @@
     var terrainEx = VP.TERRAIN_REAL_EXAGGERATION;
     var activeSkin = 'parchment';
     var lastSkin = 'parchment';
-    var cssGrade = VP.normalizeCss({
-      sepia: 0,
-      saturate: 1,
-      contrast: 1,
-      brightness: 1,
-      hueRotate: 0,
-      warmTintAlpha: 0,
-      vignetteStrength: 0.08,
-    });
+    var cssGrade = VP.normalizeCss(VP.DEFAULT_CSS);
     if (skinDeepLink) {
       var bootSkin = VP.SKINS.filter(function (s) { return s.id === deepVariant; })[0];
       if (!bootSkin) {
@@ -342,52 +340,12 @@
     }
     var isolateQuery = q.isolate === '1' || q.isolate === 'true';
     if (isolateQuery) isolateDeepLink = true;
-    var seasQuery = q.seas === '1' || q.seas === 'true' || deepVariant === 'china-seas';
-    if (seasQuery) {
-      isolateDeepLink = true;
-      if (!q.region) isolateRegionBoot = 'china';
-    }
     if (isolateDeepLink && viewMode === 'globe') {
       viewMode = 'map';
       activeScene = deepVariant === 'hexi-rise' ? 'hexi' : 'china';
     }
     var isolateRegionBoot = q.region || (deepVariant === 'hexi-rise' ? 'gansu' : 'china');
     var isolateCtl = null;
-
-    function mountIsolateWorkbench(mapRef) {
-      if (!window.AntiqueIsolateWorkbench) return;
-      if (isolateCtl) {
-        if (mapRef && typeof isolateCtl.setMap === 'function') isolateCtl.setMap(mapRef);
-        return;
-      }
-      isolateCtl = AntiqueIsolateWorkbench.mount({
-        map: mapRef || null,
-        maplibregl: maplibregl,
-        FX: FX,
-        getViewMode: function () { return viewMode; },
-        getBackground: function () { return paint.background; },
-        toast: toast,
-        globeSky: globeSky,
-        wrapEl: document.getElementById('map'),
-        enabled: !!isolateDeepLink,
-        regionId: isolateRegionBoot,
-        sideColor: '#6d4a36',
-        onNeedMap: function () { applyProjection('map'); },
-        onChange: function (st) {
-          window.__vectorIsolateState = st;
-          if (!map || !FX) return;
-          if (st && st.enabled && st.island) {
-            terrainOn = true;
-            FX.setTerrainEx(map, VP.TERRAIN_SOURCE_ID, terrainEx, { budget: false });
-          } else {
-            syncTerrain();
-          }
-        },
-      });
-    }
-
-    // Mount isolate UI immediately so region search works even if WebGL/map boot fails.
-    mountIsolateWorkbench(null);
     var pendingPaintKeys = {};
     var pendingElevation = false;
     var pendingTerrain = false;
@@ -482,7 +440,7 @@
         }
         // Far land is color-relief. GeoJSON far packs × globe tessellation 缺角 / freeze.
         VP.setFarLandcover(map, 'none');
-        if (typeof VP.setRelief === 'function') VP.setRelief(map, reliefOn);
+        if (typeof VP.setRelief === 'function') VP.setRelief(map, false);
         if (typeof VP.setContours === 'function') VP.setContours(map, false);
         syncLandcoverVis();
         if (FX) FX.flattenTerrain(map);
@@ -519,9 +477,11 @@
           try { if (FX) map.setSky(FX.antiqueSky()); } catch (e2) { /* ignore */ }
         }
         if (!opts.skipTerrain) syncTerrain();
-        if (typeof VP.setContours === 'function') VP.setContours(map, false);
+        if (reliefOn && typeof VP.setRelief === 'function') VP.setRelief(map, true);
+        var contourBtn = document.getElementById('sw-contour');
+        var contourOn = !!(contourBtn && contourBtn.classList.contains('on'));
+        if (contourOn && typeof VP.setContours === 'function') VP.setContours(map, true);
       }
-      syncMergedLook();
       if (isolateCtl && typeof isolateCtl.sync === 'function') isolateCtl.sync();
     }
     var terrainOn = true;
@@ -624,118 +584,12 @@
     }
 
     function landcoverWanted() {
-      return false;
+      var el = document.getElementById('sw-landcover');
+      return !!(el && el.classList.contains('on'));
     }
     function syncLandcoverVis() {
       if (!map || !VP || typeof VP.setLandcover !== 'function') return;
       VP.setLandcover(map, landcoverWanted());
-    }
-
-    var SAT_LAYER_ID = 'satellite';
-    var SAT_SOURCE_ID = 'basemapRaster';
-    var hanCityLayer = null;
-    var ANTIQUE_CSS = VP.normalizeCss({
-      sepia: 0.08, saturate: 0.98, contrast: 1.03, brightness: 1,
-      hueRotate: -1, warmTintColor: '#9a8868', warmTintAlpha: 0.04, vignetteStrength: 0.1,
-    });
-    var NEUTRAL_CSS = VP.normalizeCss({
-      sepia: 0, saturate: 1, contrast: 1, brightness: 1, hueRotate: 0,
-      warmTintAlpha: 0, vignetteStrength: 0.08,
-    });
-    var VECTOR_HIDE_ON_MAP = [
-      'vl-water-ocean', 'vl-water', 'vl-water-river', 'vl-water-pond',
-      'vl-waterway', 'vl-waterway-stream', 'vl-waterway-canal', 'vl-waterway-drain',
-      'vl-boundary', 'vl-boundary-province', 'vl-polar-ice',
-      'vl-building', 'vl-building-3d',
-    ];
-
-    function satConfig() {
-      var sat = (window.MAP_TILE_CONFIG && window.MAP_TILE_CONFIG.satellite) || {};
-      return {
-        enabled: sat.enabled !== false && Array.isArray(sat.tiles) && sat.tiles.length > 0,
-        tiles: sat.tiles || [],
-        tileSize: sat.tileSize || 256,
-        maxzoom: sat.maxzoom != null ? sat.maxzoom : 14,
-        attribution: sat.attribution || '',
-        sourceId: sat.sourceId || SAT_SOURCE_ID,
-        layerId: sat.layerId || SAT_LAYER_ID,
-      };
-    }
-
-    function setLayerVis(id, on) {
-      if (!map || typeof map.getLayer !== 'function' || !map.getLayer(id)) return;
-      map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
-    }
-
-    function ensureSatellite() {
-      if (!map) return;
-      var sat = satConfig();
-      if (!sat.enabled) return;
-      if (!map.getSource(sat.sourceId)) {
-        map.addSource(sat.sourceId, {
-          type: 'raster',
-          tiles: sat.tiles,
-          tileSize: sat.tileSize,
-          maxzoom: sat.maxzoom,
-          attribution: sat.attribution,
-        });
-      }
-      if (!map.getLayer(sat.layerId)) {
-        var before = map.getLayer('vl-water-ocean') ? 'vl-water-ocean' : undefined;
-        map.addLayer({
-          id: sat.layerId,
-          type: 'raster',
-          source: sat.sourceId,
-          layout: { visibility: 'none' },
-          paint: {
-            'raster-opacity': 0.7,
-            'raster-saturation': -0.08,
-            'raster-contrast': 0.02,
-            'raster-brightness-min': 0.08,
-            'raster-brightness-max': 0.96,
-            'raster-hue-rotate': 12,
-          },
-        }, before);
-      }
-    }
-
-    function ensureCities() {
-      if (hanCityLayer || !map || !window.HanCity3D) return;
-      function mount(cities) {
-        try {
-          hanCityLayer = HanCity3D.addExtrusionCities(map, maplibregl, {
-            cities: cities,
-            halfKm: 18,
-            visible: viewMode === 'map',
-          });
-        } catch (e) {
-          console.warn('城池层添加失败', e);
-        }
-      }
-      fetch('assets/sample-sites.json')
-        .then(function (r) { return r.ok ? r.json() : []; })
-        .then(function (data) {
-          mount(Array.isArray(data) ? data : []);
-        })
-        .catch(function () {
-          mount(HanCity3D.FALLBACK_CITIES || []);
-        });
-    }
-
-    function syncMergedLook() {
-      if (!map) return;
-      var isMap = viewMode === 'map';
-      var reliefBtn = document.getElementById('sw-relief');
-      var reliefOn = !!(reliefBtn && reliefBtn.classList.contains('on'));
-      ensureSatellite();
-      var sat = satConfig();
-      setLayerVis(sat.layerId, isMap);
-      VECTOR_HIDE_ON_MAP.forEach(function (id) { setLayerVis(id, !isMap); });
-      if (hanCityLayer && typeof hanCityLayer.setVisible === 'function') {
-        hanCityLayer.setVisible(isMap);
-      }
-      if (typeof VP.setRelief === 'function') VP.setRelief(map, isMap ? false : reliefOn);
-      applyCssGrade(isMap ? ANTIQUE_CSS : NEUTRAL_CSS);
     }
 
     function flushUiChanges() {
@@ -788,6 +642,9 @@
       var val = document.getElementById('terrain-ex-val');
       if (slider) slider.value = String(terrainEx);
       if (val) val.textContent = terrainEx.toFixed(2);
+      document.querySelectorAll('#terrain-presets button').forEach(function (b) {
+        b.classList.toggle('active', Number(b.getAttribute('data-ex')) === terrainEx);
+      });
       queueTerrain();
       if (opts.look) applyScene('qilian');
     }
@@ -802,7 +659,6 @@
 
     function renderScenes() {
       var list = document.getElementById('scene-list');
-      if (!list) return;
       list.innerHTML = '';
       VP.SCENES.forEach(function (s) {
         var b = document.createElement('button');
@@ -846,7 +702,6 @@
 
     function renderColors() {
       var host = document.getElementById('color-list');
-      if (!host) return;
       host.innerHTML = '';
       var group = '';
       VP.COLOR_FIELDS.forEach(function (f) {
@@ -942,6 +797,41 @@
       return JSON.stringify(out, null, 2);
     }
 
+    document.getElementById('btn-reset').addEventListener('click', function () {
+      var skin = VP.SKINS.filter(function (s) { return s.id === lastSkin; })[0];
+      paint = VP.normalizePaint(skin ? skin.paint : VP.DEFAULT_PAINT);
+      activeSkin = skin ? skin.id : '';
+      elevStops = VP.DEFAULT_ELEVATION_STOPS.map(function (s) {
+        return { h: s.h, color: s.color, label: s.label };
+      });
+      renderSkins();
+      renderColors();
+      renderElevation();
+      if (map) {
+        VP.applyVectorPaint(map, paint);
+        VP.applyElevationRamp(map, elevStops);
+      }
+      applyCssGrade(skin ? skin.css : VP.DEFAULT_CSS);
+      setTerrainExUi(VP.TERRAIN_REAL_EXAGGERATION);
+      toast('已重置 · ' + (skin ? skin.label : '默认古卷色'));
+    });
+    document.getElementById('btn-copy').addEventListener('click', function () {
+      var text = exportText();
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { toast('已复制 JSON'); });
+      } else {
+        toast('无法写入剪贴板');
+      }
+    });
+    document.getElementById('btn-download').addEventListener('click', function () {
+      var blob = new Blob([exportText()], { type: 'application/json' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'antique-vector-layers.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast('已下载 JSON');
+    });
     var poleDemHidden = false;
     function poleOnScreen() {
       if (!map || typeof map.project !== 'function') return false;
@@ -965,16 +855,51 @@
       var hide = poleOnScreen();
       if (hide === poleDemHidden) return;
       poleDemHidden = hide;
+      var shadeOn = document.getElementById('sw-hillshade').classList.contains('on');
       if (typeof map.getLayer === 'function' && map.getLayer('vl-hillshade')) {
-        map.setLayoutProperty('vl-hillshade', 'visibility', hide ? 'none' : 'visible');
+        map.setLayoutProperty('vl-hillshade', 'visibility', hide ? 'none' : (shadeOn ? 'visible' : 'none'));
       }
     }
 
+    document.getElementById('sw-hillshade').addEventListener('click', function () {
+      var on = !this.classList.contains('on');
+      this.classList.toggle('on', on);
+      this.setAttribute('aria-pressed', on ? 'true' : 'false');
+      terrainOn = on;
+      VP.setHillshade(map, on);
+      syncTerrain();
+      poleDemHidden = !poleOnScreen();
+      syncPoleDem();
+    });
     document.getElementById('sw-relief').addEventListener('click', function () {
       var on = !this.classList.contains('on');
       this.classList.toggle('on', on);
       this.setAttribute('aria-pressed', on ? 'true' : 'false');
-      syncMergedLook();
+      VP.setRelief(map, on);
+    });
+    document.getElementById('sw-contour').addEventListener('click', function () {
+      var on = !this.classList.contains('on');
+      this.classList.toggle('on', on);
+      this.setAttribute('aria-pressed', on ? 'true' : 'false');
+      if (typeof VP.setContours === 'function') VP.setContours(map, on);
+    });
+    document.getElementById('sw-landcover').addEventListener('click', function () {
+      var on = !this.classList.contains('on');
+      this.classList.toggle('on', on);
+      this.setAttribute('aria-pressed', on ? 'true' : 'false');
+      syncLandcoverVis();
+    });
+    document.getElementById('sw-roads').addEventListener('click', function () {
+      var on = !this.classList.contains('on');
+      this.classList.toggle('on', on);
+      this.setAttribute('aria-pressed', on ? 'true' : 'false');
+      VP.setRoads(map, on);
+    });
+    document.getElementById('sw-bldg3d').addEventListener('click', function () {
+      var on = !this.classList.contains('on');
+      this.classList.toggle('on', on);
+      this.setAttribute('aria-pressed', on ? 'true' : 'false');
+      VP.setBuildingExtrusion(map, on);
     });
 
     document.querySelectorAll('#viewmode-seg button').forEach(function (b) {
@@ -984,6 +909,18 @@
     });
     document.getElementById('terrain-ex').addEventListener('input', function () {
       setTerrainExUi(this.value);
+    });
+    document.querySelectorAll('#terrain-presets button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var ex = Number(b.getAttribute('data-ex'));
+        setTerrainExUi(ex, { look: ex === VP.TERRAIN_REAL_EXAGGERATION });
+        toast(ex === VP.TERRAIN_REAL_EXAGGERATION ? '山高 · 真实海拔 1.0' : '山高 · 夸张 1.6');
+      });
+    });
+    document.querySelectorAll('#dem-presets button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        applyDem(b.getAttribute('data-dem'));
+      });
     });
 
     renderSkins();
@@ -1014,23 +951,34 @@
     if (perfCacheZoom != null) tunedMapOptions.maxTileCacheZoomLevels = perfCacheZoom;
 
     var startCam = (VP.SCENES.filter(function (s) { return s.id === activeScene; })[0] || VP.SCENES[0]).camera;
+    var contourTiles = [];
     var bootTileConfig = tileConfigFor(activeDem);
+    if (window.mlcontour && typeof maplibregl.addProtocol === 'function') {
+      contourDem = new mlcontour.DemSource({
+        url: VP.demTileUrl(bootTileConfig),
+        encoding: 'terrarium',
+        maxzoom: VP.visualDemMaxzoom(bootTileConfig),
+        worker: true,
+      });
+      contourDem.setupMaplibre(maplibregl);
+      contourTiles = [contourDem.contourProtocolUrl(VP.CONTOUR_OPTIONS)];
+    }
     var style = VP.buildStyle({
       paint: paint,
       tileConfig: bootTileConfig,
       farLandcover: 'none',
-      contourTiles: [],
+      contourTiles: contourTiles,
     });
     var initialRelief = style.layers.filter(function (layer) { return layer.id === 'vl-relief'; })[0];
     if (initialRelief) {
       initialRelief.layout = initialRelief.layout || {};
-      initialRelief.layout.visibility = 'visible';
+      initialRelief.layout.visibility = viewMode === 'globe' ? 'none' : 'visible';
       initialRelief.paint['color-relief-color'] = VP.elevationColorExpr(elevStops);
     }
     style.layers.forEach(function (layer) {
-      if (VP.LANDCOVER_LAYER_IDS && VP.LANDCOVER_LAYER_IDS.indexOf(layer.id) >= 0) {
+      if (layer.id === 'vl-contour' || layer.id === 'vl-contour-label') {
         layer.layout = layer.layout || {};
-        layer.layout.visibility = 'none';
+        layer.layout.visibility = viewMode === 'globe' ? 'none' : 'visible';
       }
     });
     style.sky = globeSky();
@@ -1055,9 +1003,31 @@
       syncTerrain();
     });
     map.on('move', syncPoleDem);
-    mountIsolateWorkbench(map);
-    if (seasQuery && isolateCtl && typeof isolateCtl.frameSeas === 'function') {
-      map.once('idle', function () { try { isolateCtl.frameSeas(); } catch (e) {} });
+    if (window.AntiqueIsolateWorkbench) {
+      isolateCtl = AntiqueIsolateWorkbench.mount({
+        map: map,
+        maplibregl: maplibregl,
+        FX: FX,
+        getViewMode: function () { return viewMode; },
+        getBackground: function () { return paint.background; },
+        toast: toast,
+        globeSky: globeSky,
+        wrapEl: document.getElementById('map'),
+        enabled: !!isolateDeepLink,
+        regionId: isolateRegionBoot,
+        sideColor: '#6d4a36',
+        onNeedMap: function () { applyProjection('map'); },
+        onChange: function (st) {
+          window.__vectorIsolateState = st;
+          if (!map || !FX) return;
+          if (st && st.enabled && st.island) {
+            terrainOn = true;
+            FX.setTerrainEx(map, VP.TERRAIN_SOURCE_ID, terrainEx, { budget: false });
+          } else {
+            syncTerrain();
+          }
+        },
+      });
     }
     window.__vectorDeepLink = skinDeepLink ? {
       family: 'skin',
@@ -1099,15 +1069,12 @@
     };
     // Patched 5.6 UMD: set projection after load (same as 6.6).
     map.once('load', function () {
-      ensureSatellite();
-      ensureCities();
       if (skinDeepLink || isolateDeepLink || (cameraDeepLink && viewMode === 'map')) {
         applyProjection('map', { force: true, skipRestore: true });
         applyScene(activeScene);
       } else {
         applyProjection('globe', { force: true, forceFrame: true });
       }
-      syncMergedLook();
       if (isolateCtl) isolateCtl.start();
       poleDemHidden = false;
       syncPoleDem();

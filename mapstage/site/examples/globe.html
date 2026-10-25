@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>地球视角开场 · MapStage 示例</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c8c2b4; font: 13px/1.4 system-ui, sans-serif; }
+    #stage { position: absolute; inset: 0; }
+    .ui { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+          max-width: calc(100% - 48px); padding: 8px 10px; background: rgba(251, 248, 241, 0.92); color: #241b14;
+          border: 1px solid #ddd2bf; border-radius: 8px; }
+    .ui button { font: inherit; padding: 5px 10px; border: 1px solid #ddd2bf; border-radius: 6px; background: #fff; color: inherit; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="ui">
+    <button id="fly">拉到中国</button>
+    <button id="flat">切回平面</button>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script>
+    // 开场用 globe 投影：先看到整个地球，再拉到中国；录制前切回平面，平面底图的合规规则照常生效
+    const CHINA = { center: [104, 35.5], zoom: 4.2, pitch: 28, bearing: 0 };
+    const map = new maplibregl.Map({
+      container: 'stage',
+      style: MapStage.buildStyle({ skin: 'parchment', terrain: 1.2 }),
+      center: [105, 28], zoom: 1.6, pitch: 0,
+    });
+    window.map = map;
+    // 投影要等样式加载后用 setProjection 设；构造参数里的 projection 在这里不生效
+    map.on('load', () => map.setProjection({ type: 'globe' }));
+
+    document.getElementById('fly').onclick = () => map.flyTo({ ...CHINA, duration: 2500 });
+    document.getElementById('flat').onclick = () => {
+      map.setProjection({ type: 'mercator' });
+      map.jumpTo(CHINA);
+    };
+  </script>
+</body>
+</html>

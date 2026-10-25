@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>河西走廊 · MapStage 示例</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c8c2b4; font: 13px/1.4 system-ui, sans-serif; }
+    /* story 按 16:9 设计（字卡按宽 / 1920 缩放）：舞台锁定 16:9，窗口比例不同时居中留边 */
+    #stage { position: absolute; inset: 0; margin: auto; aspect-ratio: 16 / 9; max-width: 100%; max-height: 100%; }
+    .ui { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+          max-width: calc(100% - 48px); padding: 8px 10px; background: rgba(251, 248, 241, 0.92); color: #241b14;
+          border: 1px solid #ddd2bf; border-radius: 8px; }
+    .ui button { font: inherit; padding: 5px 10px; border: 1px solid #ddd2bf; border-radius: 6px; background: #fff; color: inherit; cursor: pointer; }
+    .ui button[aria-pressed=true] { background: #241b14; color: #fbf8f1; border-color: #241b14; }
+    .ui input[type=range] { width: 200px; accent-color: #b3332a; }
+    .ui output { font: 12px ui-monospace, Consolas, monospace; min-width: 52px; }
+    /* 违规时在底部列出错误清单；没有错误时不占位 */
+    .err { position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 10; margin: 0; padding: 10px 12px;
+           background: #fbf8f1; border: 1px solid #b3332a; border-radius: 8px; color: #b3332a;
+           font: 13px/1.6 ui-monospace, Consolas, monospace; white-space: pre-wrap; }
+    .err:empty { display: none; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="ui">
+    <button type="button" id="play" aria-pressed="false">播放</button>
+    <input type="range" id="t" min="0" max="16" step="0.04" value="0" aria-label="时间">
+    <output id="read">0.0 s</output>
+    <button type="button" id="precache">预缓存</button>
+    <button type="button" id="verify">逐帧自检</button>
+    <button type="button" id="break">违规演示</button>
+  </div>
+  <pre class="err" id="bad" role="status" aria-live="polite"></pre>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script>
+    // 整段画面只由 story-hexi.json 决定；页面里没有一行手写机位
+    const $ = (id) => document.getElementById(id);
+    let stage;
+
+    async function boot() {
+      const jsonUrl = new URL('./story-hexi.json', location.href);
+      const story = await (await fetch(jsonUrl)).json();
+      // preset 路径写在 json 里，相对 json 本身解析
+      const preset = await (await fetch(new URL(story.preset, jsonUrl))).json();
+      stage = await MapStage.mount($('stage'), { preset, story, preserve: true });
+      window.stage = stage;   // 控制台里可以试：stage.check(8)
+      $('t').max = stage.duration;
+      show(0);
+    }
+
+    function show(t) {
+      stage.render(t);
+      $('t').value = t;
+      $('read').textContent = t.toFixed(1) + ' s';
+    }
+
+    // 播放：只是 requestAnimationFrame 按时钟调同一个 render(t)
+    let raf = null;
+    $('play').onclick = () => {
+      if (raf) { cancelAnimationFrame(raf); raf = null; $('play').setAttribute('aria-pressed', 'false'); $('play').textContent = '播放'; return; }
+      $('play').setAttribute('aria-pressed', 'true');
+      $('play').textContent = '暂停';
+      const t0 = performance.now() - Number($('t').value) * 1000;
+      const tick = (now) => {
+        const t = (now - t0) / 1000;
+        if (t >= stage.duration) { show(stage.duration); raf = null; $('play').setAttribute('aria-pressed', 'false'); $('play').textContent = '播放'; return; }
+        show(t);
+        raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+    };
+    $('t').oninput = () => show(Number($('t').value));
+
+    $('precache').onclick = async () => {
+      $('read').textContent = '预缓存…';
+      const r = await stage.precache();
+      $('read').textContent = '已预缓存 ' + r.count + ' 个机位';
+    };
+
+    // 逐帧自检：正序拍一遍，再倒序拍一遍，逐像素比较
+    $('verify').onclick = async () => {
+      const times = [0, 2, 4, 6, 8, 10, 12, 14, 16];
+      const grab = () => stage.map.getCanvas().toDataURL('image/png');
+      await stage.precache();
+      const fwd = [];
+      for (const t of times) { $('read').textContent = '正序 ' + t; await stage.seek(t); fwd.push(grab()); }
+      const back = [];
+      for (let i = times.length - 1; i >= 0; i--) { $('read').textContent = '倒序 ' + times[i]; await stage.seek(times[i]); back[i] = grab(); }
+      const same = fwd.filter((s, i) => s === back[i]).length;
+      $('read').textContent = '正序 / 倒序：' + same + ' / ' + times.length + ' 帧逐像素一致';
+      window.__verifyResult = { same, total: times.length };
+    };
+
+    // 违规演示：同屏两条主线，validateStory 拒绝渲染并列出原因
+    $('break').onclick = async () => {
+      const story = JSON.parse(JSON.stringify(stage.story));
+      story.sites.find((s) => s.id === 'yumen-han').approx = false;
+      story.routes.push({ id: 'second', side: 'red', role: 'primary', via: ['wuwei', 'zhangye'], draw: [2, 5], hold: 5 });
+      story.shots[1].t = 1.5;
+      try {
+        await MapStage.mount(document.createElement('div'), { story });
+      } catch (e) {
+        $('bad').textContent = e.message;
+      }
+    };
+
+    boot().catch((e) => { $('bad').textContent = String(e && e.message || e); });
+  </script>
+</body>
+</html>

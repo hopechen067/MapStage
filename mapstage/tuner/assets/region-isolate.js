@@ -60,15 +60,15 @@
 
   /**
    * Drop OSM speck rings (Beijing/Tianjin coastal fragments, tiny islets).
-   * Nation-scale silhouettes (China) must keep Hainan / Taiwan / Diaoyu /
-   * SCS islets: the old 1°² nation cut erased maritime islands. Complete-
-   * territory China sets keepMaritimeIslands and uses a micro floor instead.
+   * Nation-scale silhouettes (China) must keep Hainan / Taiwan: they are ~0.3%
+   * of the mainland, so the 2% city/province cut would erase them.
    */
   var NARRATIVE_MIN_FRAC = 0.02;
   var NARRATIVE_MIN_AREA = 0.002;
   var NARRATIVE_NATION_AREA = 100;
   var NARRATIVE_NATION_MIN_AREA = 1;
-  /** deg² — keeps Diaoyu / Xisha / Nansha islets while dropping numeric dust */
+  // Features flagged properties.keepMaritimeIslands / completeTerritory keep South China
+  // Sea / Diaoyu islets that the size cuts above would drop.
   var NARRATIVE_NATION_MARITIME_MIN_AREA = 1e-6;
 
   function dominantOuterRings(geom, opts) {
@@ -86,11 +86,13 @@
     }
     var nation = maxA >= NARRATIVE_NATION_AREA;
     var keepMaritime = !!(opts.keepMaritimeIslands || opts.completeTerritory);
-    var cut = nation
-      ? keepMaritime
-        ? NARRATIVE_NATION_MARITIME_MIN_AREA
-        : NARRATIVE_NATION_MIN_AREA
-      : Math.max(maxA * NARRATIVE_MIN_FRAC, NARRATIVE_MIN_AREA);
+    // Complete-territory shapes (nation, Tibet incl. Zangnan, island groups) keep every
+    // ring; island groups are ~0.1 deg wide, so the relative / 1 deg² cuts would drop them.
+    var cut = keepMaritime
+      ? NARRATIVE_NATION_MARITIME_MIN_AREA
+      : nation
+        ? NARRATIVE_NATION_MIN_AREA
+        : Math.max(maxA * NARRATIVE_MIN_FRAC, NARRATIVE_MIN_AREA);
     var out = [];
     for (i = 0; i < rings.length; i++) {
       if (areas[i] >= cut) out.push(rings[i]);
@@ -276,14 +278,14 @@
   }
 
   /**
-   * MapStage drapes fill layers onto 3D terrain. A large polygon with holes
+   * MapLibre drapes fill layers onto 3D terrain. A large polygon with holes
    * triangulates into giant slivers; a centroid grid makes a mosaic edge.
    * Far cells stay 8° solids. Near the silhouette, 1° cells that miss the
    * region stay solid; cells that hit it are scanline-filled (cell minus
    * clipped rings) into hole-free trapezoids that follow the real outline.
    * Hairline Y-slabs (islands, dense coasts) become kilometer-long needles on
    * 3D terrain; coarsen slabs and split wide traps so each piece stays compact.
-   * Do not stitch those trapezoids into one large concave ring: MapStage's
+   * Do not stitch those trapezoids into one large concave ring: MapLibre's
    * terrain earcut turns that into interior slivers again.
    *
    * Tessellation follows the region bbox: a 2° city (Beijing) uses ~0.008°

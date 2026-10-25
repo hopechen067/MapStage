@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>逐时刻自检 stage.check · MapStage 示例</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c8c2b4; font: 13px/1.4 system-ui, sans-serif; }
+    #stage { position: absolute; inset: 0; }
+    .ui { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+          max-width: calc(100% - 48px); padding: 8px 10px; background: rgba(251, 248, 241, 0.92); color: #241b14;
+          border: 1px solid #ddd2bf; border-radius: 8px; }
+    .ui button { font: inherit; padding: 5px 10px; border: 1px solid #ddd2bf; border-radius: 6px; background: #fff; color: inherit; cursor: pointer; }
+    .ui input[type=range] { width: 200px; accent-color: #b3332a; }
+    .ui output { font: 12px ui-monospace, Consolas, monospace; min-width: 52px; }
+    .panel { position: absolute; top: 12px; right: 12px; z-index: 10; width: 260px; padding: 10px 12px; background: rgba(251, 248, 241, 0.92);
+             color: #241b14; border: 1px solid #ddd2bf; border-radius: 8px; font-size: 12px; }
+    .panel h4 { margin: 0 0 6px; font-size: 13px; }
+    .panel ul { margin: 0; padding: 0; list-style: none; }
+    .panel li { padding: 2px 0; }
+    .panel li.ok { color: #2f6b3a; }
+    .panel li.bad { color: #b3332a; font-weight: 600; }
+    .panel .counts { margin-top: 6px; font: 12px ui-monospace, Consolas, monospace; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="ui">
+    <button id="play">播放</button>
+    <input id="t" type="range" min="0" step="0.04" value="0" aria-label="时间">
+    <output id="read">0.0 s</output>
+  </div>
+  <div class="panel">
+    <h4 id="state"></h4>
+    <ul id="issues"></ul>
+    <div class="counts" id="counts"></div>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script>
+    // 宿主逐帧可以调 stage.check(t)：同步画到 t，返回合规项、同屏计数和总判定，不用等 idle
+    const story = {
+      version: 1, id: 'stage-check', duration: 10,
+      sites: [
+        { id: 'xian', name: '西安', lngLat: [108.94, 34.34], tier: 'capital' },
+        { id: 'wuwei', name: '武威', lngLat: [102.64, 37.93], tier: 'large' },
+        { id: 'dunhuang', name: '敦煌', lngLat: [94.66, 40.14], tier: 'large' },
+      ],
+      routes: [
+        { id: 'hexi', side: 'red', role: 'primary', via: ['xian', 'wuwei', 'dunhuang'],
+          curve: 'none', draw: [1, 9], hold: 10, ghost: true },
+      ],
+      beats: [
+        { t: 0, active: ['xian'] },
+        { t: 4, active: ['wuwei'] },
+        { t: 8, active: ['dunhuang'] },
+      ],
+      shots: [{ t: 0, fit: 'route:hexi', pitch: 20 }],
+    };
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+    MapStage.mount($('stage'), { story }).then((stage) => {
+      window.stage = stage;
+      $('t').max = stage.duration;
+      const show = (t) => {
+        const r = stage.check(t);
+        $('t').value = t;
+        $('read').textContent = t.toFixed(1) + ' s';
+        $('state').textContent = 't = ' + t.toFixed(1) + ' s：' + (r.ok ? '全部通过' : '有未通过项');
+        $('issues').innerHTML = r.issues.map((i) =>
+          '<li class="' + (i.ok ? 'ok' : 'bad') + '">' + esc(i.label) + (i.note ? '（' + esc(i.note) + '）' : '') + ' · ' + (i.ok ? '通过' : '不通过') + '</li>'
+        ).join('');
+        const c = r.counts;
+        $('counts').textContent = 'primary ' + c.primary + ' · reaction ' + c.reaction + ' · active ' + c.active + ' · names ' + c.names;
+      };
+      $('t').oninput = () => show(Number($('t').value));
+
+      let raf = null;
+      $('play').onclick = () => {
+        if (raf) { cancelAnimationFrame(raf); raf = null; $('play').textContent = '播放'; return; }
+        const t0 = performance.now() - Number($('t').value) * 1000;
+        const tick = (now) => { show(((now - t0) / 1000) % stage.duration); raf = requestAnimationFrame(tick); };
+        $('play').textContent = '暂停';
+        raf = requestAnimationFrame(tick);
+      };
+      show(4);
+    });
+  </script>
+</body>
+</html>

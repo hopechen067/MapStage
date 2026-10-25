@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MapStage host</title>
+  <!-- 截帧 / 渲染宿主页：没有任何界面，只把 story 铺满视口并暴露 seek(t)。
+       用法：host.html?story=examples/story-hexi.json（相对站点根）
+       宿主（Playwright / HyperFrames / Remotion）等 window.__mapstageReady，再逐帧调 window.__mapstageSeek(t)。 -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #000; }
+    #stage { position: fixed; inset: 0; }
+    /* 分层截帧：宿主给 <html> 加 ms-layer-map / ms-layer-hud */
+    html.ms-layer-map .ms-cards { visibility: hidden; }
+    html.ms-layer-hud, html.ms-layer-hud body { background: transparent; }
+    html.ms-layer-hud .ms-map, html.ms-layer-hud .ms-map * { visibility: hidden !important; }
+    html.ms-layer-hud .ms-root { background: transparent; }
+    #err { position: fixed; left: 12px; bottom: 12px; right: 12px; color: #f66; font: 13px/1.5 monospace; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div id="err" role="alert"></div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="studio/assets/vector-paint.js"></script>
+  <script src="studio/assets/map-fx.js"></script>
+  <script src="studio/assets/mapstage-story.js"></script>
+  <script src="studio/assets/mapstage-hosts.js"></script>
+  <script>
+    // 轻量指纹：story + preset 原文。截帧器用它判断「续拍的旧帧是不是同一份数据拍的」。
+    function fingerprint(text) {
+      var h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+      for (var i = 0; i < text.length; i++) {
+        var c = text.charCodeAt(i);
+        h1 = Math.imul(h1 ^ c, 2654435761);
+        h2 = Math.imul(h2 ^ c, 1597334677);
+      }
+      h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+      h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+      return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16);
+    }
+
+    (async function boot() {
+      var q = new URLSearchParams(location.search);
+      var storyUrl = new URL(q.get('story') || 'examples/story-hexi.json', location.href);
+      var storyText = await (await fetch(storyUrl)).text();
+      var story = JSON.parse(storyText);
+      var presetText = '{}';
+      var preset = {};
+      if (story.preset) {
+        presetText = await (await fetch(new URL(story.preset, storyUrl))).text();
+        preset = JSON.parse(presetText);
+      }
+      var stage = await MapStage.mount(document.getElementById('stage'), { preset: preset, story: story, preserve: true });
+      window.stage = stage;
+      // 把 story 里出现过的全部文字预载进 webfont，否则首次出现的字会先用回退字体
+      var allText = '';
+      (function walk(v) {
+        if (typeof v === 'string') allText += v;
+        else if (Array.isArray(v)) v.forEach(walk);
+        else if (v && typeof v === 'object') Object.keys(v).forEach(function (k) { walk(v[k]); });
+      })([story.sites, story.cards, story.beats]);
+      await Promise.all(['400', '600', '700', '900'].map(function (w) {
+        return document.fonts.load(w + ' 20px "Noto Serif SC"', allText).catch(function () {});
+      }));
+      await document.fonts.ready;
+      // ?precache=1：宿主不方便自己预缓存（Remotion iframe）时，就绪前先把所有机位的瓦片拉进缓存
+      if (q.get('precache') === '1') await stage.precache();
+      window.__mapstageInfo = {
+        duration: stage.duration,
+        fps: stage.fps,
+        width: innerWidth,
+        height: innerHeight,
+        hash: fingerprint(storyText + '\n' + presetText),
+      };
+      window.__mapstageReady = true;
+      // 被 iframe 嵌入（Remotion 等）时，用 postMessage 接受 seek
+      if (window.parent !== window) MapStage.hosts.listen(stage, { info: window.__mapstageInfo });
+    })().catch(function (e) {
+      document.getElementById('err').textContent = String(e && e.message || e);
+      window.__mapstageError = String(e && e.message || e);
+    });
+  </script>
+</body>
+</html>

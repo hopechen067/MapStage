@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>合规全图 · MapStage 示例</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c8c2b4; font: 13px/1.4 system-ui, sans-serif; }
+    #stage { position: absolute; inset: 0; }
+    .ui { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+          max-width: calc(100% - 48px); padding: 8px 10px; background: rgba(251, 248, 241, 0.92); color: #241b14;
+          border: 1px solid #ddd2bf; border-radius: 8px; }
+    .ui span { padding: 2px 8px; border: 1px solid #ddd2bf; border-radius: 4px; background: #fff; white-space: nowrap; }
+    .ui .ok { color: #2f6b3a; }
+    .ui .bad { color: #b3332a; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="ui" id="list"></div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script>
+    // 全国视角：不画省界国界、无雾无暗角；台湾、海南、南海诸岛要在画内；南海十段线必须画出
+    const map = new maplibregl.Map({
+      container: 'stage',
+      style: MapStage.buildStyle({ skin: 'parchment', terrain: 1 }),
+      center: [106, 27], zoom: 2.9, pitch: 0, bearing: 0,
+    });
+    window.map = map;
+
+    // 十段线默认隐藏，全图镜头要显式打开
+    const list = document.getElementById('list');
+    const report = () => {
+      const items = MapStage.complianceCheck(map, { full: true });
+      list.innerHTML = items.map((i) => '<span class="' + (i.ok ? 'ok' : 'bad') + '">' + i.label + '：' + (i.ok ? 'ok' : '不 ok') + '</span>').join('');
+    };
+    map.on('load', () => {
+      MapStage.addTenDash(map, { visible: true });
+      report();
+    });
+    map.on('moveend', report);   // 拖动后重新自检
+  </script>
+</body>
+</html>

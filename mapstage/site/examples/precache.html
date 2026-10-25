@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>预缓存与正倒序一致 · MapStage 示例</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c8c2b4; font: 13px/1.4 system-ui, sans-serif; }
+    /* 逐像素比较按 16:9 画布做：舞台锁定 16:9 */
+    #stage { position: absolute; inset: 0; margin: auto; aspect-ratio: 16 / 9; max-width: 100%; max-height: 100%; }
+    .ui { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+          max-width: calc(100% - 48px); padding: 8px 10px; background: rgba(251, 248, 241, 0.92); color: #241b14;
+          border: 1px solid #ddd2bf; border-radius: 8px; }
+    .ui button { font: inherit; padding: 5px 10px; border: 1px solid #ddd2bf; border-radius: 6px; background: #fff; color: inherit; cursor: pointer; }
+    .ui button:disabled { opacity: 0.45; cursor: default; }
+    .ui output { font: 12px ui-monospace, Consolas, monospace; min-width: 180px; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="ui">
+    <button id="precache">预缓存</button>
+    <button id="verify">正倒序比较</button>
+    <output id="read">点「预缓存」</output>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script src="../studio/assets/vector-paint.js"></script>
+  <script src="../studio/assets/map-fx.js"></script>
+  <script src="../studio/assets/mapstage-story.js"></script>
+  <script>
+    // 小 story：镜头在 0、6 秒各有一次取景与推近，中间是路线行进
+    const story = {
+      version: 1, id: 'precache', duration: 10, fps: 30,
+      sites: [
+        { id: 'wuwei', name: '武威', lngLat: [102.64, 37.93], tier: 'large' },
+        { id: 'zhangye', name: '张掖', lngLat: [100.45, 38.93], tier: 'large' },
+        { id: 'jiuquan', name: '酒泉', lngLat: [98.49, 39.73], tier: 'large' },
+        { id: 'dunhuang', name: '敦煌', lngLat: [94.66, 40.14], tier: 'large' },
+      ],
+      routes: [
+        { id: 'hexi', side: 'red', role: 'primary', via: ['wuwei', 'zhangye', 'jiuquan', 'dunhuang'],
+          curve: 'none', draw: [1, 9], hold: 10, ghost: true },
+      ],
+      shots: [
+        { t: 0, fit: 'route:hexi', pitch: 20 },
+        { t: 6, fit: ['jiuquan', 'dunhuang'], move: 2.2, push: 0.06 },
+      ],
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const TIMES = [0, 2, 4, 6, 8, 10];
+
+    // preserve: true 让 canvas 在 seek 之后仍可 toDataURL
+    MapStage.mount($('stage'), { story, preserve: true }).then((stage) => {
+      window.stage = stage;   // 控制台里可以试：await stage.precache()
+      stage.render(4);
+
+      // 预缓存：把每个机位的地形、瓦片先算好，之后 seek 只是取缓存
+      $('precache').onclick = async () => {
+        $('precache').disabled = true;
+        $('read').textContent = '预缓存中…';
+        const r = await stage.precache();
+        $('read').textContent = '已预缓存 ' + r.count + ' 个机位';
+        $('precache').disabled = false;
+      };
+
+      // 正序 seek 一遍、倒序再 seek 一遍，同一个 t 的整帧逐像素比较
+      $('verify').onclick = async () => {
+        $('verify').disabled = true;
+        const grab = () => stage.map.getCanvas().toDataURL('image/png');
+        const fwd = [];
+        for (const t of TIMES) { $('read').textContent = '正序 ' + t; await stage.seek(t); fwd.push(grab()); }
+        const back = [];
+        for (let i = TIMES.length - 1; i >= 0; i--) { $('read').textContent = '倒序 ' + TIMES[i]; await stage.seek(TIMES[i]); back[i] = grab(); }
+        const same = fwd.filter((s, i) => s === back[i]).length;
+        $('read').textContent = '正序 / 倒序：' + same + ' / ' + TIMES.length + ' 帧逐像素一致';
+        window.__verifyResult = { same, total: TIMES.length };
+        $('verify').disabled = false;
+      };
+    });
+  </script>
+</body>
+</html>

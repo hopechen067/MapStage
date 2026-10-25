@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "defaultId": "china",
+  "scenes": [
+    {
+      "id": "globe",
+      "title": "地球·古卷",
+      "blurb": "球面远望中国",
+      "viewMode": "globe",
+      "spin": true,
+      "camera": { "center": [104.0, 35.5], "zoom": 1.9, "pitch": 16, "bearing": 18 },
+      "ui": { "showWater": true, "showCities": false, "showRegionIsolate": false, "showRiverLabels": true }
+    },
+    {
+      "id": "china",
+      "title": "全国古卷",
+      "blurb": "倾角地形默认镜头",
+      "camera": { "center": [104.0, 35.5], "zoom": 4.2, "pitch": 28, "bearing": 0 },
+      "ui": { "showWater": true, "showCities": true, "showRegionIsolate": false, "showRiverLabels": true }
+    },
+    {
+      "id": "isolate-china",
+      "title": "拆出·中国",
+      "blurb": "羊皮纸蒙版剪影",
+      "isolateId": "china",
+      "ui": { "showWater": true, "showCities": true, "showRegionIsolate": true, "showRiverLabels": true }
+    },
+    {
+      "id": "hexi",
+      "title": "河西走廊",
+      "blurb": "甘肃拆出 + 地形隆起",
+      "viewMode": "map",
+      "isolateId": "gansu",
+      "rise": true,
+      "ui": { "showWater": true, "showCities": true, "showRegionIsolate": true, "showRiverLabels": true }
+    },
+    {
+      "id": "beijing",
+      "title": "拆出·北京",
+      "blurb": "市级剪影",
+      "isolateId": "beijing",
+      "ui": { "showWater": true, "showCities": false, "showRegionIsolate": true, "showRiverLabels": true }
+    },
+    {
+      "id": "terrain",
+      "title": "地形",
+      "blurb": "量化隆起 DEM",
+      "viewMode": "map",
+      "rise": true,
+      "camera": { "center": [100.42, 38.48], "zoom": 10.6, "pitch": 70, "bearing": 180 },
+      "ui": { "showWater": true, "showCities": false, "showRegionIsolate": false }
+    },
+    {
+      "id": "water",
+      "title": "水系",
+      "blurb": "河湖名与干流",
+      "camera": { "center": [103.5, 36.2], "zoom": 5.4, "pitch": 42, "bearing": 8 },
+      "ui": { "showWater": true, "showHighlight": true, "showCities": false, "showRegionIsolate": false, "showRiverLabels": true }
+    },
+    {
+      "id": "cities",
+      "title": "城池",
+      "blurb": "汉式点位",
+      "viewMode": "map",
+      "camera": { "center": [100.42, 38.48], "zoom": 8.4, "pitch": 52, "bearing": 12 },
+      "ui": { "showWater": true, "showCities": true, "showRegionIsolate": false }
+    },
+    {
+      "id": "satellite",
+      "title": "卫星底图",
+      "blurb": "遥感 + 古卷滤镜",
+      "paintPatch": { "satellite": { "opacity": 0.92 } },
+      "ui": { "showWater": true, "showCities": false, "showRegionIsolate": false }
+    }
+  ]
+}

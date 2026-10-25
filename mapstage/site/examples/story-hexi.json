@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "id": "hexi-wuwei-dunhuang",
+  "duration": 16,
+  "fps": 30,
+  "preset": "../studio/presets/antique-default.json",
+  "sites": [
+    { "id": "wuwei", "name": "武威", "lngLat": [102.64, 37.93], "tier": "large", "confidence": "A", "source": "OSM" },
+    { "id": "zhangye", "name": "张掖", "lngLat": [100.45, 38.93], "tier": "large", "confidence": "A", "source": "OSM" },
+    { "id": "jiuquan", "name": "酒泉", "lngLat": [98.49, 39.73], "tier": "large", "confidence": "A", "source": "OSM" },
+    { "id": "jiayuguan", "name": "嘉峪关", "lngLat": [98.21, 39.80], "tier": "pass", "confidence": "A", "label": { "side": "left" }, "source": "OSM" },
+    { "id": "dunhuang", "name": "敦煌", "lngLat": [94.66, 40.14], "tier": "large", "confidence": "A", "source": "OSM" },
+    { "id": "yumen-han", "name": "玉门关", "lngLat": [93.85, 40.36], "tier": "pass", "approx": true, "confidence": "C", "label": { "side": "left" }, "source": "估算（汉玉门关位置有争议）" }
+  ],
+  "routes": [
+    { "id": "silk-main", "side": "neutral", "role": "primary", "via": ["wuwei", "zhangye", "jiuquan", "dunhuang"],
+      "curve": "none", "draw": [1.0, 11.0], "hold": 12.0, "ghost": true, "confidence": "A" },
+    { "id": "north-pressure", "side": "enemy", "role": "reaction", "coords": [[100.7, 41.9], [100.5, 39.4]],
+      "curve": "none", "draw": [4.5, 6.5], "hold": 7.0, "label": { "text": "北方游牧压力（示意）", "mode": "calloutOnly" }, "confidence": "C" },
+    { "id": "to-yumen", "side": "neutral", "role": "background", "via": ["dunhuang", "yumen-han"],
+      "curve": "auto", "draw": [12.0, 14.0], "hold": 16.0, "confidence": "C" }
+  ],
+  "beats": [
+    { "t": 0.0, "active": ["wuwei"] },
+    { "t": 4.0, "active": ["zhangye"] },
+    { "t": 6.5, "active": ["jiuquan", "jiayuguan"] },
+    { "t": 11.0, "active": ["dunhuang"] },
+    { "t": 13.0, "active": ["yumen-han"] }
+  ],
+  "shots": [
+    { "t": 0.0, "fit": ["wuwei", "zhangye"], "pitch": 40 },
+    { "t": 5.0, "fit": ["zhangye", "jiuquan"], "move": 2.2, "push": 0.06, "tilt": 3 },
+    { "t": 9.0, "fit": ["jiuquan", "jiayuguan", "dunhuang"], "move": 2.2 },
+    { "t": 13.0, "fit": ["dunhuang", "yumen-han"], "move": 2.4, "push": 0.06 }
+  ],
+  "cards": [
+    { "t0": 0.2, "t1": 3.6, "kind": "place", "text": "武威", "sub": "古称凉州", "source": "通行地名沿革" },
+    { "t0": 0.2, "t1": 4.4, "kind": "name", "text": "河西走廊", "sub": "祁连山与北山之间的通道" },
+    { "t0": 4.0, "t1": 6.4, "kind": "place", "text": "张掖", "sub": "古称甘州", "source": "通行地名沿革" },
+    { "t0": 11.0, "t1": 13.0, "kind": "place", "text": "敦煌", "sub": "古称沙州", "source": "通行地名沿革" },
+    { "t0": 7.0, "t1": 10.0, "kind": "pair", "text": "四郡", "sub": "汉武帝设河西四郡" },
+    { "t0": 13.4, "t1": 16.0, "kind": "stamp", "text": "丝路要道" }
+  ],
+  "compliance": { "profile": "cn-video" }
+}

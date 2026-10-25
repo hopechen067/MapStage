@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>示例 · MapStage</title>
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <header data-site-header data-page="examples"></header>
+  <div class="docs ex-view">
+    <button class="btn docs-side-toggle" type="button" id="side-toggle" aria-controls="ex-side" aria-expanded="false">全部示例</button>
+    <aside class="docs-side ex-side" id="ex-side" aria-label="全部示例">
+      <input class="ex-search" id="ex-search" type="search" placeholder="搜索示例或 API" aria-label="搜索示例或 API">
+      <nav id="ex-nav"></nav>
+    </aside>
+    <main class="ex-main" id="ex-main" aria-live="polite"><p>加载中…</p></main>
+  </div>
+  <footer data-site-footer></footer>
+
+  <script src="../assets/site.js"></script>
+  <script src="examples.js"></script>
+  <script>
+    (function () {
+      'use strict';
+      var E = window.MapStageExamples;
+      var S = window.MapStageSite;
+      var esc = E.esc;
+      var params = new URLSearchParams(location.search);
+      var ex = E.byId(params.get('id')) || E.list[0];
+
+      function siteHref(rel) { return S.url(rel); }
+
+      // ── 侧栏：分组列表 + 搜索 ──
+      var nav = document.getElementById('ex-nav');
+      function renderNav(q) {
+        nav.innerHTML = E.groups.map(function (g) {
+          var items = E.list.filter(function (e) { return e.group === g.id && E.matches(e, q); });
+          if (!items.length) return '';
+          return '<h5>' + esc(g.title) + '</h5>' + items.map(function (e) {
+            return '<a href="?id=' + e.id + '"' + (e.id === ex.id ? ' aria-current="page"' : '') + '>' + esc(e.title) + '</a>';
+          }).join('');
+        }).join('') || '<p class="ex-empty">没有匹配的示例</p>';
+      }
+      var search = document.getElementById('ex-search');
+      search.addEventListener('input', function () { renderNav(search.value.trim()); });
+      renderNav('');
+
+      var toggle = document.getElementById('side-toggle');
+      toggle.addEventListener('click', function () {
+        var open = document.getElementById('ex-side').classList.toggle('open');
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+
+      // ── 正文 ──
+      var group = E.group(ex.group);
+      var file = ex.id + '.html';
+      var demoUrl = new URL(file, location.href).href;
+      document.title = ex.title + ' · MapStage 示例';
+
+      var inGroup = E.list.filter(function (e) { return e.group === ex.group; });
+      var i = E.list.indexOf(ex);
+      var prev = E.list[i - 1];
+      var next = E.list[i + 1];
+
+      var apis = (ex.api || []).map(function (name) {
+        return '<a class="api-chip" href="' + siteHref(E.apiHref(name)) + '"><code>' + esc(name) + '</code></a>';
+      }).join('');
+      var related = inGroup.filter(function (e) { return e !== ex; }).map(function (e) {
+        return '<a href="?id=' + e.id + '">' + esc(e.title) + '</a>';
+      }).join('');
+
+      var main = document.getElementById('ex-main');
+      main.innerHTML =
+        '<div class="ex-crumbs"><a href="./">示例</a> / <a href="./#' + group.id + '">' + esc(group.title) + '</a></div>' +
+        '<h1>' + esc(ex.title) + '</h1>' +
+        '<p class="lead">' + esc(ex.blurb) + '</p>' +
+        '<div class="ex-frame"><iframe id="demo" src="' + file + '" title="' + esc(ex.title) + ' 示例" loading="eager" allow="clipboard-write; fullscreen"></iframe></div>' +
+        '<div class="ex-toolbar">' +
+          '<a class="btn" href="' + file + '" target="_blank" rel="noopener">新窗口打开</a>' +
+          '<button class="btn" type="button" id="reload">重新运行</button>' +
+          '<button class="btn primary" type="button" id="copy-all">复制完整代码</button>' +
+          '<a class="ex-gh" href="' + S.GH + '/blob/master/mapstage/site/examples/' + file + '" target="_blank" rel="noopener">在 GitHub 上查看</a>' +
+        '</div>' +
+        '<section class="ex-meta">' +
+          '<div><h2>用到的 API</h2><div class="api-chips">' + (apis || '<span class="muted">—</span>') + '</div></div>' +
+          '<div><h2>相关规范</h2><p><a href="' + siteHref(E.specHref(ex.spec)) + '">' + esc(ex.spec.split('#')[0]) + (ex.spec.indexOf('#') > 0 ? ' · ' + esc(ex.spec.split('#')[1]) : '') + ' →</a></p></div>' +
+        '</section>' +
+        '<h2 class="ex-code-title">完整代码</h2>' +
+        '<p class="ex-code-hint">整份复制成一个 .html 文件，双击就能打开。脚本和数据都指向本站，不用安装、不用构建。</p>' +
+        '<div class="code" data-lang="html" data-title="' + esc(file) + '" id="src"><pre>加载中…</pre></div>' +
+        (related ? '<section class="ex-related"><h2>同组示例</h2><div>' + related + '</div></section>' : '') +
+        '<nav class="doc-pager" aria-label="翻页">' +
+          (prev ? '<a href="?id=' + prev.id + '"><small>上一个</small>' + esc(prev.title) + '</a>' : '<span></span>') +
+          (next ? '<a class="next" href="?id=' + next.id + '"><small>下一个</small>' + esc(next.title) + '</a>' : '') +
+        '</nav>';
+
+      document.getElementById('reload').onclick = function () {
+        document.getElementById('demo').src = file + '?r=' + Date.now();
+      };
+
+      // 源码：相对路径（../studio/…、./x.json）改成本站绝对地址，复制出去也能跑
+      function absolutize(text) {
+        return text.replace(/(["'])(\.\.?\/[^"'\s]*)\1/g, function (all, q, rel) {
+          return q + new URL(rel, demoUrl).href + q;
+        });
+      }
+
+      fetch(file, { cache: 'no-cache' })
+        .then(function (r) { if (!r.ok) throw new Error(r.status + ' ' + file); return r.text(); })
+        .then(function (text) {
+          var code = absolutize(text).replace(/\s+$/, '');
+          var box = document.getElementById('src');
+          box.innerHTML = '';
+          box.removeAttribute('data-ready');   // site.js 启动时已增强过「加载中」占位，换内容后重来
+          var pre = document.createElement('pre');
+          pre.textContent = code;
+          box.appendChild(pre);
+          S.enhanceCode(main);
+          document.getElementById('copy-all').onclick = function (e) { S.copyText(code, e.currentTarget); };
+        })
+        .catch(function (e) {
+          document.getElementById('src').innerHTML = '<pre>' + esc(String(e.message || e)) + '</pre>';
+        });
+    })();
+  </script>
+</body>
+</html>

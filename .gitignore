@@ -23,17 +23,26 @@ node_modules/
 .python-version
 __pycache__/
 
-# Optional large local water rebuilds / user-supplied packs (not redistributed)
+# Optional large local water rebuilds
 *.geojson.bak
 water-data.full.js
-mapstage/tuner/assets/water-data.js
-mapstage/tuner/assets/water-manifest.json
+mapstage/tuner/scripts/_ne_cache/
 
 # Local preview helpers
 .preview-tools/
 mapstage/tuner/_serve.cjs
 mapstage/tuner/_serve.mjs
 mapstage/tuner/_preview_eox.cjs
+mapstage/tuner/_preview/
+
+# Local render / promo dumps
+out/
+promo/
 
 # Git / tooling noise
 *.stackdump
+mapstage/tuner/_tile_cache/
+
+# Separate Vite landing page (own package.json + node_modules); not part of
+# this no-bundler repo. See references/product-catalog.md "orbit-landing".
+mapstage/orbit-landing/

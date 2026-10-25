@@ -19,4 +19,3 @@ This repository should never contain:
 
 - Map / cloud API keys or tokens
 - Credentials for render farms or private services
-- A redistributable hydrography pack (`water-data.js` / `water-manifest.json`). This public repository and its GitHub Pages site must not publish `water-data.js` again.
