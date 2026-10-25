@@ -34,58 +34,59 @@ Not in scope: interactive web-map products, a marketplace, navigation or surveyi
 
 ### Demo video
 
-Example output of this stack in a real map-story episode (**河西走廊 · 河西四郡**). Low-res clip:
+Example output of this stack in a real map-story episode (**Long March ep.14, 西路军**). Low-res clip:
 
-https://hopechen067.github.io/MapStage/studio/media/hexi-ep07-demo-480p.mp4
+https://hopechen067.github.io/MapStage/media/long-march-ep14-demo.mp4
 
 <video
   controls
   playsinline
   preload="metadata"
   width="720"
-  src="https://hopechen067.github.io/MapStage/studio/media/hexi-ep07-demo-480p.mp4">
+  poster="mapstage/site/media/long-march-ep14-poster.jpg"
+  src="https://hopechen067.github.io/MapStage/media/long-march-ep14-demo.mp4">
 </video>
 
-Longer clip (~36s): [showcases/hexi-ep07/hexi-ep07-map-clip.mp4](showcases/hexi-ep07/hexi-ep07-map-clip.mp4)
+Longer clip (~36s): [showcases/long-march-ep14/ep14-map-clip.mp4](showcases/long-march-ep14/ep14-map-clip.mp4)
 
 ## Showcases
 
-Still frames from the same demo, plus Studio captures.
+Still frames from the same episode.
 
 <table>
   <tr>
     <td align="center" width="50%">
-      <img src="showcases/hexi-ep07/still-01-open.jpg" alt="Wuwei oasis and Shiyang River" />
-      <br /><sub>武威 · oasis / Shiyang River</sub>
+      <img src="showcases/long-march-ep14/still-01-route.jpg" alt="Route and timeline" />
+      <br /><sub>Route + timeline card</sub>
     </td>
     <td align="center" width="50%">
-      <img src="showcases/hexi-ep07/still-03-commanderies.jpg" alt="Jiuquan terrain and water" />
-      <br /><sub>酒泉 · terrain + water</sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" width="50%">
-      <img src="showcases/hexi-ep07/still-02-corridor.jpg" alt="Hexi corridor map shot" />
-      <br /><sub>Hexi corridor map shot</sub>
-    </td>
-    <td align="center" width="50%">
-      <img src="showcases/hexi-ep07/still-05-close.jpg" alt="Settlement close-up" />
-      <br /><sub>Settlement close-up</sub>
+      <img src="showcases/long-march-ep14/still-02-yellow-river.jpg" alt="Yellow River crossing" />
+      <br /><sub>Yellow River · date card</sub>
     </td>
   </tr>
   <tr>
     <td align="center" width="50%">
-      <img src="showcases/preview-eox-china.png" alt="Studio national view" />
-      <br /><sub>Studio · national view (EOX)</sub>
+      <img src="showcases/long-march-ep14/still-03-terrain.jpg" alt="Terrain and campaign arrow" />
+      <br /><sub>Terrain · route arrow</sub>
     </td>
     <td align="center" width="50%">
-      <img src="showcases/preview-eox-hexi.png" alt="Studio Hexi view" />
-      <br /><sub>Studio · Hexi / hillshade</sub>
+      <img src="showcases/long-march-ep14/still-04-3d-city.jpg" alt="3D walled city" />
+      <br /><sub>3D walled city (Gaotai)</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="showcases/long-march-ep14/still-05-campaign.jpg" alt="Campaign area" />
+      <br /><sub>Campaign area · tiered labels</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="showcases/long-march-ep14/still-06-full-route.jpg" alt="Whole Long March route" />
+      <br /><sub>Whole route</sub>
     </td>
   </tr>
 </table>
 
-More files: [showcases/hexi-ep07/](showcases/hexi-ep07/)
+More files: [showcases/long-march-ep14/](showcases/long-march-ep14/)
 
 | Item | Value |
 |------|--------|
