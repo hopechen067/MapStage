@@ -1,13 +1,15 @@
-# Deploy the MapStage tuner as a static site on GitHub Pages.
+# Deploy the MapStage site (home, docs, examples, /studio/ tuner) to GitHub Pages.
 # Live URL: https://<owner>.github.io/<repo>/
-name: Deploy tuner (GitHub Pages)
+# The site is built by mapstage/site/build.mjs (same layout as site/serve.mjs);
+# its licence gate refuses to build if non-redistributable data is present.
+name: Deploy site (GitHub Pages)
 
 on:
   push:
     branches: [master, main]
     paths:
-      - "mapstage/tuner/**"
-      - "showcases/hexi-ep07/**"
+      - "mapstage/**"
+      - "showcases/**"
       - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
 
@@ -30,58 +32,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare site root
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build site
         run: |
           set -euo pipefail
-          mkdir -p _site
-          # Publish only the tuner static assets (relative paths stay valid)
-          rsync -a \
-            --exclude '_serve.*' \
-            --exclude '_preview*' \
-            --exclude 'verify.mjs' \
-            --exclude 'map-tiles.config.local.js' \
-            --exclude '.DS_Store' \
-            --exclude 'assets/water-data.js' \
-            --exclude 'assets/water-manifest.json' \
-            --exclude 'water-data.js' \
-            --exclude 'water-manifest.json' \
-            mapstage/tuner/ _site/
-          # Demo clip for README / site embed (served as video/mp4, not raw attachment)
-          mkdir -p _site/media
-          if [ -f showcases/hexi-ep07/hexi-ep07-demo-480p.mp4 ]; then
-            cp -f showcases/hexi-ep07/hexi-ep07-demo-480p.mp4 _site/media/
-          fi
-          # Prevent Jekyll from ignoring underscore paths
+          node mapstage/site/build.mjs _site
           touch _site/.nojekyll
-          # Small marker for debugging deploys
           date -u +"%Y-%m-%dT%H:%M:%SZ" > _site/DEPLOYED_AT.txt
-          # Public repo + GitHub Pages must never redistribute hydrography.
-          # Exclude, delete, then fail the job if water-data.js / water-manifest.json
-          # are still in the artifact (do not validate-and-publish them).
-          rm -f _site/assets/water-data.js _site/assets/water-manifest.json
-          find _site -type f \( -name 'water-data.js' -o -name 'water-manifest.json' \) -print -delete
-          python3 -c '
-          import json
-          from pathlib import Path
-          p = Path("_site/assets/water-pack.json")
-          if not p.is_file():
-              raise SystemExit("missing _site/assets/water-pack.json")
-          data = json.loads(p.read_text(encoding="utf-8"))
-          data["enabled"] = False
-          p.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-          check = json.loads(p.read_text(encoding="utf-8"))
-          if check.get("enabled") is not False:
-              raise SystemExit("water-pack.json enabled must be false")
-          print("OK  water-pack.json forced enabled=false")
-          '
-          leftover=$(find _site -type f \( -name 'water-data.js' -o -name 'water-manifest.json' \) -print)
+          # Public Pages must never redistribute hydrography or local tile config.
+          leftover=$(find _site -type f \( -name 'water-data.js' -o -name 'water-manifest.json' -o -name 'water-pack.json' -o -name '*.local.js' \) -print)
           if [ -n "${leftover}" ]; then
-            echo "::error::Public Pages must not publish water overlay files:"
+            echo "::error::Public Pages must not publish these files:"
             echo "${leftover}"
             exit 1
           fi
-          echo "OK  no water-data.js / water-manifest.json in publish tree"
-          ls -la _site _site/assets _site/media | head -60
+          echo "OK  no water overlay / local config files in publish tree"
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
