@@ -1,8 +1,8 @@
 # 更新记录 · Changelog
 
-MapStage 目前没有版本号，按日期记录。规划与阶段见 [mapstage/references/roadmap.md](mapstage/references/roadmap.md)。
+版本号从 0.1.0 起追溯编排（2026-10-25 定），同时标注日期。规划与阶段见 [mapstage/references/roadmap.md](mapstage/references/roadmap.md)。
 
-## 2026-10-25
+## 0.3.0 · 2026-10-25
 
 ### 数据与许可
 
@@ -18,7 +18,7 @@ MapStage 目前没有版本号，按日期记录。规划与阶段见 [mapstage/
 - 新增 Cloudflare Pages 镜像：https://mapstage1.pages.dev/ （连公开仓库 `master`，自动构建）。
 - Runtime：Story 里可以选底图风格并开夜灯（#34）。
 
-## 2026-10-24
+## 0.2.0 · 2026-10-24
 
 ### 新功能
 
@@ -38,14 +38,16 @@ MapStage 目前没有版本号，按日期记录。规划与阶段见 [mapstage/
 - 官网改为本地构建 `node mapstage/site/build.mjs`，不再依赖 GitHub Pages 工作流（#24）；skill 镜像到三个本地 agent 目录（#25）。
 - 边界数据合规复核记录（#22），路线图收口（#20、#27）。
 
-## 2026-10-22
+## 0.1.0 · 2026-10-20 至 10-22
+
+### 10-22
 
 - **Studio**：面板分页、矢量调色、去掉水系数据包（#16）。
 - **局部拆出（Isolate）**：完整的中国轮廓、海上岛群、Natural Earth 10m 海岸线（#17）；拆出时的裁剪窗口跟随相机，性能优化（#18）。
 - 约定 CI 在本地跑，不依赖 GitHub（#19）。
 - P0.5 基础合并：拆出边缘、运行时 P2、Story（#15）。
 
-## 2026-10-20
+### 10-20
 
 - **P0 官网与 skill 重写**：首页、文档、示例库，`SKILL.md` 改成按层路由（#12）。
 - **改名 `mapstage/`**，发布 preset v3（#13）。
